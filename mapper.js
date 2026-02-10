@@ -409,8 +409,6 @@
             html += '<button class="category-btn" data-appeal="' + appeal + '" data-category="' + categories[i] + '" data-mapping-type="event">' + categories[i] + '</button>';
         }
         
-        html += '</div>';
-        html += '<div style="text-align: center; margin-top: 15px;">';
         html += '<button class="category-btn non-event-btn" data-appeal="' + appeal + '" data-category="Skip" data-mapping-type="event">Skip</button>';
         html += '</div>';
         html += '<div class="navigation-buttons">';
@@ -571,8 +569,6 @@
             }
         }
         
-        html += '</div>';
-        html += '<div style="text-align: center; margin-top: 15px;">';
         html += '<button class="category-btn non-event-btn" data-appeal="' + sourceValue + '" data-category="Skip" data-mapping-type="spotlight">Skip</button>';
         html += '</div>';
         html += '<div class="navigation-buttons">';
