@@ -325,9 +325,13 @@
                 }
                 
                 initializeStepTracker();
-                updateStepTracker(0); // Activate step 0 (Special Event Mapping)
-
+                updateStepTracker(0);
+                
                 document.getElementById('uploadBox').style.display = 'none';
+                var uploadNote = document.getElementById('uploadNote');
+                if (uploadNote) {
+                    uploadNote.style.display = 'none';
+                }
                 var downloadContainer = document.getElementById('download-container');
                 if (downloadContainer) {
                     downloadContainer.style.display = 'none';
