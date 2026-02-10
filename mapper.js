@@ -23,7 +23,7 @@
         'Government',
         'Foundation',
         'Estate',
-        'Community Foundation',
+        'Family Foundation',
         'Corporation'
     ];
 
