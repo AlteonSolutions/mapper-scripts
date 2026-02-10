@@ -28,40 +28,34 @@
 
     var spotlightConfig = null;
 
-    // Detect industry selection from visible image class
+    // Map image IDs to industry types
+    var industryImageIds = {
+        'image-FRdTKXvCKw': 'arts',
+        'image-jmRsaBRUt0': 'environmental',
+        'image-mPaKkFsRIc': 'education',
+        'image-LAJZMp0Uz7': 'familyfoundation',
+        'image-I9s-xC-hNO': 'healthcare',
+        'image-Ki-dn13age': 'humanservices',
+        'image-7Zvkl8xveW': 'religion'
+    };
+
+    // Detect industry selection from visible image ID
     function detectIndustry() {
         console.log('=== Starting Industry Detection ===');
         
-        var industryMap = {
-            'Arts': 'arts',
-            'Environmental': 'environmental',
-            'Education': 'education',
-            'CommunityFoundation': 'familyfoundation',
-            'Healthcare': 'healthcare',
-            'HumanServices': 'humanservices',
-            'Religion': 'religion'
-        };
-
-        // Method 1: Look for images with custom classes
-        for (var className in industryMap) {
-            if (industryMap.hasOwnProperty(className)) {
-                var selector = 'img.' + className;
-                console.log('Checking selector:', selector);
-                var images = document.querySelectorAll(selector);
-                console.log('Found ' + images.length + ' images with class ' + className);
-                
-                for (var i = 0; i < images.length; i++) {
-                    var img = images[i];
+        for (var imageId in industryImageIds) {
+            if (industryImageIds.hasOwnProperty(imageId)) {
+                var img = document.getElementById(imageId);
+                if (img) {
                     var style = window.getComputedStyle(img);
                     var rect = img.getBoundingClientRect();
                     
-                    console.log('Image ' + i + ' for ' + className + ':', {
+                    console.log('Checking image:', imageId, {
                         display: style.display,
                         visibility: style.visibility,
                         opacity: style.opacity,
                         width: rect.width,
-                        height: rect.height,
-                        classes: img.className
+                        height: rect.height
                     });
                     
                     // Check if image is visible
@@ -70,40 +64,15 @@
                         parseFloat(style.opacity) > 0 &&
                         rect.width > 0 && 
                         rect.height > 0) {
-                        console.log('✓ DETECTED INDUSTRY:', industryMap[className]);
-                        return industryMap[className];
+                        
+                        console.log('✓ DETECTED INDUSTRY:', industryImageIds[imageId]);
+                        return industryImageIds[imageId];
                     }
                 }
             }
         }
         
-        // Method 2: Fallback - look for any visible industry class in the entire class string
-        console.log('Method 1 failed, trying Method 2...');
-        var allImages = document.querySelectorAll('img');
-        console.log('Total images on page:', allImages.length);
-        
-        for (var j = 0; j < allImages.length; j++) {
-            var image = allImages[j];
-            var classList = image.className;
-            
-            for (var key in industryMap) {
-                if (industryMap.hasOwnProperty(key) && classList.indexOf(key) > -1) {
-                    var imgStyle = window.getComputedStyle(image);
-                    var imgRect = image.getBoundingClientRect();
-                    
-                    if (imgStyle.display !== 'none' && 
-                        imgStyle.visibility !== 'hidden' && 
-                        parseFloat(imgStyle.opacity) > 0 &&
-                        imgRect.width > 0 && 
-                        imgRect.height > 0) {
-                        console.log('✓ DETECTED INDUSTRY (Method 2):', industryMap[key]);
-                        return industryMap[key];
-                    }
-                }
-            }
-        }
-        
-        console.log('✗ Could not find Industry Type field');
+        console.log('✗ No visible industry image found');
         return null;
     }
 
