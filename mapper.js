@@ -26,6 +26,8 @@
         'Corporation'
     ];
 
+    var spotlightConfig = null;
+
     // Detect industry selection from visible image class
     function detectIndustry() {
         var industryMap = {
@@ -45,46 +47,56 @@
                     var img = images[i];
                     // Check if image is visible (not hidden by display or visibility)
                     var style = window.getComputedStyle(img);
-                    if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+                    var rect = img.getBoundingClientRect();
+                    if (style.display !== 'none' && 
+                        style.visibility !== 'hidden' && 
+                        style.opacity !== '0' &&
+                        rect.width > 0 && 
+                        rect.height > 0) {
+                        console.log('Detected industry:', industryMap[className]);
                         return industryMap[className];
                     }
                 }
             }
         }
+        console.log('No industry detected yet');
         return null;
     }
 
-    var detectedIndustry = detectIndustry();
-    var spotlightConfig = null;
-
-    if (detectedIndustry === 'arts') {
-        spotlightConfig = {
-            type: 'giftAppeal',
-            title: 'Map Gift Appeals to Spotlights',
-            categories: ['Tickets', 'Season Ticket Holders', 'Skip'],
-            completionText: 'You have successfully mapped all Gift Appeals to spotlight categories.'
-        };
-    } else if (detectedIndustry === 'education') {
-        spotlightConfig = {
-            type: 'giftAppeal',
-            title: 'Map Gift Appeals to Spotlights',
-            categories: ['Alumni', 'Parent & Grandparent', 'Skip'],
-            completionText: 'You have successfully mapped all Gift Appeals to spotlight categories.'
-        };
-    } else if (detectedIndustry === 'familyfoundation') {
-        spotlightConfig = {
-            type: 'constituentType',
-            title: 'Map Constituent Types to Spotlights',
-            categories: ['Donor', 'Fundholder', 'Skip'],
-            completionText: 'You have successfully mapped all Constituent Types to spotlight categories.'
-        };
-    } else if (detectedIndustry === 'healthcare') {
-        spotlightConfig = {
-            type: 'constituentType',
-            title: 'Map Constituent Types to Spotlights',
-            categories: ['Patient', 'Physician', 'Skip'],
-            completionText: 'You have successfully mapped all Constituent Types to spotlight categories.'
-        };
+    function setSpotlightConfig(industry) {
+        if (industry === 'arts') {
+            spotlightConfig = {
+                type: 'giftAppeal',
+                title: 'Map Gift Appeals to Spotlights',
+                categories: ['Tickets', 'Season Ticket Holders', 'Skip'],
+                completionText: 'You have successfully mapped all Gift Appeals to spotlight categories.'
+            };
+        } else if (industry === 'education') {
+            spotlightConfig = {
+                type: 'giftAppeal',
+                title: 'Map Gift Appeals to Spotlights',
+                categories: ['Alumni', 'Parent & Grandparent', 'Skip'],
+                completionText: 'You have successfully mapped all Gift Appeals to spotlight categories.'
+            };
+        } else if (industry === 'familyfoundation') {
+            spotlightConfig = {
+                type: 'constituentType',
+                title: 'Map Constituent Types to Spotlights',
+                categories: ['Donor', 'Fundholder', 'Skip'],
+                completionText: 'You have successfully mapped all Constituent Types to spotlight categories.'
+            };
+        } else if (industry === 'healthcare') {
+            spotlightConfig = {
+                type: 'constituentType',
+                title: 'Map Constituent Types to Spotlights',
+                categories: ['Patient', 'Physician', 'Skip'],
+                completionText: 'You have successfully mapped all Constituent Types to spotlight categories.'
+            };
+        }
+        
+        if (spotlightConfig) {
+            console.log('Spotlight config set:', spotlightConfig);
+        }
     }
 
     function waitForElement(selector, callback) {
@@ -171,6 +183,12 @@
     function handleFileUpload(e) {
         var file = e.target.files[0];
         if (!file) return;
+
+        // Detect industry when file is uploaded (user has already selected by this point)
+        var detectedIndustry = detectIndustry();
+        if (detectedIndustry) {
+            setSpotlightConfig(detectedIndustry);
+        }
 
         var reader = new FileReader();
         reader.onload = function(e) {
@@ -298,6 +316,23 @@
         if (categories.length === 0) {
             alert('Please add at least one event');
             return;
+        }
+
+        // Re-detect industry right before starting mapping (in case it wasn't detected earlier)
+        if (!spotlightConfig) {
+            var detectedIndustry = detectIndustry();
+            if (detectedIndustry) {
+                setSpotlightConfig(detectedIndustry);
+                
+                // Re-populate spotlight source data if config was just set
+                if (spotlightConfig) {
+                    if (spotlightConfig.type === 'giftAppeal') {
+                        spotlightSourceData = giftAppeals.slice();
+                    } else if (spotlightConfig.type === 'constituentType') {
+                        spotlightSourceData = constituentTypes.slice();
+                    }
+                }
+            }
         }
 
         currentIndex = 0;
