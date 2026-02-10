@@ -30,6 +30,8 @@
 
     // Detect industry selection from visible image class
     function detectIndustry() {
+        console.log('=== Starting Industry Detection ===');
+        
         var industryMap = {
             'Arts': 'arts',
             'Environmental': 'environmental',
@@ -40,30 +42,74 @@
             'Religion': 'religion'
         };
 
+        // Method 1: Look for images with custom classes
         for (var className in industryMap) {
             if (industryMap.hasOwnProperty(className)) {
-                var images = document.querySelectorAll('img.' + className);
+                var selector = 'img.' + className;
+                console.log('Checking selector:', selector);
+                var images = document.querySelectorAll(selector);
+                console.log('Found ' + images.length + ' images with class ' + className);
+                
                 for (var i = 0; i < images.length; i++) {
                     var img = images[i];
-                    // Check if image is visible (not hidden by display or visibility)
                     var style = window.getComputedStyle(img);
                     var rect = img.getBoundingClientRect();
+                    
+                    console.log('Image ' + i + ' for ' + className + ':', {
+                        display: style.display,
+                        visibility: style.visibility,
+                        opacity: style.opacity,
+                        width: rect.width,
+                        height: rect.height,
+                        classes: img.className
+                    });
+                    
+                    // Check if image is visible
                     if (style.display !== 'none' && 
                         style.visibility !== 'hidden' && 
-                        style.opacity !== '0' &&
+                        parseFloat(style.opacity) > 0 &&
                         rect.width > 0 && 
                         rect.height > 0) {
-                        console.log('Detected industry:', industryMap[className]);
+                        console.log('✓ DETECTED INDUSTRY:', industryMap[className]);
                         return industryMap[className];
                     }
                 }
             }
         }
-        console.log('No industry detected yet');
+        
+        // Method 2: Fallback - look for any visible industry class in the entire class string
+        console.log('Method 1 failed, trying Method 2...');
+        var allImages = document.querySelectorAll('img');
+        console.log('Total images on page:', allImages.length);
+        
+        for (var j = 0; j < allImages.length; j++) {
+            var image = allImages[j];
+            var classList = image.className;
+            
+            for (var key in industryMap) {
+                if (industryMap.hasOwnProperty(key) && classList.indexOf(key) > -1) {
+                    var imgStyle = window.getComputedStyle(image);
+                    var imgRect = image.getBoundingClientRect();
+                    
+                    if (imgStyle.display !== 'none' && 
+                        imgStyle.visibility !== 'hidden' && 
+                        parseFloat(imgStyle.opacity) > 0 &&
+                        imgRect.width > 0 && 
+                        imgRect.height > 0) {
+                        console.log('✓ DETECTED INDUSTRY (Method 2):', industryMap[key]);
+                        return industryMap[key];
+                    }
+                }
+            }
+        }
+        
+        console.log('✗ Could not find Industry Type field');
         return null;
     }
 
     function setSpotlightConfig(industry) {
+        console.log('Setting spotlight config for:', industry);
+        
         if (industry === 'arts') {
             spotlightConfig = {
                 type: 'giftAppeal',
@@ -95,7 +141,9 @@
         }
         
         if (spotlightConfig) {
-            console.log('Spotlight config set:', spotlightConfig);
+            console.log('✓ Spotlight config set:', spotlightConfig.type, spotlightConfig.categories);
+        } else {
+            console.log('No spotlight config needed for:', industry);
         }
     }
 
@@ -320,6 +368,7 @@
 
         // Re-detect industry right before starting mapping (in case it wasn't detected earlier)
         if (!spotlightConfig) {
+            console.log('No spotlight config found, re-detecting industry...');
             var detectedIndustry = detectIndustry();
             if (detectedIndustry) {
                 setSpotlightConfig(detectedIndustry);
