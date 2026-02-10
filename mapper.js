@@ -22,7 +22,7 @@
         'Government',
         'Foundation',
         'Estate',
-        'Family Foundation',
+        'Community Foundation',
         'Corporation'
     ];
 
@@ -33,7 +33,7 @@
         'image-FRdTKXvCKw': 'arts',
         'image-jmRsaBRUt0': 'environmental',
         'image-mPaKkFsRIc': 'education',
-        'image-LAJZMp0Uz7': 'familyfoundation',
+        'image-LAJZMp0Uz7': 'communityfoundation',
         'image-I9s-xC-hNO': 'healthcare',
         'image-Ki-dn13age': 'humanservices',
         'image-7Zvkl8xveW': 'religion'
@@ -93,7 +93,7 @@
                 categories: ['Alumni', 'Parent & Grandparent', 'Skip'],
                 completionText: 'You have successfully mapped all Gift Appeals to spotlight categories.'
             };
-        } else if (industry === 'familyfoundation') {
+        } else if (industry === 'communityfoundation') {
             spotlightConfig = {
                 type: 'constituentType',
                 title: 'Map Constituent Types to Spotlights',
