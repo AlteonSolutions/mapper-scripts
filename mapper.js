@@ -29,7 +29,6 @@
 
     var spotlightConfig = null;
 
-    // Map image IDs to industry types
     var industryImageIds = {
         'image-FRdTKXvCKw': 'arts',
         'image-jmRsaBRUt0': 'environmental',
@@ -40,7 +39,6 @@
         'image-7Zvkl8xveW': 'religion'
     };
 
-    // Detect industry selection from visible image ID
     function detectIndustry() {
         console.log('=== Starting Industry Detection ===');
         
@@ -59,7 +57,6 @@
                         height: rect.height
                     });
                     
-                    // Check if image is visible
                     if (style.display !== 'none' && 
                         style.visibility !== 'hidden' && 
                         parseFloat(style.opacity) > 0 &&
@@ -139,7 +136,6 @@
         for (var i = 0; i < steps.length; i++) {
             var step = steps[i];
             
-            // Don't mark any as active initially
             html += '<div class="step-item">';
             html += '<div class="step-circle">';
             html += step.number;
@@ -277,7 +273,6 @@
         var file = e.target.files[0];
         if (!file) return;
 
-        // Detect industry when file is uploaded (user has already selected by this point)
         var detectedIndustry = detectIndustry();
         if (detectedIndustry) {
             setSpotlightConfig(detectedIndustry);
@@ -329,7 +324,6 @@
                     }
                 }
                 
-                // Initialize step tracker
                 initializeStepTracker();
                 
                 document.getElementById('uploadBox').style.display = 'none';
@@ -414,14 +408,12 @@
             return;
         }
 
-        // Re-detect industry right before starting mapping (in case it wasn't detected earlier)
         if (!spotlightConfig) {
             console.log('No spotlight config found, re-detecting industry...');
             var detectedIndustry = detectIndustry();
             if (detectedIndustry) {
                 setSpotlightConfig(detectedIndustry);
                 
-                // Re-populate spotlight source data if config was just set
                 if (spotlightConfig) {
                     if (spotlightConfig.type === 'giftAppeal') {
                         spotlightSourceData = giftAppeals.slice();
@@ -432,7 +424,6 @@
             }
         }
 
-        // Activate step 0 (Special Event Mapping)
         updateStepTracker(0);
 
         currentIndex = 0;
@@ -473,9 +464,6 @@
         
         if (currentIndex >= giftAppeals.length) {
             container.innerHTML = '';
-            
-            // Mark step 1 as complete, move to next step
-            updateStepTracker(spotlightConfig ? 1 : 1);
             
             document.getElementById('completionCard').style.display = 'block';
             document.getElementById('spotlightMappingSection').style.display = 'none';
@@ -612,11 +600,10 @@
     }
 
     function startSpotlightMapping() {
+        updateStepTracker(1);
+        
         spotlightCurrentIndex = 0;
         spotlightHasUsedPrevious = false;
-        
-        // Activate step 1 (Spotlight Mapping)
-        updateStepTracker(1);
         
         document.getElementById('spotlightMappingTitle').textContent = spotlightConfig.title;
         document.getElementById('spotlightCompletionText').textContent = spotlightConfig.completionText;
@@ -645,9 +632,6 @@
         
         if (spotlightCurrentIndex >= spotlightSourceData.length) {
             container.innerHTML = '';
-            
-            // Mark step 2 as complete, move to step 3
-            updateStepTracker(2);
             
             document.getElementById('spotlightCompletionCard').style.display = 'block';
             document.querySelector('#spotlightMappingSection .progress-container').style.display = 'none';
@@ -784,11 +768,10 @@
     }
 
     function startConstituentMapping() {
+        updateStepTracker(spotlightConfig ? 2 : 1);
+        
         constituentCurrentIndex = 0;
         constituentHasUsedPrevious = false;
-        
-        // Activate final step (Constituent Type Mapping)
-        updateStepTracker(spotlightConfig ? 2 : 1);
         
         document.getElementById('constituentMappingSection').style.display = 'block';
         showCurrentConstituentType();
@@ -816,7 +799,6 @@
         if (constituentCurrentIndex >= constituentTypes.length) {
             container.innerHTML = '';
             
-            // Mark final step as complete
             updateStepTracker(spotlightConfig ? 3 : 2);
             
             document.getElementById('constituentCompletionCard').style.display = 'block';
