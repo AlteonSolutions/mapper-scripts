@@ -328,6 +328,10 @@
                 updateStepTracker(0);
                 
                 document.getElementById('uploadBox').style.display = 'none';
+                var uploadTitle = document.getElementById('uploadTitle');
+                if (uploadTitle) {
+                    uploadTitle.style.display = 'none';
+                }
                 var uploadNote = document.getElementById('uploadNote');
                 if (uploadNote) {
                     uploadNote.style.display = 'none';
