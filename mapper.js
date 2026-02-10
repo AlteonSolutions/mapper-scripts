@@ -26,35 +26,63 @@
         'Corporation'
     ];
 
-    var path = window.location.pathname.toLowerCase();
+    // Detect industry selection from visible image class
+    function detectIndustry() {
+        var industryMap = {
+            'Arts': 'arts',
+            'Environmental': 'environmental',
+            'Education': 'education',
+            'CommunityFoundation': 'familyfoundation',
+            'Healthcare': 'healthcare',
+            'HumanServices': 'humanservices',
+            'Religion': 'religion'
+        };
+
+        for (var className in industryMap) {
+            if (industryMap.hasOwnProperty(className)) {
+                var images = document.querySelectorAll('img.' + className);
+                for (var i = 0; i < images.length; i++) {
+                    var img = images[i];
+                    // Check if image is visible (not hidden by display or visibility)
+                    var style = window.getComputedStyle(img);
+                    if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+                        return industryMap[className];
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    var detectedIndustry = detectIndustry();
     var spotlightConfig = null;
 
-    if (path.indexOf('/alfordanalytics/arts') > -1) {
+    if (detectedIndustry === 'arts') {
         spotlightConfig = {
             type: 'giftAppeal',
             title: 'Map Gift Appeals to Spotlights',
-            categories: ['Tickets', 'Season Ticket Holders', 'Non-Event'],
+            categories: ['Tickets', 'Season Ticket Holders', 'Skip'],
             completionText: 'You have successfully mapped all Gift Appeals to spotlight categories.'
         };
-    } else if (path.indexOf('/alfordanalytics/education') > -1) {
+    } else if (detectedIndustry === 'education') {
         spotlightConfig = {
             type: 'giftAppeal',
             title: 'Map Gift Appeals to Spotlights',
-            categories: ['Alumni', 'Parent & Grandparent', 'Non-Event'],
+            categories: ['Alumni', 'Parent & Grandparent', 'Skip'],
             completionText: 'You have successfully mapped all Gift Appeals to spotlight categories.'
         };
-    } else if (path.indexOf('/alfordanalytics/familyfoundation') > -1) {
+    } else if (detectedIndustry === 'familyfoundation') {
         spotlightConfig = {
             type: 'constituentType',
             title: 'Map Constituent Types to Spotlights',
-            categories: ['Donor', 'Fundholder', 'Non-Event'],
+            categories: ['Donor', 'Fundholder', 'Skip'],
             completionText: 'You have successfully mapped all Constituent Types to spotlight categories.'
         };
-    } else if (path.indexOf('/alfordanalytics/healthcare') > -1) {
+    } else if (detectedIndustry === 'healthcare') {
         spotlightConfig = {
             type: 'constituentType',
             title: 'Map Constituent Types to Spotlights',
-            categories: ['Patient', 'Physician', 'Non-Event'],
+            categories: ['Patient', 'Physician', 'Skip'],
             completionText: 'You have successfully mapped all Constituent Types to spotlight categories.'
         };
     }
@@ -330,7 +358,7 @@
         
         html += '</div>';
         html += '<div style="text-align: center; margin-top: 15px;">';
-        html += '<button class="category-btn non-event-btn" data-appeal="' + appeal + '" data-category="Non-Event" data-mapping-type="event">Non-Event</button>';
+        html += '<button class="category-btn non-event-btn" data-appeal="' + appeal + '" data-category="Skip" data-mapping-type="event">Skip</button>';
         html += '</div>';
         html += '<div class="navigation-buttons">';
         html += '<button class="nav-btn" data-action="previous" data-mapping-type="event"' + (currentIndex === 0 ? ' disabled' : '') + '>← Previous</button>';
@@ -344,7 +372,7 @@
             var buttons = container.querySelectorAll('.category-btn');
             for (var j = 0; j < buttons.length; j++) {
                 if (buttons[j].getAttribute('data-category') === currentMapping) {
-                    if (currentMapping === 'Non-Event') {
+                    if (currentMapping === 'Skip') {
                         buttons[j].style.background = '#999';
                         buttons[j].style.color = 'white';
                         buttons[j].style.borderColor = '#999';
@@ -371,7 +399,7 @@
         for (var i = 0; i < buttons.length; i++) {
             var btnCategory = buttons[i].getAttribute('data-category');
             if (btnCategory === category) {
-                if (category === 'Non-Event') {
+                if (category === 'Skip') {
                     buttons[i].style.background = '#999';
                     buttons[i].style.color = 'white';
                     buttons[i].style.borderColor = '#999';
@@ -485,14 +513,14 @@
         html += '<div class="category-buttons">';
         
         for (var i = 0; i < spotlightConfig.categories.length; i++) {
-            if (spotlightConfig.categories[i] !== 'Non-Event') {
+            if (spotlightConfig.categories[i] !== 'Skip') {
                 html += '<button class="category-btn" data-appeal="' + sourceValue + '" data-category="' + spotlightConfig.categories[i] + '" data-mapping-type="spotlight">' + spotlightConfig.categories[i] + '</button>';
             }
         }
         
         html += '</div>';
         html += '<div style="text-align: center; margin-top: 15px;">';
-        html += '<button class="category-btn non-event-btn" data-appeal="' + sourceValue + '" data-category="Non-Event" data-mapping-type="spotlight">Non-Event</button>';
+        html += '<button class="category-btn non-event-btn" data-appeal="' + sourceValue + '" data-category="Skip" data-mapping-type="spotlight">Skip</button>';
         html += '</div>';
         html += '<div class="navigation-buttons">';
         html += '<button class="nav-btn" data-action="previous" data-mapping-type="spotlight"' + (spotlightCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button>';
@@ -506,7 +534,7 @@
             var buttons = container.querySelectorAll('.category-btn');
             for (var j = 0; j < buttons.length; j++) {
                 if (buttons[j].getAttribute('data-category') === currentMapping) {
-                    if (currentMapping === 'Non-Event') {
+                    if (currentMapping === 'Skip') {
                         buttons[j].style.background = '#999';
                         buttons[j].style.color = 'white';
                         buttons[j].style.borderColor = '#999';
@@ -533,7 +561,7 @@
         for (var i = 0; i < buttons.length; i++) {
             var btnCategory = buttons[i].getAttribute('data-category');
             if (btnCategory === category) {
-                if (category === 'Non-Event') {
+                if (category === 'Skip') {
                     buttons[i].style.background = '#999';
                     buttons[i].style.color = 'white';
                     buttons[i].style.borderColor = '#999';
