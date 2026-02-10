@@ -124,33 +124,31 @@
         var steps = [];
         if (spotlightConfig) {
             steps = [
-                { label: 'Define Events', number: 1 },
-                { label: 'Map Data', number: 2 },
-                { label: 'Final Mapping', number: 3 }
+                { label: 'Special Event Mapping', number: 1 },
+                { label: 'Spotlight Mapping', number: 2 },
+                { label: 'Constituent Type Mapping', number: 3 }
             ];
         } else {
             steps = [
-                { label: 'Define Events', number: 1 },
-                { label: 'Map Data', number: 2 }
+                { label: 'Special Event Mapping', number: 1 },
+                { label: 'Constituent Type Mapping', number: 2 }
             ];
         }
 
         var html = '';
         for (var i = 0; i < steps.length; i++) {
             var step = steps[i];
-            var isActive = i === currentStep;
-            var isCompleted = i < currentStep;
+            var isActive = i === 0; // Start at first step
             
             html += '<div class="step-item' + (isActive ? ' active' : '') + '">';
-            html += '<div class="step-circle' + (isActive ? ' active' : '') + (isCompleted ? ' completed' : '') + '">';
-            html += isCompleted ? '✓' : step.number;
+            html += '<div class="step-circle' + (isActive ? ' active' : '') + '">';
+            html += step.number;
             html += '</div>';
             html += '<div class="step-label">' + step.label + '</div>';
-            html += '</div>';
-            
             if (i < steps.length - 1) {
-                html += '<div class="step-connector' + (isCompleted ? ' completed' : '') + '"></div>';
+                html += '<div class="step-connector"></div>';
             }
+            html += '</div>';
         }
         
         stepTracker.innerHTML = html;
@@ -170,18 +168,16 @@
             if (i === step) {
                 stepItems[i].classList.add('active');
                 stepCircles[i].classList.add('active');
+                stepCircles[i].classList.remove('completed');
+                stepCircles[i].textContent = (i + 1).toString();
+            } else if (i < step) {
+                stepItems[i].classList.remove('active');
+                stepCircles[i].classList.add('completed');
+                stepCircles[i].classList.remove('active');
+                stepCircles[i].textContent = '✓';
             } else {
                 stepItems[i].classList.remove('active');
                 stepCircles[i].classList.remove('active');
-            }
-
-            if (i < step) {
-                stepCircles[i].classList.add('completed');
-                stepCircles[i].textContent = '✓';
-            } else if (i === step) {
-                stepCircles[i].classList.remove('completed');
-                stepCircles[i].textContent = (i + 1).toString();
-            } else {
                 stepCircles[i].classList.remove('completed');
                 stepCircles[i].textContent = (i + 1).toString();
             }
@@ -436,8 +432,8 @@
             }
         }
 
-        // Update step tracker to step 1 (Map Data)
-        updateStepTracker(1);
+        // Keep at step 0 (Special Event Mapping still in progress)
+        updateStepTracker(0);
 
         currentIndex = 0;
         hasUsedPrevious = false;
@@ -472,6 +468,9 @@
         
         if (currentIndex >= giftAppeals.length) {
             container.innerHTML = '';
+            
+            // Mark step 1 as complete, move to next step
+            updateStepTracker(spotlightConfig ? 1 : 1);
             
             document.getElementById('completionCard').style.display = 'block';
             document.getElementById('spotlightMappingSection').style.display = 'none';
@@ -611,10 +610,8 @@
         spotlightCurrentIndex = 0;
         spotlightHasUsedPrevious = false;
         
-        // Update step tracker to step 2 (if 3 steps) or keep at 1
-        if (spotlightConfig) {
-            updateStepTracker(1); // Still in "Map Data" step but now spotlight phase
-        }
+        // Keep at step 1 (Spotlight Mapping in progress)
+        updateStepTracker(1);
         
         document.getElementById('spotlightMappingTitle').textContent = spotlightConfig.title;
         document.getElementById('spotlightCompletionText').textContent = spotlightConfig.completionText;
@@ -638,6 +635,10 @@
         
         if (spotlightCurrentIndex >= spotlightSourceData.length) {
             container.innerHTML = '';
+            
+            // Mark step 2 as complete, move to step 3
+            updateStepTracker(2);
+            
             document.getElementById('spotlightCompletionCard').style.display = 'block';
             document.querySelector('#spotlightMappingSection .progress-container').style.display = 'none';
             document.querySelector('#spotlightMappingSection h2').style.display = 'none';
@@ -776,7 +777,7 @@
         constituentCurrentIndex = 0;
         constituentHasUsedPrevious = false;
         
-        // Update step tracker to final step
+        // Move to final step (keep in progress until all mapped)
         updateStepTracker(spotlightConfig ? 2 : 1);
         
         document.getElementById('constituentMappingSection').style.display = 'block';
@@ -799,6 +800,10 @@
         
         if (constituentCurrentIndex >= constituentTypes.length) {
             container.innerHTML = '';
+            
+            // Mark final step as complete
+            updateStepTracker(spotlightConfig ? 3 : 2);
+            
             document.getElementById('constituentCompletionCard').style.display = 'block';
             document.querySelector('#constituentMappingSection .progress-container').style.display = 'none';
             document.querySelector('#constituentMappingSection h2').style.display = 'none';
