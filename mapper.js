@@ -15,6 +15,7 @@
     var hasUsedPrevious = false;
     var spotlightHasUsedPrevious = false;
     var constituentHasUsedPrevious = false;
+    var currentStep = 0;
 
     var constituentCategories = [
         'Individual',
@@ -113,6 +114,85 @@
             console.log('✓ Spotlight config set:', spotlightConfig.type, spotlightConfig.categories);
         } else {
             console.log('No spotlight config needed for:', industry);
+        }
+    }
+
+    function initializeStepTracker() {
+        var stepTracker = document.getElementById('stepTracker');
+        if (!stepTracker) return;
+
+        var steps = [];
+        if (spotlightConfig) {
+            steps = [
+                { label: 'Define Events', number: 1 },
+                { label: 'Map Data', number: 2 },
+                { label: 'Final Mapping', number: 3 }
+            ];
+        } else {
+            steps = [
+                { label: 'Define Events', number: 1 },
+                { label: 'Map Data', number: 2 }
+            ];
+        }
+
+        var html = '';
+        for (var i = 0; i < steps.length; i++) {
+            var step = steps[i];
+            var isActive = i === currentStep;
+            var isCompleted = i < currentStep;
+            
+            html += '<div class="step-item' + (isActive ? ' active' : '') + '">';
+            html += '<div class="step-circle' + (isActive ? ' active' : '') + (isCompleted ? ' completed' : '') + '">';
+            html += isCompleted ? '✓' : step.number;
+            html += '</div>';
+            html += '<div class="step-label">' + step.label + '</div>';
+            html += '</div>';
+            
+            if (i < steps.length - 1) {
+                html += '<div class="step-connector' + (isCompleted ? ' completed' : '') + '"></div>';
+            }
+        }
+        
+        stepTracker.innerHTML = html;
+        document.getElementById('stepProgress').style.display = 'block';
+    }
+
+    function updateStepTracker(step) {
+        currentStep = step;
+        var stepTracker = document.getElementById('stepTracker');
+        if (!stepTracker) return;
+
+        var stepItems = stepTracker.querySelectorAll('.step-item');
+        var stepCircles = stepTracker.querySelectorAll('.step-circle');
+        var stepConnectors = stepTracker.querySelectorAll('.step-connector');
+
+        for (var i = 0; i < stepItems.length; i++) {
+            if (i === step) {
+                stepItems[i].classList.add('active');
+                stepCircles[i].classList.add('active');
+            } else {
+                stepItems[i].classList.remove('active');
+                stepCircles[i].classList.remove('active');
+            }
+
+            if (i < step) {
+                stepCircles[i].classList.add('completed');
+                stepCircles[i].textContent = '✓';
+            } else if (i === step) {
+                stepCircles[i].classList.remove('completed');
+                stepCircles[i].textContent = (i + 1).toString();
+            } else {
+                stepCircles[i].classList.remove('completed');
+                stepCircles[i].textContent = (i + 1).toString();
+            }
+        }
+
+        for (var j = 0; j < stepConnectors.length; j++) {
+            if (j < step) {
+                stepConnectors[j].classList.add('completed');
+            } else {
+                stepConnectors[j].classList.remove('completed');
+            }
         }
     }
 
@@ -253,6 +333,9 @@
                     }
                 }
                 
+                // Initialize step tracker
+                initializeStepTracker();
+                
                 document.getElementById('uploadBox').style.display = 'none';
                 var downloadContainer = document.getElementById('download-container');
                 if (downloadContainer) {
@@ -352,6 +435,9 @@
                 }
             }
         }
+
+        // Update step tracker to step 1 (Map Data)
+        updateStepTracker(1);
 
         currentIndex = 0;
         hasUsedPrevious = false;
@@ -525,6 +611,11 @@
         spotlightCurrentIndex = 0;
         spotlightHasUsedPrevious = false;
         
+        // Update step tracker to step 2 (if 3 steps) or keep at 1
+        if (spotlightConfig) {
+            updateStepTracker(1); // Still in "Map Data" step but now spotlight phase
+        }
+        
         document.getElementById('spotlightMappingTitle').textContent = spotlightConfig.title;
         document.getElementById('spotlightCompletionText').textContent = spotlightConfig.completionText;
         
@@ -685,6 +776,9 @@
         constituentCurrentIndex = 0;
         constituentHasUsedPrevious = false;
         
+        // Update step tracker to final step
+        updateStepTracker(spotlightConfig ? 2 : 1);
+        
         document.getElementById('constituentMappingSection').style.display = 'block';
         showCurrentConstituentType();
         updateConstituentProgress();
@@ -718,7 +812,7 @@
         html += '<div class="appeal-label">Constituent Type ' + (constituentCurrentIndex + 1) + ' of ' + constituentTypes.length + '</div>';
         html += '<div class="appeal-name">' + constituentType + '</div>';
         html += '<div style="text-align: center; margin-bottom: 15px; color: #666; font-weight: 600;">Select a constituent type:</div>';
-        html += '<div class="category-buttons">';
+        html += '<div class="category-buttons allow-wrap">';
         
         for (var i = 0; i < constituentCategories.length; i++) {
             html += '<button class="category-btn" data-appeal="' + constituentType + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
