@@ -138,10 +138,10 @@
         var html = '';
         for (var i = 0; i < steps.length; i++) {
             var step = steps[i];
-            var isActive = i === 0; // Start at first step
             
-            html += '<div class="step-item' + (isActive ? ' active' : '') + '">';
-            html += '<div class="step-circle' + (isActive ? ' active' : '') + '">';
+            // Don't mark any as active initially
+            html += '<div class="step-item">';
+            html += '<div class="step-circle">';
             html += step.number;
             html += '</div>';
             html += '<div class="step-label">' + step.label + '</div>';
@@ -432,7 +432,7 @@
             }
         }
 
-        // Keep at step 0 (Special Event Mapping still in progress)
+        // Activate step 0 (Special Event Mapping)
         updateStepTracker(0);
 
         currentIndex = 0;
@@ -456,8 +456,13 @@
         document.getElementById('categorySetup').style.display = 'none';
         
         setTimeout(function() {
+            var mappingSection = document.getElementById('mappingSection');
+            var headerOffset = 20;
+            var elementPosition = mappingSection.getBoundingClientRect().top;
+            var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            
             window.scrollTo({
-                top: document.body.scrollHeight,
+                top: offsetPosition,
                 behavior: 'smooth'
             });
         }, 50);
@@ -610,7 +615,7 @@
         spotlightCurrentIndex = 0;
         spotlightHasUsedPrevious = false;
         
-        // Keep at step 1 (Spotlight Mapping in progress)
+        // Activate step 1 (Spotlight Mapping)
         updateStepTracker(1);
         
         document.getElementById('spotlightMappingTitle').textContent = spotlightConfig.title;
@@ -623,8 +628,13 @@
         document.getElementById('mappingSection').style.display = 'none';
         
         setTimeout(function() {
+            var spotlightSection = document.getElementById('spotlightMappingSection');
+            var headerOffset = 20;
+            var elementPosition = spotlightSection.getBoundingClientRect().top;
+            var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            
             window.scrollTo({
-                top: document.body.scrollHeight,
+                top: offsetPosition,
                 behavior: 'smooth'
             });
         }, 50);
@@ -777,7 +787,7 @@
         constituentCurrentIndex = 0;
         constituentHasUsedPrevious = false;
         
-        // Move to final step (keep in progress until all mapped)
+        // Activate final step (Constituent Type Mapping)
         updateStepTracker(spotlightConfig ? 2 : 1);
         
         document.getElementById('constituentMappingSection').style.display = 'block';
@@ -788,8 +798,13 @@
         document.getElementById('spotlightMappingSection').style.display = 'none';
         
         setTimeout(function() {
+            var constituentSection = document.getElementById('constituentMappingSection');
+            var headerOffset = 20;
+            var elementPosition = constituentSection.getBoundingClientRect().top;
+            var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            
             window.scrollTo({
-                top: document.body.scrollHeight,
+                top: offsetPosition,
                 behavior: 'smooth'
             });
         }, 50);
