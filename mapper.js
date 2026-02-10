@@ -325,7 +325,8 @@
                 }
                 
                 initializeStepTracker();
-                
+                updateStepTracker(0); // Activate step 0 (Special Event Mapping)
+
                 document.getElementById('uploadBox').style.display = 'none';
                 var downloadContainer = document.getElementById('download-container');
                 if (downloadContainer) {
@@ -423,8 +424,6 @@
                 }
             }
         }
-
-        updateStepTracker(0);
 
         currentIndex = 0;
         hasUsedPrevious = false;
