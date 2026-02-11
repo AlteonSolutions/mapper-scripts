@@ -373,7 +373,7 @@
                 }
                 
                 var fileInfoDiv = document.getElementById('fileInfo');
-                fileInfoDiv.innerHTML = '<div style="text-align: center;"><div style="margin-bottom: 4px;">✅ File uploaded: <strong>' + file.name + '</strong></div><div style="margin-bottom: 4px;">' + giftAppeals.length + ' unique Gift Appeals found</div><div>' + constituentTypes.length + ' unique Constituent Types found</div></div>';
+                fileInfoDiv.innerHTML = '<div style="text-align: center;"><div style="margin-bottom: 12px;">✅ File uploaded: <strong>' + file.name + '</strong></div><div style="margin-bottom: 2px;">' + giftAppeals.length + ' unique Gift Appeals found</div><div>' + constituentTypes.length + ' unique Constituent Types found</div></div>';
                 
                 document.getElementById('categorySetup').style.display = 'block';
 
