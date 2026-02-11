@@ -199,6 +199,30 @@
     }
 
     function init() {
+        // Download Template Button
+        waitForElement('#downloadTemplateBtn', function(downloadBtn) {
+            var fileUrl = "https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx";
+            var fileName = "Analytics Data Upload Template.xlsx";
+            
+            downloadBtn.addEventListener("click", async function() {
+                try {
+                    var response = await fetch(fileUrl, { mode: "cors" });
+                    if (!response.ok) throw new Error("Download failed");
+                    var blob = await response.blob();
+                    var blobUrl = window.URL.createObjectURL(blob);
+                    var a = document.createElement("a");
+                    a.href = blobUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                } catch (err) {
+                    window.open(fileUrl, "_blank");
+                }
+            });
+        });
+
         waitForElement('#uploadBox', function(uploadBox) {
             uploadBox.addEventListener('click', function() {
                 document.getElementById('fileInput').click();
@@ -331,6 +355,10 @@
                 var uploadTitle = document.getElementById('uploadTitle');
                 if (uploadTitle) {
                     uploadTitle.style.display = 'none';
+                }
+                var downloadTemplateWrapper = document.getElementById('downloadTemplateWrapper');
+                if (downloadTemplateWrapper) {
+                    downloadTemplateWrapper.style.display = 'none';
                 }
                 var uploadNote = document.getElementById('uploadNote');
                 if (uploadNote) {
