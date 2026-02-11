@@ -204,22 +204,25 @@
             var fileUrl = "https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx";
             var fileName = "Analytics Data Upload Template.xlsx";
             
-            downloadBtn.addEventListener("click", async function() {
-                try {
-                    var response = await fetch(fileUrl, { mode: "cors" });
-                    if (!response.ok) throw new Error("Download failed");
-                    var blob = await response.blob();
-                    var blobUrl = window.URL.createObjectURL(blob);
-                    var a = document.createElement("a");
-                    a.href = blobUrl;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(blobUrl);
-                } catch (err) {
-                    window.open(fileUrl, "_blank");
-                }
+            downloadBtn.addEventListener("click", function() {
+                fetch(fileUrl, { mode: "cors" })
+                    .then(function(response) {
+                        if (!response.ok) throw new Error("Download failed");
+                        return response.blob();
+                    })
+                    .then(function(blob) {
+                        var blobUrl = window.URL.createObjectURL(blob);
+                        var a = document.createElement("a");
+                        a.href = blobUrl;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(blobUrl);
+                    })
+                    .catch(function(err) {
+                        window.open(fileUrl, "_blank");
+                    });
             });
         });
 
@@ -370,7 +373,7 @@
                 }
                 
                 var fileInfoDiv = document.getElementById('fileInfo');
-                fileInfoDiv.innerHTML = '<div style="text-align: center;"><div style="margin-bottom: 8px;">✅ File uploaded: <strong>' + file.name + '</strong></div><div style="margin-bottom: 8px;">' + giftAppeals.length + ' unique Gift Appeals found</div><div>' + constituentTypes.length + ' unique Constituent Types found</div></div>';
+                fileInfoDiv.innerHTML = '<div style="text-align: center;"><div style="margin-bottom: 4px;">✅ File uploaded: <strong>' + file.name + '</strong></div><div style="margin-bottom: 4px;">' + giftAppeals.length + ' unique Gift Appeals found</div><div>' + constituentTypes.length + ' unique Constituent Types found</div></div>';
                 
                 document.getElementById('categorySetup').style.display = 'block';
 
