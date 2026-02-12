@@ -83,6 +83,8 @@
             return industryParamMap[window.selectedIndustryKey];
         }
         
+        // METHOD 4: Legacy image detection - only use if exactly ONE image is visible
+        var visibleImages = [];
         for (var imageId in industryImageIds) {
             if (industryImageIds.hasOwnProperty(imageId)) {
                 var img = document.getElementById(imageId);
@@ -91,11 +93,16 @@
                     var rect = img.getBoundingClientRect();
                     if (style.display !== 'none' && style.visibility !== 'hidden' &&
                         parseFloat(style.opacity) > 0 && rect.width > 0 && rect.height > 0) {
-                        console.log('✓ DETECTED from image:', industryImageIds[imageId]);
-                        return industryImageIds[imageId];
+                        visibleImages.push(industryImageIds[imageId]);
                     }
                 }
             }
+        }
+        if (visibleImages.length === 1) {
+            console.log('✓ DETECTED from single visible image:', visibleImages[0]);
+            return visibleImages[0];
+        } else if (visibleImages.length > 1) {
+            console.log('Multiple industry images visible (' + visibleImages.length + '), skipping image detection');
         }
         
         console.log('✗ No industry detected');
@@ -207,11 +214,8 @@
     }
 
     function init() {
-        var detected = detectIndustry();
-        if (detected) {
-            selectedIndustryType = industryDisplayLabels[detected] || null;
-            if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
-        }
+        // Don't detect industry on page load - wait for user to select an icon
+        // detectIndustry() will be called during handleFileUpload() instead
 
         waitForElement('#uploadBox', function(el) { el.addEventListener('click', function() { document.getElementById('fileInput').click(); }); });
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
