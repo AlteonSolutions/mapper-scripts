@@ -1,6 +1,21 @@
 (function() {
     'use strict';
     
+    // ============================================
+    // BUILDER PROTECTION - PREVENTS STACK OVERFLOW
+    // ============================================
+    // Exit immediately if in Go High Level builder/edit mode
+    if (window.location.href.includes('page-builder') || 
+        window.location.href.includes('/builder/') ||
+        window.location.href.includes('app.gohighlevel.com/location/') ||
+        window.parent !== window) { // Also catches iframe preview mode
+        console.log('Mapper.js: Disabled in builder/edit mode');
+        return;
+    }
+    
+    console.log('Mapper.js: Initializing on live page');
+    // ============================================
+    
     var workbook = null;
     var giftAppeals = [];
     var constituentTypes = [];
