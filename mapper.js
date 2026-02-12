@@ -7,8 +7,7 @@
     // Exit immediately if in Go High Level builder/edit mode
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
-        window.location.href.includes('app.gohighlevel.com/location/') ||
-        window.parent !== window) { // Also catches iframe preview mode
+        window.location.href.includes('app.gohighlevel.com/location/')) {
         console.log('Mapper.js: Disabled in builder/edit mode');
         return;
     }
@@ -44,6 +43,32 @@
 
     var spotlightConfig = null;
 
+    // ============================================
+    // INDUSTRY DETECTION - URL PARAMETER APPROACH
+    // ============================================
+    // Maps URL parameter values to internal industry keys
+    var industryParamMap = {
+        'arts': 'arts',
+        'arts_culture': 'arts',
+        'Arts & Culture': 'arts',
+        'environmental': 'environmental',
+        'Environmental': 'environmental',
+        'education': 'education',
+        'Education': 'education',
+        'communityfoundation': 'communityfoundation',
+        'family_foundation': 'communityfoundation',
+        'Community Foundation': 'communityfoundation',
+        'Family Foundation': 'communityfoundation',
+        'healthcare': 'healthcare',
+        'Healthcare': 'healthcare',
+        'humanservices': 'humanservices',
+        'human_services': 'humanservices',
+        'Human Services': 'humanservices',
+        'religion': 'religion',
+        'Religion': 'religion'
+    };
+
+    // Legacy image-based detection as fallback
     var industryImageIds = {
         'image-FRdTKXvCKw': 'arts',
         'image-jmRsaBRUt0': 'environmental',
@@ -57,6 +82,35 @@
     function detectIndustry() {
         console.log('=== Starting Industry Detection ===');
         
+        // METHOD 1: Check URL parameter (most reliable)
+        var urlParams = new URLSearchParams(window.location.search);
+        var industryParam = urlParams.get('industry');
+        if (industryParam && industryParamMap[industryParam]) {
+            console.log('✓ DETECTED INDUSTRY from URL param:', industryParamMap[industryParam]);
+            return industryParamMap[industryParam];
+        }
+
+        // METHOD 2: Check parent page's selectedIndustryKey (for iframe scenarios)
+        try {
+            if (window.parent && window.parent.selectedIndustryKey) {
+                var parentKey = window.parent.selectedIndustryKey;
+                if (industryParamMap[parentKey]) {
+                    console.log('✓ DETECTED INDUSTRY from parent window:', industryParamMap[parentKey]);
+                    return industryParamMap[parentKey];
+                }
+            }
+        } catch (e) {
+            // Cross-origin access blocked, ignore
+            console.log('Cannot access parent window (cross-origin)');
+        }
+
+        // METHOD 3: Check global variable on same page
+        if (window.selectedIndustryKey && industryParamMap[window.selectedIndustryKey]) {
+            console.log('✓ DETECTED INDUSTRY from global var:', industryParamMap[window.selectedIndustryKey]);
+            return industryParamMap[window.selectedIndustryKey];
+        }
+        
+        // METHOD 4: Legacy image-based detection (fallback)
         for (var imageId in industryImageIds) {
             if (industryImageIds.hasOwnProperty(imageId)) {
                 var img = document.getElementById(imageId);
@@ -78,7 +132,7 @@
                         rect.width > 0 && 
                         rect.height > 0) {
                         
-                        console.log('✓ DETECTED INDUSTRY:', industryImageIds[imageId]);
+                        console.log('✓ DETECTED INDUSTRY from image:', industryImageIds[imageId]);
                         return industryImageIds[imageId];
                     }
                 }
