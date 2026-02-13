@@ -214,8 +214,16 @@
     }
 
     function init() {
-        // Don't detect industry on page load - wait for user to select an icon
-        // detectIndustry() will be called during handleFileUpload() instead
+        // Check URL params on load - if industry param exists, detect and set field
+        var urlParams = new URLSearchParams(window.location.search);
+        var industryParam = urlParams.get('industry');
+        if (industryParam && industryParamMap[industryParam]) {
+            var detected = industryParamMap[industryParam];
+            selectedIndustryType = industryDisplayLabels[detected] || null;
+            console.log('✓ Industry from URL on init:', detected, '(' + selectedIndustryType + ')');
+            if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
+            setSpotlightConfig(detected);
+        }
 
         waitForElement('#uploadBox', function(el) { el.addEventListener('click', function() { document.getElementById('fileInput').click(); }); });
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
