@@ -232,13 +232,13 @@
         waitForElement('#uploadTitle', function(titleEl) {
             var downloadContainer = document.createElement('div');
             downloadContainer.id = 'download-container';
-            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;min-height:80px;';
+            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;min-height:80px;margin-bottom:20px;';
             var downloadBtn = document.createElement('button');
             downloadBtn.textContent = 'Download Template File';
             downloadBtn.type = 'button';
-            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:16px;font-weight:600;padding:15px 40px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;box-shadow:0 4px 6px rgba(44,95,93,0.2);display:inline-block;transition:all 0.2s;';
-            downloadBtn.onmouseover = function() { this.style.backgroundColor = '#2c5f5d'; this.style.color = '#ffffff'; this.style.boxShadow = '0 6px 12px rgba(44,95,93,0.4)'; };
-            downloadBtn.onmouseout = function() { this.style.backgroundColor = '#ffffff'; this.style.color = '#2c5f5d'; this.style.boxShadow = '0 4px 6px rgba(44,95,93,0.2)'; };
+            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:16px;font-weight:600;padding:15px 40px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;display:inline-block;transition:transform 0.3s ease;';
+            downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
+            downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
             downloadBtn.addEventListener('click', function() {
                 var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx';
                 var filename = 'Analytics Data Upload Template.xlsx';
