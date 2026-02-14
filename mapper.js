@@ -232,20 +232,33 @@
         waitForElement('#uploadTitle', function(titleEl) {
             var downloadContainer = document.createElement('div');
             downloadContainer.id = 'download-container';
-            downloadContainer.style.textAlign = 'center';
-            downloadContainer.style.marginBottom = '20px';
+            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;min-height:80px;';
             var downloadBtn = document.createElement('button');
             downloadBtn.textContent = 'Download Template File';
-            downloadBtn.style.cssText = 'background:#2c5f5d;color:white;padding:12px 30px;font-size:1em;border:none;border-radius:6px;cursor:pointer;font-weight:600;transition:all 0.2s;';
-            downloadBtn.onmouseover = function() { this.style.background = '#3d7672'; };
-            downloadBtn.onmouseout = function() { this.style.background = '#2c5f5d'; };
+            downloadBtn.type = 'button';
+            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:16px;font-weight:600;padding:15px 40px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;box-shadow:0 4px 6px rgba(44,95,93,0.2);display:inline-block;transition:all 0.2s;';
+            downloadBtn.onmouseover = function() { this.style.backgroundColor = '#2c5f5d'; this.style.color = '#ffffff'; this.style.boxShadow = '0 6px 12px rgba(44,95,93,0.4)'; };
+            downloadBtn.onmouseout = function() { this.style.backgroundColor = '#ffffff'; this.style.color = '#2c5f5d'; this.style.boxShadow = '0 4px 6px rgba(44,95,93,0.2)'; };
             downloadBtn.addEventListener('click', function() {
-                var link = document.createElement('a');
-                link.href = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx';
-                link.download = 'Analytics Data Upload Template.xlsx';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx';
+                var filename = 'Analytics Data Upload Template.xlsx';
+                fetch(templateUrl)
+                    .then(function(response) { return response.blob(); })
+                    .then(function(blob) {
+                        var link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(link.href);
+                    })
+                    .catch(function() {
+                        var link = document.createElement('a');
+                        link.href = templateUrl;
+                        link.download = filename;
+                        link.click();
+                    });
             });
             downloadContainer.appendChild(downloadBtn);
             titleEl.parentNode.insertBefore(downloadContainer, titleEl.nextSibling);
