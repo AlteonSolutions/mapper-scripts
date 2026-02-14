@@ -228,6 +228,34 @@
         waitForElement('#uploadBox', function(el) { el.addEventListener('click', function() { document.getElementById('fileInput').click(); }); });
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
 
+        // Hide GHL's Client Data File upload field and submit button via JS
+        (function hideGHLElements() {
+            var selectors = [
+                '#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13',
+                '#el_5GIq2FyRJrWJv32C9avI_button_12'
+            ];
+            var allFound = true;
+            selectors.forEach(function(sel) {
+                var el = document.querySelector(sel);
+                if (el) { el.style.display = 'none'; }
+                else { allFound = false; }
+            });
+            // Also hide by name attribute as fallback
+            var fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(function(input) {
+                if (input.name && input.name.indexOf('Client Data File') !== -1) {
+                    var wrapper = input.closest('.file-upload') || input.closest('.form-field-wrapper');
+                    if (wrapper) wrapper.style.display = 'none';
+                }
+            });
+            var submitBtn = document.querySelector('#_builder-form button[type="submit"]');
+            if (submitBtn) {
+                var wrapper = submitBtn.closest('.form-field-wrapper');
+                if (wrapper) wrapper.style.display = 'none';
+            }
+            if (!allFound) setTimeout(hideGHLElements, 500);
+        })();
+
         // Create Download Template button between title and upload box
         waitForElement('#uploadTitle', function(titleEl) {
             var downloadContainer = document.createElement('div');
@@ -519,7 +547,7 @@
         var blob = generateExcelBlob();
         if (!blob) { alert('Please complete all ' + (spotlightConfig ? 'three' : 'two') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var fi = document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('input[type="file"].file-input') || document.querySelector('input.file-input[type="file"]') || document.querySelector('input[type="file"]');
+        var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
         else { alert('Could not attach file. Please contact support.'); return false; }
     };
