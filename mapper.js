@@ -225,8 +225,10 @@
             setSpotlightConfig(detected);
         }
 
-        waitForElement('#uploadBox', function(el) { el.addEventListener('click', function() { document.getElementById('fileInput').click(); }); });
-        waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
+        // Hide custom submit button until all mapping is complete
+        waitForElement('#customSubmitBtn', function(btn) {
+            btn.parentElement.style.display = 'none';
+        });
 
         // Hide GHL's Client Data File upload field and submit button via JS
         (function hideGHLElements() {
@@ -256,11 +258,25 @@
             if (!allFound) setTimeout(hideGHLElements, 500);
         })();
 
-        // Create Download Template button between title and upload box
+        // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
+            titleEl.style.cssText = 'margin-bottom:10px;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
+            titleEl.textContent = 'Client Data File Upload';
+        });
+
+        // Style the upload box to match GHL file upload style
+        waitForElement('#uploadBox', function(el) {
+            el.style.cssText = 'border:1px solid #ccc;border-radius:4px;padding:20px;text-align:center;cursor:pointer;background:white;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:5rem;';
+            el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
+        });
+
+        waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
+
+        // Create Download Template button AFTER the upload box, before the note
+        waitForElement('#uploadNote', function(noteEl) {
             var downloadContainer = document.createElement('div');
             downloadContainer.id = 'download-container';
-            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;min-height:80px;margin-bottom:20px;';
+            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;min-height:60px;margin-top:15px;margin-bottom:5px;';
             var downloadBtn = document.createElement('button');
             downloadBtn.textContent = 'Download Template File';
             downloadBtn.type = 'button';
@@ -289,7 +305,7 @@
                     });
             });
             downloadContainer.appendChild(downloadBtn);
-            titleEl.parentNode.insertBefore(downloadContainer, titleEl.nextSibling);
+            noteEl.parentNode.insertBefore(downloadContainer, noteEl);
         });
         waitForElement('#categoryInput', function(el) { el.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCategory(); }); });
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
@@ -483,7 +499,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = ''; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
