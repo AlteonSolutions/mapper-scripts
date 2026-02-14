@@ -227,6 +227,29 @@
 
         waitForElement('#uploadBox', function(el) { el.addEventListener('click', function() { document.getElementById('fileInput').click(); }); });
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
+
+        // Create Download Template button between title and upload box
+        waitForElement('#uploadTitle', function(titleEl) {
+            var downloadContainer = document.createElement('div');
+            downloadContainer.id = 'download-container';
+            downloadContainer.style.textAlign = 'center';
+            downloadContainer.style.marginBottom = '20px';
+            var downloadBtn = document.createElement('button');
+            downloadBtn.textContent = 'Download Template File';
+            downloadBtn.style.cssText = 'background:#2c5f5d;color:white;padding:12px 30px;font-size:1em;border:none;border-radius:6px;cursor:pointer;font-weight:600;transition:all 0.2s;';
+            downloadBtn.onmouseover = function() { this.style.background = '#3d7672'; };
+            downloadBtn.onmouseout = function() { this.style.background = '#2c5f5d'; };
+            downloadBtn.addEventListener('click', function() {
+                var link = document.createElement('a');
+                link.href = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx';
+                link.download = 'Analytics Data Upload Template.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+            downloadContainer.appendChild(downloadBtn);
+            titleEl.parentNode.insertBefore(downloadContainer, titleEl.nextSibling);
+        });
         waitForElement('#categoryInput', function(el) { el.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCategory(); }); });
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
         waitForElement('#startMappingBtn', function(el) { el.addEventListener('click', startMapping); });
