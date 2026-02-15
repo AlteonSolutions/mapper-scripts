@@ -629,15 +629,15 @@
         if ((c1 + c2 + c3) < req) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
-        for (var i = 0; i < gd.length; i++) { var ev = mappings[gd[i]['Gift Appeal']] || 'Unmapped'; gd[i]['Event'] = ev === 'Skip' ? '' : ev; delete gd[i]['Gift Appeal']; }
+        for (var i = 0; i < gd.length; i++) { var raw = mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
 
         if (spotlightConfig && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
-                for (var j = 0; j < gd.length; j++) { var ev = gd[j]['Event']; var ap = null; for (var k in mappings) { if (mappings.hasOwnProperty(k) && mappings[k] === ev) { ap = k; break; } } var sl = spotlightMappings[ap] || 'Unmapped'; gd[j]['Spotlights'] = sl === 'Skip' ? '' : sl; }
+                for (var j = 0; j < gd.length; j++) { var ev = gd[j]['Event']; var ap = null; for (var k in mappings) { if (mappings.hasOwnProperty(k) && mappings[k] === ev) { ap = k; break; } } var raw = spotlightMappings[ap]; var sl = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[j]['Spotlights'] = sl; }
             } else if (spotlightConfig.type === 'constituentType') {
                 var cd = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
-                var csm = {}; for (var m = 0; m < cd.length; m++) { var sv = spotlightMappings[cd[m]['Constituent Type']] || 'Unmapped'; csm[cd[m]['Constituent ID']] = sv === 'Skip' ? '' : sv; }
-                for (var n = 0; n < gd.length; n++) gd[n]['Spotlights'] = csm[gd[n]['Constituent ID']] || 'Unmapped';
+                var csm = {}; for (var m = 0; m < cd.length; m++) { var raw = spotlightMappings[cd[m]['Constituent Type']]; csm[cd[m]['Constituent ID']] = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); }
+                for (var n = 0; n < gd.length; n++) { var sv = csm[gd[n]['Constituent ID']]; gd[n]['Spotlights'] = sv !== undefined ? sv : ''; }
             }
         } else {
             for (var r = 0; r < gd.length; r++) gd[r]['Spotlights'] = '';
