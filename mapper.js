@@ -393,8 +393,28 @@
         if (!file) return;
         var detected = detectIndustry();
         if (detected) { setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) { selectedIndustryType = lbl; setIndustryTypeField(lbl); } }
+
+        // Show loading state
+        var uploadBox = document.getElementById('uploadBox');
+        uploadBox.style.cursor = 'default';
+        uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px 0;">'
+            + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid #2c5f5d;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
+            + '<div style="margin-top:10px;font-size:13px;color:#666;font-weight:500;">Processing ' + file.name + '...</div>'
+            + '</div>';
+        // Inject spinner keyframes if not already present
+        if (!document.getElementById('mapper-spinner-style')) {
+            var spinStyle = document.createElement('style');
+            spinStyle.id = 'mapper-spinner-style';
+            spinStyle.textContent = '@keyframes mapperSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+            document.head.appendChild(spinStyle);
+        }
+        var n = document.getElementById('uploadNote'); if (n) n.style.display = 'none';
+        var d = document.getElementById('download-container'); if (d) d.style.display = 'none';
+
         var reader = new FileReader();
         reader.onload = function(e) {
+            // Use setTimeout to let the spinner render before heavy parsing
+            setTimeout(function() {
             try {
                 var data = new Uint8Array(e.target.result);
                 workbook = XLSX.read(data, {type: 'array'});
@@ -413,12 +433,8 @@
                     else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice();
                 }
                 initializeStepTracker(); updateStepTracker(0);
-                // Hide download button and note
-                var n = document.getElementById('uploadNote'); if (n) n.style.display = 'none';
-                var d = document.getElementById('download-container'); if (d) d.style.display = 'none';
                 // Update upload box to show file info like GHL style
                 var uploadBox = document.getElementById('uploadBox');
-                uploadBox.style.cursor = 'default';
                 uploadBox.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000000;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 0 0 0;border-top:1px solid #eee;margin-top:8px;">'
                     + '<div style="text-align:left;font-size:13px;color:#333;">✅ ' + file.name + '</div>'
@@ -429,7 +445,16 @@
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                 var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
                 setTimeout(function() { document.getElementById('categorySetup').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-            } catch (err) { alert('Error reading file: ' + err.message); }
+            } catch (err) {
+                // Reset upload box on error
+                var uploadBox = document.getElementById('uploadBox');
+                uploadBox.style.cursor = 'pointer';
+                uploadBox.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000000;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
+                var dn = document.getElementById('uploadNote'); if (dn) dn.style.display = '';
+                var dd = document.getElementById('download-container'); if (dd) dd.style.display = '';
+                alert('Error reading file: ' + err.message);
+            }
+            }, 50);
         };
         reader.readAsArrayBuffer(file);
     }
@@ -463,7 +488,7 @@
         if (spotlightConfig) { document.getElementById('completionNextStep').textContent = 'Click below to continue to spotlight mapping.'; document.getElementById('completionNextButton').textContent = 'Continue to Spotlight Mapping ➝'; document.getElementById('completionNextButton').onclick = startSpotlightMapping; }
         else { document.getElementById('completionNextStep').textContent = 'Click below to continue to Constituent Type mapping.'; document.getElementById('completionNextButton').textContent = 'Continue to Constituent Mapping ➝'; document.getElementById('completionNextButton').onclick = startConstituentMapping; }
         document.getElementById('mappingSection').style.display = 'block'; showCurrentAppeal(); updateProgress();
-        document.getElementById('uploadSection').style.display = 'none'; document.getElementById('categorySetup').style.display = 'none';
+        document.getElementById('categorySetup').style.display = 'none';
         setTimeout(function() { var s = document.getElementById('mappingSection'); window.scrollTo({ top: s.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); }, 50);
     }
 
