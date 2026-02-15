@@ -264,9 +264,11 @@
             titleEl.textContent = 'Client Data File Upload';
         });
 
-        // Style the upload box to match GHL file upload style
+        // Style the upload box to match GHL custom-file-upload label
         waitForElement('#uploadBox', function(el) {
-            el.style.cssText = 'border:1px solid #ccc;border-radius:4px;padding:20px;text-align:center;cursor:pointer;background:white;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:5rem;';
+            el.style.cssText = 'border:1px solid #ccc;border-radius:4px;padding:20px;text-align:center;cursor:pointer;background:white;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:5rem;width:100%;';
+            // Replace inner content to match GHL upload icon style
+            el.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#6e7d84;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
@@ -276,11 +278,11 @@
         waitForElement('#uploadNote', function(noteEl) {
             var downloadContainer = document.createElement('div');
             downloadContainer.id = 'download-container';
-            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;min-height:60px;margin-top:15px;margin-bottom:5px;';
+            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;margin-top:10px;margin-bottom:0;';
             var downloadBtn = document.createElement('button');
             downloadBtn.textContent = 'Download Template File';
             downloadBtn.type = 'button';
-            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:16px;font-weight:600;padding:15px 40px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;display:inline-block;transition:transform 0.3s ease;';
+            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:14px;font-weight:600;padding:10px 30px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;display:inline-block;transition:transform 0.3s ease;';
             downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
             downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
             downloadBtn.addEventListener('click', function() {
@@ -306,6 +308,8 @@
             });
             downloadContainer.appendChild(downloadBtn);
             noteEl.parentNode.insertBefore(downloadContainer, noteEl);
+            // Update note text
+            noteEl.innerHTML = 'Note: the Client Data file <strong>must</strong> use the designated template.<br>Use the link above to download the template.';
         });
         waitForElement('#categoryInput', function(el) { el.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCategory(); }); });
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
