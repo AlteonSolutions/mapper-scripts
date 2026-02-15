@@ -639,6 +639,8 @@
                 var csm = {}; for (var m = 0; m < cd.length; m++) { var sv = spotlightMappings[cd[m]['Constituent Type']] || 'Unmapped'; csm[cd[m]['Constituent ID']] = sv === 'Skip' ? '' : sv; }
                 for (var n = 0; n < gd.length; n++) gd[n]['Spotlights'] = csm[gd[n]['Constituent ID']] || 'Unmapped';
             }
+        } else {
+            for (var r = 0; r < gd.length; r++) gd[r]['Spotlights'] = '';
         }
 
         var cd2 = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
@@ -654,7 +656,7 @@
             if (origGiftHeaders[gh] !== 'Gift Appeal') giftHeaders.push(origGiftHeaders[gh]);
         }
         giftHeaders.push('Event');
-        if (spotlightConfig && Object.keys(spotlightMappings).length > 0) giftHeaders.push('Spotlights');
+        giftHeaders.push('Spotlights');
 
         var wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
