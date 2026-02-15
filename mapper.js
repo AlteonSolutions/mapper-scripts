@@ -260,7 +260,7 @@
 
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
-            titleEl.style.cssText = 'margin-bottom:10px;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
+            titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
             titleEl.textContent = 'Client Data File Upload';
         });
 
@@ -331,6 +331,29 @@
         waitForElement('#startMappingBtn', function(el) { el.addEventListener('click', startMapping); });
         waitForElement('#startConstituentMappingBtn', function(el) { el.addEventListener('click', startConstituentMapping); });
         waitForElement('#categoriesList', function(el) { el.addEventListener('click', function(e) { if (e.target.tagName === 'BUTTON') removeCategory(parseInt(e.target.getAttribute('data-index'))); }); });
+
+        // Wrap mapping sections in a GHL-style box with label
+        waitForElement('#categorySetup', function(catSetup) {
+            var parent = catSetup.parentNode;
+            // Create label
+            var label = document.createElement('div');
+            label.id = 'mappingBoxLabel';
+            label.textContent = 'Client Data File Mapping';
+            label.style.cssText = 'margin-bottom:10px;margin-top:15px;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;display:none;';
+            // Create wrapper box
+            var box = document.createElement('div');
+            box.id = 'mappingBox';
+            box.style.cssText = 'border:1px solid #ccc;border-radius:4px;padding:20px;background:white;width:100%;box-sizing:border-box;display:none;';
+            // Insert label and box before categorySetup
+            parent.insertBefore(label, catSetup);
+            parent.insertBefore(box, catSetup);
+            // Move all mapping sections into the box
+            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'constituentMappingSection', 'stepProgress'];
+            sections.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) box.appendChild(el);
+            });
+        });
 
         waitForElement('#customSubmitBtn', function(btn) {
             btn.addEventListener('click', function() {
@@ -403,6 +426,8 @@
                     + '</div>';
                 document.getElementById('fileInfo').innerHTML = '';
                 document.getElementById('categorySetup').style.display = 'block';
+                var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
+                var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
                 setTimeout(function() { document.getElementById('categorySetup').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
             } catch (err) { alert('Error reading file: ' + err.message); }
         };
