@@ -612,14 +612,14 @@
         if ((c1 + c2 + c3) < req) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
-        for (var i = 0; i < gd.length; i++) { gd[i]['Event'] = mappings[gd[i]['Gift Appeal']] || 'Unmapped'; delete gd[i]['Gift Appeal']; }
+        for (var i = 0; i < gd.length; i++) { var ev = mappings[gd[i]['Gift Appeal']] || 'Unmapped'; gd[i]['Event'] = ev === 'Skip' ? '' : ev; delete gd[i]['Gift Appeal']; }
 
         if (spotlightConfig && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
-                for (var j = 0; j < gd.length; j++) { var ev = gd[j]['Event']; var ap = null; for (var k in mappings) { if (mappings.hasOwnProperty(k) && mappings[k] === ev) { ap = k; break; } } gd[j]['Spotlights'] = spotlightMappings[ap] || 'Unmapped'; }
+                for (var j = 0; j < gd.length; j++) { var ev = gd[j]['Event']; var ap = null; for (var k in mappings) { if (mappings.hasOwnProperty(k) && mappings[k] === ev) { ap = k; break; } } var sl = spotlightMappings[ap] || 'Unmapped'; gd[j]['Spotlights'] = sl === 'Skip' ? '' : sl; }
             } else if (spotlightConfig.type === 'constituentType') {
                 var cd = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
-                var csm = {}; for (var m = 0; m < cd.length; m++) csm[cd[m]['Constituent ID']] = spotlightMappings[cd[m]['Constituent Type']] || 'Unmapped';
+                var csm = {}; for (var m = 0; m < cd.length; m++) { var sv = spotlightMappings[cd[m]['Constituent Type']] || 'Unmapped'; csm[cd[m]['Constituent ID']] = sv === 'Skip' ? '' : sv; }
                 for (var n = 0; n < gd.length; n++) gd[n]['Spotlights'] = csm[gd[n]['Constituent ID']] || 'Unmapped';
             }
         }
@@ -627,9 +627,21 @@
         var cd2 = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
         for (var p = 0; p < cd2.length; p++) { var ot = cd2[p]['Constituent Type']; cd2[p]['Constituent Type'] = constituentMappings[ot] || ot; }
 
+        // Preserve original column order
+        var origGiftHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], {header: 1})[0] || [];
+        var origConstHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], {header: 1})[0] || [];
+
+        // Build gift data headers: remove 'Gift Appeal', append Event (and Spotlights) at end
+        var giftHeaders = [];
+        for (var gh = 0; gh < origGiftHeaders.length; gh++) {
+            if (origGiftHeaders[gh] !== 'Gift Appeal') giftHeaders.push(origGiftHeaders[gh]);
+        }
+        giftHeaders.push('Event');
+        if (spotlightConfig && Object.keys(spotlightMappings).length > 0) giftHeaders.push('Spotlights');
+
         var wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gd), 'Gift Data');
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cd2), 'Constituent Data');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cd2, {header: origConstHeaders}), 'Constituent Data');
         for (var q = 0; q < workbook.SheetNames.length; q++) { var sn = workbook.SheetNames[q]; if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') XLSX.utils.book_append_sheet(wb, workbook.Sheets[sn], sn); }
 
         return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
