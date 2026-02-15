@@ -357,16 +357,33 @@
 
         waitForElement('#customSubmitBtn', function(btn) {
             btn.addEventListener('click', function() {
+                // Show spinner on submit button
+                var originalText = btn.textContent;
+                btn.disabled = true;
+                btn.innerHTML = '<div style="display:inline-flex;align-items:center;gap:10px;"><div style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #ffffff;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div><span>Submitting...</span></div>';
+                // Inject spinner keyframes if not already present
+                if (!document.getElementById('mapper-spinner-style')) {
+                    var spinStyle = document.createElement('style');
+                    spinStyle.id = 'mapper-spinner-style';
+                    spinStyle.textContent = '@keyframes mapperSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+                    document.head.appendChild(spinStyle);
+                }
                 console.log('Submit clicked');
-                var attached = window.attachToGHLForm();
-                if (!attached) return;
-                console.log('File attached');
-                if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
                 setTimeout(function() {
-                    var ghlBtn = document.querySelector('button[type="submit"]');
-                    if (ghlBtn) { console.log('Clicking GHL submit'); ghlBtn.click(); }
-                    else { var form = document.querySelector('form'); if (form) form.submit(); else alert('Could not submit. Contact support.'); }
-                }, 200);
+                    var attached = window.attachToGHLForm();
+                    if (!attached) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                        return;
+                    }
+                    console.log('File attached');
+                    if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
+                    setTimeout(function() {
+                        var ghlBtn = document.querySelector('button[type="submit"]');
+                        if (ghlBtn) { console.log('Clicking GHL submit'); ghlBtn.click(); }
+                        else { var form = document.querySelector('form'); if (form) form.submit(); else { btn.disabled = false; btn.textContent = originalText; alert('Could not submit. Contact support.'); } }
+                    }, 200);
+                }, 50);
             });
         });
 
