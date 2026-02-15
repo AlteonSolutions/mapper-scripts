@@ -275,6 +275,16 @@
         // Remove mapper-container padding so upload section matches GHL form width
         waitForElement('#uploadSection', function(section) {
             section.style.cssText = 'text-align:left;padding:0;margin:0;';
+            // Fix mapper-container padding to match GHL field wrappers
+            var mc = document.getElementById('mapper-container');
+            if (mc) mc.style.padding = '0 12px';
+        });
+
+        // Fix the custom HTML wrapper's extra margin
+        waitForElement('#mapper-container', function(mc) {
+            mc.style.padding = '0 12px';
+            var menuWrap = mc.closest('.menu-field-wrap');
+            if (menuWrap) { menuWrap.style.paddingLeft = '0'; menuWrap.style.paddingRight = '0'; }
         });
 
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
