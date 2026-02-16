@@ -301,8 +301,8 @@
             downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
             downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
             downloadBtn.addEventListener('click', function() {
-                var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx';
-                var filename = 'Analytics Data Upload Template.xlsx';
+                var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69936dfcceaa0532ee95fe02.xlsx';
+                var filename = 'Data Upload Template.xlsx';
                 fetch(templateUrl)
                     .then(function(response) { return response.blob(); })
                     .then(function(blob) {
