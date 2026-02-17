@@ -28,6 +28,7 @@
     ];
 
     var giftTypeCategories = ['Cash', 'Pledge', 'Pledge Payment'];
+
     var giftTypes = [];
     var giftTypeMappings = {};
     var giftTypeCurrentIndex = 0;
@@ -39,7 +40,7 @@
         'image-FRdTKXvCKw': 'arts',
         'image-jmRsaBRUt0': 'environmental',
         'image-mPaKkFsRIc': 'education',
-        'image-LAJZMp0Uz7': 'communityfoundation',
+        'image-69948e0fd614c9b315f2d7d1': 'communityfoundation',
         'image-I9s-xC-hNO': 'healthcare',
         'image-Ki-dn13age': 'humanservices',
         'image-7Zvkl8xveW': 'religion'
@@ -207,33 +208,6 @@
     }
 
     function init() {
-        // Download Template Button
-        waitForElement('#downloadTemplateBtn', function(downloadBtn) {
-            var fileUrl = "https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698b536eca717c30ebb62e3d.xlsx";
-            var fileName = "Analytics Data Upload Template.xlsx";
-            
-            downloadBtn.addEventListener("click", function() {
-                fetch(fileUrl, { mode: "cors" })
-                    .then(function(response) {
-                        if (!response.ok) throw new Error("Download failed");
-                        return response.blob();
-                    })
-                    .then(function(blob) {
-                        var blobUrl = window.URL.createObjectURL(blob);
-                        var a = document.createElement("a");
-                        a.href = blobUrl;
-                        a.download = fileName;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(blobUrl);
-                    })
-                    .catch(function(err) {
-                        window.open(fileUrl, "_blank");
-                    });
-            });
-        });
-
         waitForElement('#uploadBox', function(uploadBox) {
             uploadBox.addEventListener('click', function() {
                 document.getElementById('fileInput').click();
@@ -360,9 +334,12 @@
                 }
                 constituentTypes = Object.keys(uniqueConstituents).sort();
 
+                // Extract unique Gift Types from Gift Data
                 var uniqueGiftTypes = {};
-                for (var g = 0; g < giftJsonData.length; g++) {
-                    if (giftJsonData[g]['Gift Type']) uniqueGiftTypes[giftJsonData[g]['Gift Type']] = true;
+                for (var gt = 0; gt < giftJsonData.length; gt++) {
+                    if (giftJsonData[gt]['Gift Type']) {
+                        uniqueGiftTypes[giftJsonData[gt]['Gift Type']] = true;
+                    }
                 }
                 giftTypes = Object.keys(uniqueGiftTypes).sort();
 
@@ -381,10 +358,6 @@
                 var uploadTitle = document.getElementById('uploadTitle');
                 if (uploadTitle) {
                     uploadTitle.style.display = 'none';
-                }
-                var downloadTemplateWrapper = document.getElementById('downloadTemplateWrapper');
-                if (downloadTemplateWrapper) {
-                    downloadTemplateWrapper.style.display = 'none';
                 }
                 var uploadNote = document.getElementById('uploadNote');
                 if (uploadNote) {
@@ -486,6 +459,8 @@
                 }
             }
         }
+
+        updateStepTracker(0);
 
         currentIndex = 0;
         hasUsedPrevious = false;
@@ -846,11 +821,7 @@
             var headerOffset = 20;
             var elementPosition = constituentSection.getBoundingClientRect().top;
             var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-            
-            window.scrollTo({
-                top: offsetPosition,
-                behavior: 'smooth'
-            });
+            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
         }, 50);
     }
 
@@ -974,12 +945,16 @@
 
     function startGiftTypeMapping() {
         updateStepTracker(spotlightConfig ? 3 : 2);
+
         giftTypeCurrentIndex = 0;
         giftTypeHasUsedPrevious = false;
+
         document.getElementById('giftTypeMappingSection').style.display = 'block';
         showCurrentGiftType();
         updateGiftTypeProgress();
+
         document.getElementById('constituentMappingSection').style.display = 'none';
+
         setTimeout(function() {
             var section = document.getElementById('giftTypeMappingSection');
             var offsetPosition = section.getBoundingClientRect().top + window.pageYOffset - 20;
@@ -989,6 +964,7 @@
 
     function showCurrentGiftType() {
         var container = document.getElementById('giftTypeMappingContainer');
+
         if (giftTypeCurrentIndex >= giftTypes.length) {
             container.innerHTML = '';
             updateStepTracker(spotlightConfig ? 4 : 3);
@@ -997,8 +973,10 @@
             document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
             return;
         }
+
         var giftType = giftTypes[giftTypeCurrentIndex];
         var currentMapping = giftTypeMappings[giftType] || null;
+
         var html = '<div class="mapping-card">';
         html += '<div class="appeal-label">Gift Type ' + (giftTypeCurrentIndex + 1) + ' of ' + giftTypes.length + '</div>';
         html += '<div class="appeal-name">' + giftType + '</div>';
@@ -1008,66 +986,108 @@
             html += '<button class="category-btn" data-appeal="' + giftType + '" data-category="' + giftTypeCategories[i] + '" data-mapping-type="gifttype">' + giftTypeCategories[i] + '</button>';
         }
         html += '<button class="category-btn non-event-btn" data-appeal="' + giftType + '" data-category="Skip" data-mapping-type="gifttype">Skip</button>';
-        html += '</div><div class="navigation-buttons">';
+        html += '</div>';
+        html += '<div class="navigation-buttons">';
         html += '<button class="nav-btn" data-action="previous" data-mapping-type="gifttype"' + (giftTypeCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button>';
         html += '<button class="nav-btn" id="giftTypeNextBtn" data-action="next" data-mapping-type="gifttype"' + (!currentMapping ? ' disabled' : '') + ' style="display: none;">Next →</button>';
-        html += '</div></div>';
+        html += '</div>';
+        html += '</div>';
+
         container.innerHTML = html;
+
         if (currentMapping) {
             var buttons = container.querySelectorAll('.category-btn');
             for (var j = 0; j < buttons.length; j++) {
                 if (buttons[j].getAttribute('data-category') === currentMapping) {
                     if (currentMapping === 'Skip') {
-                        buttons[j].style.background = '#999'; buttons[j].style.color = 'white'; buttons[j].style.borderColor = '#999';
+                        buttons[j].style.background = '#999';
+                        buttons[j].style.color = 'white';
+                        buttons[j].style.borderColor = '#999';
                     } else {
-                        buttons[j].style.background = '#2c5f5d'; buttons[j].style.color = 'white'; buttons[j].style.borderColor = '#2c5f5d';
+                        buttons[j].style.background = '#2c5f5d';
+                        buttons[j].style.color = 'white';
+                        buttons[j].style.borderColor = '#2c5f5d';
                     }
                 }
             }
         }
+
         var nextBtn = container.querySelector('#giftTypeNextBtn');
-        if (nextBtn && giftTypeHasUsedPrevious && currentMapping) nextBtn.style.display = 'block';
+        if (nextBtn && giftTypeHasUsedPrevious && currentMapping) {
+            nextBtn.style.display = 'block';
+        }
     }
 
     function selectGiftType(originalType, mappedType) {
         giftTypeMappings[originalType] = mappedType;
         updateGiftTypeProgress();
+
         var buttons = document.querySelectorAll('#giftTypeMappingContainer .category-btn');
         for (var i = 0; i < buttons.length; i++) {
             var btnCategory = buttons[i].getAttribute('data-category');
             if (btnCategory === mappedType) {
                 if (mappedType === 'Skip') {
-                    buttons[i].style.background = '#999'; buttons[i].style.color = 'white'; buttons[i].style.borderColor = '#999';
+                    buttons[i].style.background = '#999';
+                    buttons[i].style.color = 'white';
+                    buttons[i].style.borderColor = '#999';
                 } else {
-                    buttons[i].style.background = '#2c5f5d'; buttons[i].style.color = 'white'; buttons[i].style.borderColor = '#2c5f5d';
+                    buttons[i].style.background = '#2c5f5d';
+                    buttons[i].style.color = 'white';
+                    buttons[i].style.borderColor = '#2c5f5d';
                 }
             } else {
                 if (buttons[i].classList.contains('non-event-btn')) {
-                    buttons[i].style.background = 'white'; buttons[i].style.color = '#666'; buttons[i].style.borderColor = '#999';
+                    buttons[i].style.background = 'white';
+                    buttons[i].style.color = '#666';
+                    buttons[i].style.borderColor = '#999';
                 } else {
-                    buttons[i].style.background = 'white'; buttons[i].style.color = '#2c5f5d'; buttons[i].style.borderColor = '#2c5f5d';
+                    buttons[i].style.background = 'white';
+                    buttons[i].style.color = '#2c5f5d';
+                    buttons[i].style.borderColor = '#2c5f5d';
                 }
             }
         }
+
         var nextBtn = document.querySelector('#giftTypeNextBtn');
-        if (nextBtn && giftTypeHasUsedPrevious) { nextBtn.disabled = false; nextBtn.style.display = 'block'; }
-        setTimeout(function() { if (!giftTypeHasUsedPrevious) nextGiftType(); }, 500);
+        if (nextBtn && giftTypeHasUsedPrevious) {
+            nextBtn.disabled = false;
+            nextBtn.style.display = 'block';
+        }
+
+        setTimeout(function() {
+            if (!giftTypeHasUsedPrevious) {
+                nextGiftType();
+            }
+        }, 500);
     }
 
     function nextGiftType() {
-        if (giftTypeCurrentIndex < giftTypes.length) { giftTypeCurrentIndex++; giftTypeHasUsedPrevious = false; showCurrentGiftType(); updateGiftTypeProgress(); }
+        if (giftTypeCurrentIndex < giftTypes.length) {
+            giftTypeCurrentIndex++;
+            giftTypeHasUsedPrevious = false;
+            showCurrentGiftType();
+            updateGiftTypeProgress();
+        }
     }
 
     function previousGiftType() {
-        if (giftTypeCurrentIndex > 0) { giftTypeCurrentIndex--; giftTypeHasUsedPrevious = true; showCurrentGiftType(); updateGiftTypeProgress(); }
+        if (giftTypeCurrentIndex > 0) {
+            giftTypeCurrentIndex--;
+            giftTypeHasUsedPrevious = true;
+            showCurrentGiftType();
+            updateGiftTypeProgress();
+        }
     }
 
     function updateGiftTypeProgress() {
         var mapped = Object.keys(giftTypeMappings).length;
         var total = giftTypes.length;
         var percentage = total > 0 ? Math.round((mapped / total) * 100) : 0;
-        document.getElementById('giftTypeProgressBar').style.width = percentage + '%';
-        document.getElementById('giftTypeProgressBarText').textContent = percentage === 0 ? '' : percentage + '%';
+
+        var progressBar = document.getElementById('giftTypeProgressBar');
+        var progressBarText = document.getElementById('giftTypeProgressBarText');
+        progressBar.style.width = percentage + '%';
+        progressBarText.textContent = percentage === 0 ? '' : percentage + '%';
         document.getElementById('giftTypeProgressText').textContent = mapped + ' of ' + total + ' gift types mapped';
     }
 
@@ -1088,6 +1108,7 @@
         for (var i = 0; i < giftJsonData.length; i++) {
             giftJsonData[i]['Event'] = mappings[giftJsonData[i]['Gift Appeal']] || 'Unmapped';
             delete giftJsonData[i]['Gift Appeal'];
+            // Apply gift type mapping
             var origGiftType = giftJsonData[i]['Gift Type'];
             if (origGiftType && giftTypeMappings[origGiftType] && giftTypeMappings[origGiftType] !== 'Skip') {
                 giftJsonData[i]['Gift Type'] = giftTypeMappings[origGiftType];
@@ -1156,7 +1177,7 @@
         var excelBlob = generateExcelBlob();
         
         if (!excelBlob) {
-            var stepCount = spotlightConfig ? 'three' : 'two';
+            var stepCount = spotlightConfig ? 'four' : 'three';
             alert('Please complete all ' + stepCount + ' mapping steps before submitting the form');
             return false;
         }
