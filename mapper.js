@@ -18,12 +18,15 @@
     var mappings = {};
     var spotlightMappings = {};
     var constituentMappings = {};
+    var giftTypeMappings = {};
     var currentIndex = 0;
     var spotlightCurrentIndex = 0;
     var constituentCurrentIndex = 0;
+    var giftTypeCurrentIndex = 0;
     var hasUsedPrevious = false;
     var spotlightHasUsedPrevious = false;
     var constituentHasUsedPrevious = false;
+    var giftTypeHasUsedPrevious = false;
     var currentStep = 0;
     var selectedIndustryType = null;
 
@@ -31,6 +34,9 @@
         'Individual', 'Organization', 'Government', 'Foundation',
         'Estate', 'Family Foundation', 'Corporation'
     ];
+
+    var giftTypeCategories = ['Cash', 'Pledge', 'Pledge Payment'];
+    var giftTypes = [];
 
     var spotlightConfig = null;
 
@@ -176,8 +182,8 @@
         var stepTracker = document.getElementById('stepTracker');
         if (!stepTracker) return;
         var steps = spotlightConfig ?
-            [{ label: 'Special Event Mapping', number: 1 }, { label: 'Spotlight Mapping', number: 2 }, { label: 'Constituent Type Mapping', number: 3 }] :
-            [{ label: 'Special Event Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }];
+            [{ label: 'Special Event Mapping', number: 1 }, { label: 'Spotlight Mapping', number: 2 }, { label: 'Constituent Type Mapping', number: 3 }, { label: 'Gift Type Mapping', number: 4 }] :
+            [{ label: 'Special Event Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }];
         var html = '';
         for (var i = 0; i < steps.length; i++) {
             html += '<div class="step-item"><div class="step-circle">' + steps[i].number + '</div><div class="step-label">' + steps[i].label + '</div>';
@@ -261,7 +267,7 @@
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
             titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload [v1]';
+            titleEl.textContent = 'Client Data File Upload [v2]';
         });
 
         // Style the upload box to match GHL custom-file-upload label
@@ -330,6 +336,7 @@
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
         waitForElement('#startMappingBtn', function(el) { el.addEventListener('click', startMapping); });
         waitForElement('#startConstituentMappingBtn', function(el) { el.addEventListener('click', startConstituentMapping); });
+        waitForElement('#startGiftTypeMappingBtn', function(el) { el.addEventListener('click', startGiftTypeMapping); });
         waitForElement('#categoriesList', function(el) { el.addEventListener('click', function(e) { if (e.target.tagName === 'BUTTON') removeCategory(parseInt(e.target.getAttribute('data-index'))); }); });
 
         // Wrap mapping sections in a GHL-style box with label
@@ -348,7 +355,7 @@
             parent.insertBefore(label, catSetup);
             parent.insertBefore(box, catSetup);
             // Move all mapping sections into the box
-            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'constituentMappingSection', 'stepProgress'];
+            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'constituentMappingSection', 'giftTypeMappingSection', 'stepProgress'];
             sections.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) box.appendChild(el);
@@ -395,12 +402,14 @@
                 if (type === 'event') selectCategory(appeal, cat);
                 else if (type === 'spotlight') selectSpotlight(appeal, cat);
                 else if (type === 'constituent') selectConstituentType(appeal, cat);
+                else if (type === 'gifttype') selectGiftType(appeal, cat);
             } else if (e.target.classList.contains('nav-btn')) {
                 var action = e.target.getAttribute('data-action');
                 var navType = e.target.getAttribute('data-mapping-type');
                 if (navType === 'event') { if (action === 'previous') previousAppeal(); else if (action === 'next') nextAppeal(); }
                 else if (navType === 'spotlight') { if (action === 'previous') previousSpotlight(); else if (action === 'next') nextSpotlight(); }
                 else if (navType === 'constituent') { if (action === 'previous') previousConstituentType(); else if (action === 'next') nextConstituentType(); }
+                else if (navType === 'gifttype') { if (action === 'previous') previousGiftType(); else if (action === 'next') nextGiftType(); }
             }
         });
     }
@@ -445,6 +454,9 @@
                 var uc = {};
                 for (var j = 0; j < constJson.length; j++) { if (constJson[j]['Constituent Type']) uc[constJson[j]['Constituent Type']] = true; }
                 constituentTypes = Object.keys(uc).sort();
+                var ug = {};
+                for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
+                giftTypes = Object.keys(ug).sort();
                 if (spotlightConfig) {
                     if (spotlightConfig.type === 'giftAppeal') spotlightSourceData = giftAppeals.slice();
                     else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice();
@@ -592,7 +604,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = ''; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
@@ -621,12 +633,61 @@
         document.getElementById('constituentProgressText').textContent = mapped + ' of ' + total + ' constituent types mapped';
     }
 
+
+    function startGiftTypeMapping() {
+        updateStepTracker(spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
+        document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
+        document.getElementById('constituentMappingSection').style.display = 'none';
+        setTimeout(function() { var s = document.getElementById('giftTypeMappingSection'); window.scrollTo({ top: s.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); }, 50);
+    }
+
+    function showCurrentGiftType() {
+        var container = document.getElementById('giftTypeMappingContainer');
+        if (giftTypeCurrentIndex >= giftTypes.length) {
+            container.innerHTML = '';
+            updateStepTracker(spotlightConfig ? 4 : 3);
+            document.getElementById('giftTypeCompletionCard').style.display = 'block';
+            document.querySelector('#giftTypeMappingSection .progress-container').style.display = 'none';
+            document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
+            var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
+            return;
+        }
+        var gt = giftTypes[giftTypeCurrentIndex]; var cm = giftTypeMappings[gt] || null;
+        var html = '<div class="mapping-card"><div class="appeal-label">Gift Type ' + (giftTypeCurrentIndex+1) + ' of ' + giftTypes.length + '</div><div class="appeal-name">' + gt + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a gift type:</div><div class="category-buttons">';
+        for (var i = 0; i < giftTypeCategories.length; i++) html += '<button class="category-btn" data-appeal="' + gt + '" data-category="' + giftTypeCategories[i] + '" data-mapping-type="gifttype">' + giftTypeCategories[i] + '</button>';
+        html += '<button class="category-btn non-event-btn" data-appeal="' + gt + '" data-category="Skip" data-mapping-type="gifttype">Skip</button></div>';
+        html += '<div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="gifttype"' + (giftTypeCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="giftTypeNextBtn" data-action="next" data-mapping-type="gifttype"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
+        container.innerHTML = html;
+        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = '#2c5f5d'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#2c5f5d'; } } } }
+        var nb = container.querySelector('#giftTypeNextBtn'); if (nb && giftTypeHasUsedPrevious && cm) nb.style.display = 'block';
+    }
+
+    function selectGiftType(origType, mappedType) {
+        giftTypeMappings[origType] = mappedType; updateGiftTypeProgress();
+        var btns = document.querySelectorAll('#giftTypeMappingContainer .category-btn');
+        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === mappedType) { if (mappedType === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = '#2c5f5d'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#2c5f5d'; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = '#2c5f5d'; btns[i].style.borderColor = '#2c5f5d'; } } }
+        var nb = document.querySelector('#giftTypeNextBtn'); if (nb && giftTypeHasUsedPrevious) { nb.disabled = false; nb.style.display = 'block'; }
+        setTimeout(function() { if (!giftTypeHasUsedPrevious) nextGiftType(); }, 500);
+    }
+
+    function nextGiftType() { if (giftTypeCurrentIndex < giftTypes.length) { giftTypeCurrentIndex++; giftTypeHasUsedPrevious = false; showCurrentGiftType(); updateGiftTypeProgress(); } }
+    function previousGiftType() { if (giftTypeCurrentIndex > 0) { giftTypeCurrentIndex--; giftTypeHasUsedPrevious = true; showCurrentGiftType(); updateGiftTypeProgress(); } }
+
+    function updateGiftTypeProgress() {
+        var mapped = Object.keys(giftTypeMappings).length; var total = giftTypes.length;
+        var pct = total > 0 ? Math.round((mapped/total)*100) : 0;
+        document.getElementById('giftTypeProgressBar').style.width = pct + '%';
+        document.getElementById('giftTypeProgressBarText').textContent = pct === 0 ? '' : pct + '%';
+        document.getElementById('giftTypeProgressText').textContent = mapped + ' of ' + total + ' gift types mapped';
+    }
+
     function generateExcelBlob() {
-        var req = spotlightConfig ? 3 : 2;
+        var req = spotlightConfig ? 4 : 3;
         var c1 = Object.keys(mappings).length > 0 ? 1 : 0;
         var c2 = spotlightConfig ? (Object.keys(spotlightMappings).length > 0 ? 1 : 0) : 0;
         var c3 = Object.keys(constituentMappings).length > 0 ? 1 : 0;
-        if ((c1 + c2 + c3) < req) return null;
+        var c4 = Object.keys(giftTypeMappings).length > 0 ? 1 : 0;
+        if ((c1 + c2 + c3 + c4) < req) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
         for (var i = 0; i < gd.length; i++) { var raw = mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
@@ -642,6 +703,9 @@
         } else {
             for (var r = 0; r < gd.length; r++) gd[r]['Spotlights'] = '';
         }
+
+        // Apply gift type mappings - replace Gift Type values in Gift Data
+        for (var gt = 0; gt < gd.length; gt++) { var ogt = gd[gt]['Gift Type']; if (ogt !== undefined) { var mgt = giftTypeMappings[ogt]; gd[gt]['Gift Type'] = (mgt === 'Skip' || mgt === undefined) ? ogt : mgt; } }
 
         var cd2 = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
         for (var p = 0; p < cd2.length; p++) { var ot = cd2[p]['Constituent Type']; cd2[p]['Constituent Type'] = constituentMappings[ot] || ot; }
@@ -668,7 +732,7 @@
 
     window.attachToGHLForm = function() {
         var blob = generateExcelBlob();
-        if (!blob) { alert('Please complete all ' + (spotlightConfig ? 'three' : 'two') + ' mapping steps before submitting'); return false; }
+        if (!blob) { alert('Please complete all ' + (spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
