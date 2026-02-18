@@ -261,7 +261,7 @@
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
             titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload';
+            var ts = new Date(); var tstr = (ts.getMonth()+1) + '/' + ts.getDate() + ' ' + ts.getHours() + ':' + String(ts.getMinutes()).padStart(2,'0') + ':' + String(ts.getSeconds()).padStart(2,'0'); titleEl.textContent = 'Client Data File Upload [JS ' + tstr + ']';
         });
 
         // Style the upload box to match GHL custom-file-upload label
@@ -461,7 +461,7 @@
                 document.getElementById('categorySetup').style.display = 'block';
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                 var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
-                setTimeout(function() { document.getElementById('uploadSection').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+                setTimeout(function() { var t = document.getElementById('uploadTitle'); if (t) { window.scrollTo({ top: t.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); } }, 100);
             } catch (err) {
                 // Reset upload box on error
                 var uploadBox = document.getElementById('uploadBox');
