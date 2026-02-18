@@ -9,6 +9,14 @@
     }
     
     console.log('Mapper.js: Initializing on live page');
+
+    // Theme detection based on URL
+    var isSW = window.location.href.includes('getdatabasey.com/sw');
+    var themeColor = isSW ? '#00386c' : '#2c5f5d';
+    var themeColorHover = isSW ? '#004f99' : '#3d7672';
+    var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : 'rgba(44, 95, 93, 0.1)';
+    var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : 'rgba(44, 95, 93, 0.3)';
+    console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : 'Default (#2c5f5d)');
     
     var workbook = null;
     var giftAppeals = [];
@@ -267,7 +275,7 @@
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
             titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload [v2]';
+            titleEl.textContent = 'Client Data File Upload [v3]';
         });
 
         // Style the upload box to match GHL custom-file-upload label
@@ -303,7 +311,7 @@
             var downloadBtn = document.createElement('button');
             downloadBtn.textContent = 'Download Template File';
             downloadBtn.type = 'button';
-            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:14px;font-weight:600;padding:10px 30px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;display:inline-block;transition:transform 0.3s ease;';
+            downloadBtn.style.cssText = 'background-color:#ffffff;color:' + themeColor + ';font-family:Roboto,sans-serif;font-size:14px;font-weight:600;padding:10px 30px;border:2px solid ' + themeColor + ';border-radius:8px;cursor:pointer;display:inline-block;transition:transform 0.3s ease;';
             downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
             downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
             downloadBtn.addEventListener('click', function() {
@@ -424,7 +432,7 @@
         var uploadBox = document.getElementById('uploadBox');
         uploadBox.style.cursor = 'default';
         uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px 0;">'
-            + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid #2c5f5d;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
+            + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid ' + themeColor + ';border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
             + '<div style="margin-top:10px;font-size:13px;color:#666;font-weight:500;">Processing ' + file.name + '...</div>'
             + '</div>';
         // Inject spinner keyframes if not already present
@@ -530,14 +538,14 @@
         html += '<button class="category-btn non-event-btn" data-appeal="' + appeal + '" data-category="Skip" data-mapping-type="event">Skip</button></div>';
         html += '<div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="event"' + (currentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="nextBtn" data-action="next" data-mapping-type="event"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
         container.innerHTML = html;
-        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = '#2c5f5d'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#2c5f5d'; } } } }
+        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } } }
         var nb = container.querySelector('#nextBtn'); if (nb && hasUsedPrevious && cm) nb.style.display = 'block';
     }
 
     function selectCategory(appeal, category) {
         mappings[appeal] = category; updateProgress();
         var btns = document.querySelectorAll('#mappingContainer .category-btn');
-        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === category) { if (category === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = '#2c5f5d'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#2c5f5d'; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = '#2c5f5d'; btns[i].style.borderColor = '#2c5f5d'; } } }
+        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === category) { if (category === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = themeColor; btns[i].style.color = 'white'; btns[i].style.borderColor = themeColor; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = themeColor; btns[i].style.borderColor = themeColor; } } }
         var nb = document.querySelector('#nextBtn'); if (nb && hasUsedPrevious) { nb.disabled = false; nb.style.display = 'block'; }
         setTimeout(function() { if (!hasUsedPrevious) nextAppeal(); }, 500);
     }
@@ -572,14 +580,14 @@
         html += '<button class="category-btn non-event-btn" data-appeal="' + sv + '" data-category="Skip" data-mapping-type="spotlight">Skip</button></div>';
         html += '<div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="spotlight"' + (spotlightCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="spotlightNextBtn" data-action="next" data-mapping-type="spotlight"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
         container.innerHTML = html;
-        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = '#2c5f5d'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#2c5f5d'; } } } }
+        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } } }
         var nb = container.querySelector('#spotlightNextBtn'); if (nb && spotlightHasUsedPrevious && cm) nb.style.display = 'block';
     }
 
     function selectSpotlight(sv, category) {
         spotlightMappings[sv] = category; updateSpotlightProgress();
         var btns = document.querySelectorAll('#spotlightMappingContainer .category-btn');
-        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === category) { if (category === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = '#2c5f5d'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#2c5f5d'; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = '#2c5f5d'; btns[i].style.borderColor = '#2c5f5d'; } } }
+        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === category) { if (category === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = themeColor; btns[i].style.color = 'white'; btns[i].style.borderColor = themeColor; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = themeColor; btns[i].style.borderColor = themeColor; } } }
         var nb = document.querySelector('#spotlightNextBtn'); if (nb && spotlightHasUsedPrevious) { nb.disabled = false; nb.style.display = 'block'; }
         setTimeout(function() { if (!spotlightHasUsedPrevious) nextSpotlight(); }, 500);
     }
@@ -610,14 +618,14 @@
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
         html += '</div><div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="constituent"' + (constituentCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="constituentNextBtn" data-action="next" data-mapping-type="constituent"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
         container.innerHTML = html;
-        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { btns[j].style.background = '#2c5f5d'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#2c5f5d'; } } }
+        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } }
         var nb = container.querySelector('#constituentNextBtn'); if (nb && constituentHasUsedPrevious && cm) nb.style.display = 'block';
     }
 
     function selectConstituentType(origType, mappedType) {
         constituentMappings[origType] = mappedType; updateConstituentProgress();
         var btns = document.querySelectorAll('#constituentMappingContainer .category-btn');
-        for (var i = 0; i < btns.length; i++) { if (btns[i].getAttribute('data-category') === mappedType) { btns[i].style.background = '#2c5f5d'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#2c5f5d'; } else { btns[i].style.background = 'white'; btns[i].style.color = '#2c5f5d'; btns[i].style.borderColor = '#2c5f5d'; } }
+        for (var i = 0; i < btns.length; i++) { if (btns[i].getAttribute('data-category') === mappedType) { btns[i].style.background = themeColor; btns[i].style.color = 'white'; btns[i].style.borderColor = themeColor; } else { btns[i].style.background = 'white'; btns[i].style.color = themeColor; btns[i].style.borderColor = themeColor; } }
         var nb = document.querySelector('#constituentNextBtn'); if (nb && constituentHasUsedPrevious) { nb.disabled = false; nb.style.display = 'block'; }
         setTimeout(function() { if (!constituentHasUsedPrevious) nextConstituentType(); }, 500);
     }
@@ -658,14 +666,14 @@
         html += '<button class="category-btn non-event-btn" data-appeal="' + gt + '" data-category="Skip" data-mapping-type="gifttype">Skip</button></div>';
         html += '<div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="gifttype"' + (giftTypeCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="giftTypeNextBtn" data-action="next" data-mapping-type="gifttype"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
         container.innerHTML = html;
-        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = '#2c5f5d'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#2c5f5d'; } } } }
+        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } } }
         var nb = container.querySelector('#giftTypeNextBtn'); if (nb && giftTypeHasUsedPrevious && cm) nb.style.display = 'block';
     }
 
     function selectGiftType(origType, mappedType) {
         giftTypeMappings[origType] = mappedType; updateGiftTypeProgress();
         var btns = document.querySelectorAll('#giftTypeMappingContainer .category-btn');
-        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === mappedType) { if (mappedType === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = '#2c5f5d'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#2c5f5d'; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = '#2c5f5d'; btns[i].style.borderColor = '#2c5f5d'; } } }
+        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === mappedType) { if (mappedType === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = themeColor; btns[i].style.color = 'white'; btns[i].style.borderColor = themeColor; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = themeColor; btns[i].style.borderColor = themeColor; } } }
         var nb = document.querySelector('#giftTypeNextBtn'); if (nb && giftTypeHasUsedPrevious) { nb.disabled = false; nb.style.display = 'block'; }
         setTimeout(function() { if (!giftTypeHasUsedPrevious) nextGiftType(); }, 500);
     }
