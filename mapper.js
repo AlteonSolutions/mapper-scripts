@@ -291,42 +291,12 @@ JS GOOD
 
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
 
-        // Create Download Template button AFTER the upload box, before the note
+        // Download button is pre-rendered in HTML - no need to recreate it
+        // Just ensure the note text is correct if it wasn't already set
         waitForElement('#uploadNote', function(noteEl) {
-            var downloadContainer = document.createElement('div');
-            downloadContainer.id = 'download-container';
-            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;margin-top:10px;margin-bottom:0;';
-            var downloadBtn = document.createElement('button');
-            downloadBtn.textContent = 'Download Template File';
-            downloadBtn.type = 'button';
-            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:14px;font-weight:600;padding:10px 30px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;display:inline-block;transition:transform 0.3s ease;';
-            downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
-            downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
-            downloadBtn.addEventListener('click', function() {
-                var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69936dfcceaa0532ee95fe02.xlsx';
-                var filename = 'Data Upload Template.xlsx';
-                fetch(templateUrl)
-                    .then(function(response) { return response.blob(); })
-                    .then(function(blob) {
-                        var link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(link.href);
-                    })
-                    .catch(function() {
-                        var link = document.createElement('a');
-                        link.href = templateUrl;
-                        link.download = filename;
-                        link.click();
-                    });
-            });
-            downloadContainer.appendChild(downloadBtn);
-            noteEl.parentNode.insertBefore(downloadContainer, noteEl);
-            // Update note text
-            noteEl.innerHTML = 'Note: the Client Data file <strong>must</strong> use the designated template.<br>Use the link above to download the template.';
+            if (!noteEl.innerHTML.includes('Use the link above')) {
+                noteEl.innerHTML = 'Note: the Client Data file <strong>must</strong> use the designated template.<br>Use the link above to download the template.';
+            }
         });
         waitForElement('#categoryInput', function(el) { el.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCategory(); }); });
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
@@ -667,6 +637,28 @@ JS GOOD
 
         return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
+
+    window.downloadTemplate = function() {
+        var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69936dfcceaa0532ee95fe02.xlsx';
+        var filename = 'Data Upload Template.xlsx';
+        fetch(templateUrl)
+            .then(function(response) { return response.blob(); })
+            .then(function(blob) {
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+            })
+            .catch(function() {
+                var link = document.createElement('a');
+                link.href = templateUrl;
+                link.download = filename;
+                link.click();
+            });
+    };
 
     window.attachToGHLForm = function() {
         var blob = generateExcelBlob();
