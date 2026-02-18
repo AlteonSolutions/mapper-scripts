@@ -234,30 +234,28 @@ JS GOOD
 
         // Hide GHL's Client Data File upload field and submit button via JS
         (function hideGHLElements() {
-            var selectors = [
-                '#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13',
-                '#el_5GIq2FyRJrWJv32C9avI_button_12'
-            ];
-            var allFound = true;
-            selectors.forEach(function(sel) {
-                var el = document.querySelector(sel);
-                if (el) { el.style.display = 'none'; }
-                else { allFound = false; }
-            });
-            // Also hide by name attribute as fallback
-            var fileInputs = document.querySelectorAll('input[type="file"]');
-            fileInputs.forEach(function(input) {
-                if (input.name && input.name.indexOf('Client Data File') !== -1) {
-                    var wrapper = input.closest('.file-upload') || input.closest('.form-field-wrapper');
-                    if (wrapper) wrapper.style.display = 'none';
-                }
-            });
-            var submitBtn = document.querySelector('#_builder-form button[type="submit"]');
-            if (submitBtn) {
-                var wrapper = submitBtn.closest('.form-field-wrapper');
-                if (wrapper) wrapper.style.display = 'none';
+            var hidden = false;
+
+            // Primary: target by the known input id
+            var byId = document.querySelector('#ec9c2754-422f-472d-a842-b6eab44b560a');
+            if (byId) {
+                var wrapper = byId.closest('.file-upload');
+                if (wrapper) { wrapper.style.display = 'none'; hidden = true; }
             }
-            if (!allFound) setTimeout(hideGHLElements, 500);
+
+            // Fallback: target by input name containing 'Client Data File'
+            if (!hidden) {
+                var fileInputs = document.querySelectorAll('input[type="file"]');
+                fileInputs.forEach(function(input) {
+                    if (input.name && input.name.indexOf('Client Data File') !== -1) {
+                        var wrapper = input.closest('.file-upload') || input.closest('.form-builder--item') || input.closest('.form-field-wrapper');
+                        if (wrapper) { wrapper.style.display = 'none'; hidden = true; }
+                    }
+                });
+            }
+
+            // Retry until found
+            if (!hidden) { setTimeout(hideGHLElements, 300); }
         })();
 
         // Upload box — HTML already has correct styles/content, just wire up the click
@@ -647,7 +645,7 @@ JS GOOD
         var blob = generateExcelBlob();
         if (!blob) { alert('Please complete all ' + (spotlightConfig ? 'three' : 'two') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
+        var fi = document.querySelector('#ec9c2754-422f-472d-a842-b6eab44b560a') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"].file-input');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
         else { alert('Could not attach file. Please contact support.'); return false; }
     };
