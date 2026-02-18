@@ -217,13 +217,9 @@
         var circles = stepTracker.querySelectorAll('.step-circle');
         var connectors = stepTracker.querySelectorAll('.step-connector');
         for (var i = 0; i < items.length; i++) {
-            if (i === step) { items[i].classList.add('active'); circles[i].classList.add('active'); circles[i].classList.remove('completed'); circles[i].textContent = (i+1).toString(); }
-            else if (i < step) { items[i].classList.remove('active'); circles[i].classList.add('completed'); circles[i].classList.remove('active'); circles[i].textContent = '✓'; }
-            else { items[i].classList.remove('active'); circles[i].classList.remove('active','completed'); circles[i].textContent = (i+1).toString(); }
-        }
-        for (var j = 0; j < connectors.length; j++) {
-            if (j < step) connectors[j].classList.add('completed');
-            else connectors[j].classList.remove('completed');
+            if (i === step) { items[i].classList.add('active'); items[i].classList.remove('completed'); circles[i].classList.add('active'); circles[i].classList.remove('completed'); circles[i].textContent = (i+1).toString(); }
+            else if (i < step) { items[i].classList.remove('active'); items[i].classList.add('completed'); circles[i].classList.add('completed'); circles[i].classList.remove('active'); circles[i].textContent = '✓'; }
+            else { items[i].classList.remove('active','completed'); circles[i].classList.remove('active','completed'); circles[i].textContent = (i+1).toString(); }
         }
     }
 
@@ -282,7 +278,7 @@
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
             titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload [v6]';
+            titleEl.textContent = 'Client Data File Upload [v7]';
         });
 
         // Style the upload box to match GHL custom-file-upload label
