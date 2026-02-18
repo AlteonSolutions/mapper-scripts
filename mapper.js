@@ -1,5 +1,3 @@
-JS GOOD
-
 (function() {
     'use strict';
     
@@ -234,50 +232,99 @@ JS GOOD
 
         // Hide GHL's Client Data File upload field and submit button via JS
         (function hideGHLElements() {
-            var hidden = false;
-
-            // Primary: target by the known input id
-            var byId = document.querySelector('#ec9c2754-422f-472d-a842-b6eab44b560a');
-            if (byId) {
-                var wrapper = byId.closest('.file-upload');
-                if (wrapper) { wrapper.style.display = 'none'; hidden = true; }
+            var selectors = [
+                '#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13',
+                '#el_5GIq2FyRJrWJv32C9avI_button_12'
+            ];
+            var allFound = true;
+            selectors.forEach(function(sel) {
+                var el = document.querySelector(sel);
+                if (el) { el.style.display = 'none'; }
+                else { allFound = false; }
+            });
+            // Also hide by name attribute as fallback
+            var fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(function(input) {
+                if (input.name && input.name.indexOf('Client Data File') !== -1) {
+                    var wrapper = input.closest('.file-upload') || input.closest('.form-field-wrapper');
+                    if (wrapper) wrapper.style.display = 'none';
+                }
+            });
+            var submitBtn = document.querySelector('#_builder-form button[type="submit"]');
+            if (submitBtn) {
+                var wrapper = submitBtn.closest('.form-field-wrapper');
+                if (wrapper) wrapper.style.display = 'none';
             }
-
-            // Fallback: target by input name containing 'Client Data File'
-            if (!hidden) {
-                var fileInputs = document.querySelectorAll('input[type="file"]');
-                fileInputs.forEach(function(input) {
-                    if (input.name && input.name.indexOf('Client Data File') !== -1) {
-                        var wrapper = input.closest('.file-upload') || input.closest('.form-builder--item') || input.closest('.form-field-wrapper');
-                        if (wrapper) { wrapper.style.display = 'none'; hidden = true; }
-                    }
-                });
-            }
-
-            // Retry until found
-            if (!hidden) { setTimeout(hideGHLElements, 300); }
+            if (!allFound) setTimeout(hideGHLElements, 500);
         })();
 
-        // Upload box — HTML already has correct styles/content, just wire up the click
+        // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
+        waitForElement('#uploadTitle', function(titleEl) {
+            titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
+            titleEl.textContent = 'Client Data File Upload';
+        });
+
+        // Style the upload box to match GHL custom-file-upload label
         waitForElement('#uploadBox', function(el) {
+            el.style.cssText = 'border:1px solid #ccc;border-radius:4px;padding:20px;text-align:center;cursor:pointer;background:white;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:5rem;width:100%;box-sizing:border-box;';
+            // Replace inner content to match GHL upload icon style (black icon)
+            el.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000000;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
-        // Remove all padding from mapper-container so upload box matches GHL form width
+        // Remove mapper-container padding so upload section matches GHL form width
+        waitForElement('#uploadSection', function(section) {
+            section.style.cssText = 'text-align:left;padding:0;margin:0;';
+            // Fix mapper-container padding to match GHL field wrappers
+            var mc = document.getElementById('mapper-container');
+            if (mc) mc.style.padding = '0 12px';
+        });
+
+        // Fix the custom HTML wrapper's extra margin
         waitForElement('#mapper-container', function(mc) {
-            mc.style.padding = '0';
+            mc.style.padding = '0 12px';
             var menuWrap = mc.closest('.menu-field-wrap');
             if (menuWrap) { menuWrap.style.paddingLeft = '0'; menuWrap.style.paddingRight = '0'; }
         });
 
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
 
-        // Download button is pre-rendered in HTML - no need to recreate it
-        // Just ensure the note text is correct if it wasn't already set
+        // Create Download Template button AFTER the upload box, before the note
         waitForElement('#uploadNote', function(noteEl) {
-            if (!noteEl.innerHTML.includes('Use the link above')) {
-                noteEl.innerHTML = 'Note: the Client Data file <strong>must</strong> use the designated template.<br>Use the link above to download the template.';
-            }
+            var downloadContainer = document.createElement('div');
+            downloadContainer.id = 'download-container';
+            downloadContainer.style.cssText = 'padding:0;display:flex;justify-content:center;align-items:center;margin-top:10px;margin-bottom:0;';
+            var downloadBtn = document.createElement('button');
+            downloadBtn.textContent = 'Download Template File';
+            downloadBtn.type = 'button';
+            downloadBtn.style.cssText = 'background-color:#ffffff;color:#2c5f5d;font-family:Roboto,sans-serif;font-size:14px;font-weight:600;padding:10px 30px;border:2px solid #2c5f5d;border-radius:8px;cursor:pointer;display:inline-block;transition:transform 0.3s ease;';
+            downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
+            downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
+            downloadBtn.addEventListener('click', function() {
+                var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69936dfcceaa0532ee95fe02.xlsx';
+                var filename = 'Data Upload Template.xlsx';
+                fetch(templateUrl)
+                    .then(function(response) { return response.blob(); })
+                    .then(function(blob) {
+                        var link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(link.href);
+                    })
+                    .catch(function() {
+                        var link = document.createElement('a');
+                        link.href = templateUrl;
+                        link.download = filename;
+                        link.click();
+                    });
+            });
+            downloadContainer.appendChild(downloadBtn);
+            noteEl.parentNode.insertBefore(downloadContainer, noteEl);
+            // Update note text
+            noteEl.innerHTML = 'Note: the Client Data file <strong>must</strong> use the designated template.<br>Use the link above to download the template.';
         });
         waitForElement('#categoryInput', function(el) { el.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCategory(); }); });
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
@@ -619,33 +666,11 @@ JS GOOD
         return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
 
-    window.downloadTemplate = function() {
-        var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69936dfcceaa0532ee95fe02.xlsx';
-        var filename = 'Data Upload Template.xlsx';
-        fetch(templateUrl)
-            .then(function(response) { return response.blob(); })
-            .then(function(blob) {
-                var link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
-            })
-            .catch(function() {
-                var link = document.createElement('a');
-                link.href = templateUrl;
-                link.download = filename;
-                link.click();
-            });
-    };
-
     window.attachToGHLForm = function() {
         var blob = generateExcelBlob();
         if (!blob) { alert('Please complete all ' + (spotlightConfig ? 'three' : 'two') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var fi = document.querySelector('#ec9c2754-422f-472d-a842-b6eab44b560a') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"].file-input');
+        var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
         else { alert('Could not attach file. Please contact support.'); return false; }
     };
