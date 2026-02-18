@@ -260,31 +260,14 @@ JS GOOD
             if (!allFound) setTimeout(hideGHLElements, 500);
         })();
 
-        // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
-        waitForElement('#uploadTitle', function(titleEl) {
-            titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload';
-        });
-
-        // Style the upload box to match GHL custom-file-upload label
+        // Upload box — HTML already has correct styles/content, just wire up the click
         waitForElement('#uploadBox', function(el) {
-            el.style.cssText = 'border:1px solid #ccc;border-radius:4px;padding:20px;text-align:center;cursor:pointer;background:white;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:5rem;width:100%;box-sizing:border-box;';
-            // Replace inner content to match GHL upload icon style (black icon)
-            el.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000000;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
-        // Remove mapper-container padding so upload section matches GHL form width
-        waitForElement('#uploadSection', function(section) {
-            section.style.cssText = 'text-align:left;padding:0;margin:0;';
-            // Fix mapper-container padding to match GHL field wrappers
-            var mc = document.getElementById('mapper-container');
-            if (mc) mc.style.padding = '0 12px';
-        });
-
-        // Fix the custom HTML wrapper's extra margin
+        // Remove all padding from mapper-container so upload box matches GHL form width
         waitForElement('#mapper-container', function(mc) {
-            mc.style.padding = '0 12px';
+            mc.style.padding = '0';
             var menuWrap = mc.closest('.menu-field-wrap');
             if (menuWrap) { menuWrap.style.paddingLeft = '0'; menuWrap.style.paddingRight = '0'; }
         });
