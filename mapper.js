@@ -17,6 +17,12 @@
     var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : 'rgba(44, 95, 93, 0.1)';
     var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : 'rgba(44, 95, 93, 0.3)';
     console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : 'Default (#2c5f5d)');
+
+    // Apply theme to CSS variables so static CSS in HTML also picks up the color
+    if (isSW) {
+        document.documentElement.style.setProperty('--theme-color', themeColor);
+        document.documentElement.style.setProperty('--theme-color-hover', themeColorHover);
+    }
     
     var workbook = null;
     var giftAppeals = [];
@@ -275,7 +281,7 @@
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
             titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload [v3]';
+            titleEl.textContent = 'Client Data File Upload [v4]';
         });
 
         // Style the upload box to match GHL custom-file-upload label
