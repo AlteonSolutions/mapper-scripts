@@ -261,7 +261,7 @@
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
             titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload [JS 2/18 3:45pm]';
+            titleEl.textContent = 'Client Data File Upload [v1]';
         });
 
         // Style the upload box to match GHL custom-file-upload label
