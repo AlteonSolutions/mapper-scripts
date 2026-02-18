@@ -10,8 +10,9 @@
     
     console.log('Mapper.js: Initializing on live page');
 
-    // Theme detection based on URL
-    var isSW = window.location.href.includes('getdatabasey.com/sw');
+    // Theme detection based on URL param passed from outer page
+    var _urlParams = new URLSearchParams(window.location.search);
+    var isSW = _urlParams.get('brand') === 'sw';
     var themeColor = isSW ? '#00386c' : '#2c5f5d';
     var themeColorHover = isSW ? '#004f99' : '#3d7672';
     var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : 'rgba(44, 95, 93, 0.1)';
@@ -281,7 +282,7 @@
         // Style the upload title to match GHL label style (Inter 14px 500 #2c3345)
         waitForElement('#uploadTitle', function(titleEl) {
             titleEl.style.cssText = 'margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;';
-            titleEl.textContent = 'Client Data File Upload [v4]';
+            titleEl.textContent = 'Client Data File Upload [v5]';
         });
 
         // Style the upload box to match GHL custom-file-upload label
