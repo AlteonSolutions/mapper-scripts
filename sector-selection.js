@@ -157,9 +157,14 @@
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // 5. After animation: swap to normal flow, scroll outer page, show form
+            // 5. After animation: measure shift, correct it, then swap to normal flow
             setTimeout(function() {
-                // Strip only position-related styles, leave everything else
+                // Get icon's current viewport position while still absolute
+                var currentViewportTop = clickedBtn.getBoundingClientRect().top;
+
+                // Do the DOM swap
+                var centerRow = document.createElement('div');
+                centerRow.style.cssText = 'display:flex;justify-content:center;';
                 clickedBtn.style.position = '';
                 clickedBtn.style.left = '';
                 clickedBtn.style.top = '';
@@ -170,21 +175,26 @@
                 clickedBtn.style.zIndex = '';
                 clickedBtn.style.transition = 'none';
                 clickedBtn.style.pointerEvents = 'none';
-
-                // Rebuild container
-                var centerRow = document.createElement('div');
-                centerRow.style.cssText = 'display:flex;justify-content:center;';
                 centerRow.appendChild(clickedBtn);
                 cc.innerHTML = '';
                 cc.style.cssText = '';
                 cc.appendChild(centerRow);
 
-                // After layout settles, scroll to icon and show form
+                // Measure where icon landed after swap
                 requestAnimationFrame(function() {
+                    var newViewportTop = clickedBtn.getBoundingClientRect().top;
+                    var shift = newViewportTop - currentViewportTop;
+
+                    // If there's a shift, correct it instantly by adjusting scroll position
+                    if (Math.abs(shift) > 1) {
+                        window.scrollBy(0, shift);
+                    }
+
+                    // Now scroll to bring icon to top of page
                     requestAnimationFrame(function() {
                         var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
                         var headerH = header ? header.offsetHeight : 0;
-                        var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                        var iconTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
                         window.scrollTo({ top: iconTop, behavior: 'smooth' });
 
                         setTimeout(function() {
