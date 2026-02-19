@@ -100,38 +100,43 @@
         });
 
         if (clickedBtn && cc) {
-            // Fade out all other buttons immediately
+            // Get the clicked button's current position relative to the container
+            var ccRect = cc.getBoundingClientRect();
+            var btnRect = clickedBtn.getBoundingClientRect();
+
+            // Calculate where center of container is vs center of clicked button
+            var containerCenterX = ccRect.left + ccRect.width / 2;
+            var btnCenterX = btnRect.left + btnRect.width / 2;
+            var btnCenterY = btnRect.top + btnRect.height / 2;
+
+            // Target: top of container + half of target size
+            var targetSize = 180;
+            var targetY = ccRect.top + targetSize / 2;
+            var translateX = containerCenterX - btnCenterX;
+            var translateY = targetY - btnCenterY;
+            var scaleRatio = targetSize / btnRect.width;
+
+            // Fade out all other buttons simultaneously
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
-                    btn.style.transition = 'opacity 0.5s ease';
+                    btn.style.transition = 'opacity 0.7s ease';
                     btn.style.opacity = '0';
                     btn.style.pointerEvents = 'none';
                 }
             });
 
-            // After others fade, move selected icon to top-center of container
+            // Animate selected icon to center-top simultaneously
+            clickedBtn.style.transition = 'transform 0.8s cubic-bezier(0.4,0,0.2,1)';
+            clickedBtn.style.transformOrigin = 'center center';
             setTimeout(function() {
-                // Hide the rows, show just the selected icon centered
-                var rows = cc.querySelectorAll('.category-row');
-                rows.forEach(function(row) { row.style.display = 'none'; });
+                clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + scaleRatio + ')';
+            }, 30);
 
-                // Create a centered single-icon row
-                var centerRow = document.createElement('div');
-                centerRow.style.cssText = 'display:flex;justify-content:center;padding:10px 0;';
-                var iconSize = '180px';
-                var iconEl = document.createElement('div');
-                iconEl.style.cssText = 'width:' + iconSize + ';height:' + iconSize + ';opacity:0;transition:opacity 0.5s ease;';
-                iconEl.innerHTML = clickedBtn.innerHTML;
-                centerRow.appendChild(iconEl);
-                cc.appendChild(centerRow);
-
-                // Shrink container height to fit single icon
-                cc.style.maxHeight = '220px';
-                cc.style.padding = '10px';
-
-                // Fade in the centered icon
-                setTimeout(function() { iconEl.style.opacity = '1'; }, 30);
-            }, 500);
+            // Shrink container height after animation
+            setTimeout(function() {
+                cc.style.maxHeight = (targetSize + 40) + 'px';
+                cc.style.padding = '20px 10px';
+            }, 600);
         }
 
         // Load iframe
