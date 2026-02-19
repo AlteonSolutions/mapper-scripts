@@ -100,31 +100,35 @@
         });
 
         if (clickedBtn && cc) {
-            // Step 1: Fade out all other buttons
+            // Step 1: Fade out all other buttons simultaneously
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
-                    btn.style.transition = 'opacity 0.7s ease';
+                    btn.style.transition = 'opacity 0.7s ease, width 0.8s ease, padding 0.8s ease, margin 0.8s ease, flex 0.8s ease';
                     btn.style.opacity = '0';
                     btn.style.pointerEvents = 'none';
+                    // Also collapse their width so selected slides to center
+                    setTimeout(function() {
+                        btn.style.width = '0';
+                        btn.style.minWidth = '0';
+                        btn.style.padding = '0';
+                        btn.style.margin = '0';
+                        btn.style.flex = '0 0 0';
+                        btn.style.overflow = 'hidden';
+                    }, 300);
                 }
             });
 
-            // Step 2: After fade, hide others and move clicked button into centered row
+            // Step 2: After animation, clean up into simple centered row
             setTimeout(function() {
-                // Hide all rows
                 var rows = cc.querySelectorAll('.category-row');
                 rows.forEach(function(row) { row.style.display = 'none'; });
 
-                // Create centered row and move the actual button into it
                 var centerRow = document.createElement('div');
                 centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
-                clickedBtn.style.transition = 'none';
-                clickedBtn.style.opacity = '1';
-                clickedBtn.style.transform = '';
-                clickedBtn.style.pointerEvents = 'none';
+                clickedBtn.style.cssText = 'pointer-events:none;';
                 centerRow.appendChild(clickedBtn);
                 cc.appendChild(centerRow);
-            }, 800);
+            }, 1200);
         }
 
         // Load iframe
