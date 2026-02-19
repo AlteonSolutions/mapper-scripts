@@ -155,20 +155,23 @@
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // 5. Collapse container after animation, then scroll icon to top
+            // 5. Collapse container after animation
             setTimeout(function() {
                 cc.style.transition = 'height 0.3s ease';
                 cc.style.height = (btnH + 60) + 'px';
                 cc.style.minHeight = (btnH + 60) + 'px';
-
-                // Scroll so the icon is near the top, accounting for fixed header
-                setTimeout(function() {
-                    var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
-                    var headerH = header ? header.offsetHeight : 0;
-                    var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
-                    window.scrollTo({ top: iconTop, behavior: 'smooth' });
-                }, 350);
             }, 2000);
+
+            // 6. Show form AND scroll simultaneously
+            setTimeout(function() {
+                var fc = document.getElementById('form-container');
+                if (fc) fc.classList.add('show');
+
+                var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                var headerH = header ? header.offsetHeight : 0;
+                var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                window.scrollTo({ top: iconTop, behavior: 'smooth' });
+            }, 2200);
         }
 
         // Load iframe
@@ -179,11 +182,7 @@
             + (isSW ? '&brand=sw' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
-        // Show form after iframe has had time to fully load
-        setTimeout(function() {
-            var fc = document.getElementById('form-container');
-            if (fc) fc.classList.add('show');
-        }, 2000);
+
     };
 
     } // end init
