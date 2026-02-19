@@ -157,38 +157,47 @@
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // 5. After animation: return icon to normal responsive flow
+            // 5. After animation: return icon to normal responsive flow invisibly
             setTimeout(function() {
-                // Remove all absolute positioning from all buttons
-                allBtns.forEach(function(btn) {
-                    btn.style.position = '';
-                    btn.style.left = '';
-                    btn.style.top = '';
-                    btn.style.width = '';
-                    btn.style.height = '';
-                    btn.style.margin = '';
-                    btn.style.flex = '';
-                    btn.style.zIndex = '';
-                    btn.style.transition = '';
-                });
+                // Hide icon during swap to prevent visual jump
+                clickedBtn.style.opacity = '0';
 
                 // Rebuild container as a single centered row
                 var rows = cc.querySelectorAll('.category-row');
                 rows.forEach(function(row) { row.style.display = 'none'; });
 
                 var centerRow = document.createElement('div');
+                centerRow.id = 'selected-center-row';
                 centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
-                clickedBtn.style.cssText = 'pointer-events:none;flex:0 0 auto;';
+
+                // Reset button to normal flow styles before inserting
+                clickedBtn.style.position = '';
+                clickedBtn.style.left = '';
+                clickedBtn.style.top = '';
+                clickedBtn.style.width = '';
+                clickedBtn.style.height = '';
+                clickedBtn.style.margin = '';
+                clickedBtn.style.flex = '0 0 auto';
+                clickedBtn.style.zIndex = '';
+                clickedBtn.style.transition = 'none';
+                clickedBtn.style.pointerEvents = 'none';
                 clickedBtn.classList.add('selected');
                 centerRow.appendChild(clickedBtn);
 
-                // Reset container to auto height and normal flow
+                // Reset container to normal flow
                 cc.style.position = '';
                 cc.style.height = '';
                 cc.style.minHeight = '';
                 cc.style.overflow = '';
                 cc.style.transition = '';
                 cc.appendChild(centerRow);
+
+                // Fade icon back in on next frame so layout has settled
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        clickedBtn.style.opacity = '1';
+                    });
+                });
             }, 2000);
 
             // 6. Show form AND scroll simultaneously
