@@ -128,19 +128,35 @@
             });
             clickedBtn.style.opacity = '0'; // hide original
 
-            // Animate to center after a tick
+            // Animate to center of anchor div after a tick
             setTimeout(function() {
                 var targetSize = 180;
-                var targetLeft = (window.innerWidth - targetSize) / 2;
                 var anchor = document.getElementById('selected-icon-anchor');
-                var anchorTop = anchor
-                    ? anchor.getBoundingClientRect().top + (anchor.offsetHeight - targetSize) / 2
+                var anchorRect = anchor ? anchor.getBoundingClientRect() : null;
+                var targetLeft = anchorRect
+                    ? anchorRect.left + (anchorRect.width - targetSize) / 2
+                    : (window.innerWidth - targetSize) / 2;
+                var targetTop = anchorRect
+                    ? anchorRect.top + (anchorRect.height - targetSize) / 2
                     : window.innerHeight * 0.15;
 
                 flyIcon.style.width = targetSize + 'px';
                 flyIcon.style.height = targetSize + 'px';
-                flyIcon.style.top = anchorTop + 'px';
+                flyIcon.style.top = targetTop + 'px';
                 flyIcon.style.left = targetLeft + 'px';
+
+                // Once animation ends, move icon into anchor and remove clone
+                flyIcon.addEventListener('transitionend', function handler() {
+                    flyIcon.removeEventListener('transitionend', handler);
+                    if (anchor) {
+                        var staticIcon = document.createElement('div');
+                        staticIcon.style.cssText = 'width:' + targetSize + 'px;height:' + targetSize + 'px;margin:0 auto;';
+                        staticIcon.innerHTML = flyIcon.innerHTML;
+                        anchor.innerHTML = '';
+                        anchor.appendChild(staticIcon);
+                    }
+                    document.body.removeChild(flyIcon);
+                });
             }, 30);
         }
 
