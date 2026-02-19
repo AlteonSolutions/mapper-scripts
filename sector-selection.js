@@ -93,7 +93,7 @@
         var cc = document.querySelector('.category-container');
         if (cc) cc.classList.add('hide');
 
-        // Step 2: after icons are gone (600ms), show header and start loading form
+        // Step 2: after icons gone, show header and start loading iframe
         setTimeout(function() {
             var headerImg = document.getElementById('industry-header-img');
             var header = document.getElementById('industry-header');
@@ -107,16 +107,11 @@
 
             if (iframe && iframe.src !== newSrc) iframe.src = newSrc;
 
-            // Step 3: wait for mapper.js to finish initializing before revealing form
-            var fc = document.getElementById('form-container');
-            if (fc) {
-                fc.style.opacity = '0';
-                fc.style.transition = 'opacity 0.5s ease';
-                fc.classList.add('show');
-                setTimeout(function() {
-                    fc.style.opacity = '1';
-                }, 2500);
-            }
+            // Step 3: show form after delay to let mapper.js initialize
+            setTimeout(function() {
+                var fc = document.getElementById('form-container');
+                if (fc) fc.classList.add('show');
+            }, 3000);
         }, 600);
     };
 
