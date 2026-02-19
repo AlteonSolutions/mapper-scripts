@@ -100,29 +100,43 @@
         });
 
         if (clickedBtn && cc) {
+            // Snapshot ALL positions before touching anything
             var ccRect = cc.getBoundingClientRect();
             var btnW = clickedBtn.getBoundingClientRect().width;
             var btnH = clickedBtn.getBoundingClientRect().height;
             var endX = (cc.offsetWidth / 2) - (btnW / 2);
             var endY = 20;
 
-            // Lock container size
-            cc.style.position = 'relative';
-            cc.style.height = ccRect.height + 'px';
-            cc.style.overflow = 'visible';
-
-            // Freeze ALL buttons in place simultaneously before touching anything
+            var snapshots = [];
             allBtns.forEach(function(btn) {
                 var r = btn.getBoundingClientRect();
-                btn.style.position = 'absolute';
-                btn.style.left = (r.left - ccRect.left) + 'px';
-                btn.style.top = (r.top - ccRect.top) + 'px';
-                btn.style.width = r.width + 'px';
-                btn.style.height = r.height + 'px';
-                btn.style.margin = '0';
+                snapshots.push({
+                    btn: btn,
+                    left: r.left - ccRect.left,
+                    top: r.top - ccRect.top,
+                    width: r.width,
+                    height: r.height
+                });
             });
 
-            // Now fade out all except clicked
+            // 1. Lock container height first (before any absolute positioning)
+            cc.style.position = 'relative';
+            cc.style.height = ccRect.height + 'px';
+            cc.style.minHeight = ccRect.height + 'px';
+            cc.style.overflow = 'visible';
+
+            // 2. Now freeze all buttons using snapshots
+            snapshots.forEach(function(s) {
+                s.btn.style.position = 'absolute';
+                s.btn.style.left = s.left + 'px';
+                s.btn.style.top = s.top + 'px';
+                s.btn.style.width = s.width + 'px';
+                s.btn.style.height = s.height + 'px';
+                s.btn.style.margin = '0';
+                s.btn.style.flex = 'none';
+            });
+
+            // 3. Fade out all except clicked
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
                     btn.style.transition = 'opacity 0.6s ease';
@@ -131,17 +145,18 @@
                 }
             });
 
-            // After fade, animate clicked to center
+            // 4. After fade, animate clicked to center
             setTimeout(function() {
                 clickedBtn.style.transition = 'left 1.2s cubic-bezier(0.4,0,0.2,1), top 1.2s cubic-bezier(0.4,0,0.2,1)';
                 clickedBtn.style.left = endX + 'px';
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // Collapse container after animation
+            // 5. Collapse container after animation
             setTimeout(function() {
                 cc.style.transition = 'height 0.3s ease';
                 cc.style.height = (btnH + 60) + 'px';
+                cc.style.minHeight = (btnH + 60) + 'px';
             }, 2000);
         }
 
