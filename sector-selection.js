@@ -157,30 +157,41 @@
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // 5. After animation: swap to normal flow, scroll into view, show form
+            // 5. After animation: swap to normal flow, scroll outer page, show form
             setTimeout(function() {
-                // Snapshot the icon's page position BEFORE clearing DOM
-                var ccPageTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset;
+                // Strip only position-related styles, leave everything else
+                clickedBtn.style.position = '';
+                clickedBtn.style.left = '';
+                clickedBtn.style.top = '';
+                clickedBtn.style.width = '';
+                clickedBtn.style.height = '';
+                clickedBtn.style.margin = '';
+                clickedBtn.style.flex = '0 0 auto';
+                clickedBtn.style.zIndex = '';
+                clickedBtn.style.transition = 'none';
+                clickedBtn.style.pointerEvents = 'none';
 
-                // Strip absolute positioning from icon
-                clickedBtn.style.cssText = 'pointer-events:none;flex:0 0 auto;';
-                clickedBtn.classList.add('selected');
-
-                // Rebuild container with no padding so icon sits exactly where it was
+                // Rebuild container
                 var centerRow = document.createElement('div');
                 centerRow.style.cssText = 'display:flex;justify-content:center;';
                 centerRow.appendChild(clickedBtn);
-
                 cc.innerHTML = '';
                 cc.style.cssText = '';
                 cc.appendChild(centerRow);
 
-                // Scroll using pre-captured position
+                // After layout settles, scroll outer page and show form
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
-                        var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
-                        var headerH = header ? header.offsetHeight : 0;
-                        window.scrollTo({ top: ccPageTop - headerH - 20, behavior: 'smooth' });
+                        // Scroll the PARENT window since we're inside a GHL iframe
+                        var scrollTarget = window.parent || window;
+                        var ccTop = cc.getBoundingClientRect().top;
+                        var iframeTop = 0;
+                        try {
+                            var iframeEl = window.parent.document.getElementById('ghl-form-iframe');
+                            if (iframeEl) iframeTop = iframeEl.getBoundingClientRect().top + window.parent.pageYOffset;
+                        } catch(e) {}
+                        var targetY = iframeTop + ccTop - 80;
+                        scrollTarget.scrollTo({ top: targetY, behavior: 'smooth' });
 
                         setTimeout(function() {
                             var fc = document.getElementById('form-container');
