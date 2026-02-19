@@ -100,21 +100,7 @@
         });
 
         if (clickedBtn && cc) {
-            var ccRect = cc.getBoundingClientRect();
-            var btnRect = clickedBtn.getBoundingClientRect();
-
-            // Lock container height immediately to prevent ANY reflow
-            cc.style.height = ccRect.height + 'px';
-            cc.style.minHeight = ccRect.height + 'px';
-            cc.style.overflow = 'visible';
-
-            // Calculate translate to top-center of container
-            var containerCenterX = ccRect.left + ccRect.width / 2;
-            var btnCenterX = btnRect.left + btnRect.width / 2;
-            var translateX = containerCenterX - btnCenterX;
-            var translateY = (ccRect.top + 20 + btnRect.height / 2) - (btnRect.top + btnRect.height / 2);
-
-            // Fade out others + animate selected simultaneously
+            // Step 1: Fade out all other buttons
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
                     btn.style.transition = 'opacity 0.7s ease';
@@ -122,23 +108,23 @@
                     btn.style.pointerEvents = 'none';
                 }
             });
-            clickedBtn.style.transition = 'transform 1.4s cubic-bezier(0.4,0,0.2,1)';
-            setTimeout(function() {
-                clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px)';
-            }, 30);
 
-            // After animation: just hide the empty rows, leave icon in place
+            // Step 2: After fade, hide others and move clicked button into centered row
             setTimeout(function() {
-                allBtns.forEach(function(btn) {
-                    if (btn !== clickedBtn) btn.style.display = 'none';
-                });
-                // Collapse rows that are now empty
+                // Hide all rows
                 var rows = cc.querySelectorAll('.category-row');
-                rows.forEach(function(row) {
-                    var visible = Array.from(row.querySelectorAll('.category-btn-icon')).some(function(b) { return b.style.display !== 'none'; });
-                    if (!visible) { row.style.height = '0'; row.style.margin = '0'; row.style.overflow = 'hidden'; }
-                });
-            }, 1450);
+                rows.forEach(function(row) { row.style.display = 'none'; });
+
+                // Create centered row and move the actual button into it
+                var centerRow = document.createElement('div');
+                centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
+                clickedBtn.style.transition = 'none';
+                clickedBtn.style.opacity = '1';
+                clickedBtn.style.transform = '';
+                clickedBtn.style.pointerEvents = 'none';
+                centerRow.appendChild(clickedBtn);
+                cc.appendChild(centerRow);
+            }, 800);
         }
 
         // Load iframe
