@@ -125,6 +125,9 @@
                 }
             });
 
+            // Allow overflow during animation so icon isn't clipped
+            cc.style.overflow = 'visible';
+
             // Animate selected icon to center-top simultaneously
             clickedBtn.style.transition = 'transform 0.8s cubic-bezier(0.4,0,0.2,1)';
             clickedBtn.style.transformOrigin = 'center center';
@@ -132,11 +135,26 @@
                 clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px)';
             }, 30);
 
-            // Shrink container height after animation
+            // After animation, set container to exact icon height and hide the empty rows
             setTimeout(function() {
-                cc.style.maxHeight = (btnRect.height + 40) + 'px';
-                cc.style.padding = '20px 10px';
-            }, 600);
+                var rows = cc.querySelectorAll('.category-row');
+                rows.forEach(function(row) {
+                    row.style.visibility = 'hidden';
+                    row.style.height = '0';
+                    row.style.margin = '0';
+                    row.style.overflow = 'hidden';
+                });
+                // Re-add the icon in a clean centered row
+                var cleanRow = document.createElement('div');
+                cleanRow.style.cssText = 'display:flex;justify-content:center;padding:10px 0;';
+                var iconClone = clickedBtn.cloneNode(true);
+                iconClone.style.transform = '';
+                iconClone.style.transition = '';
+                iconClone.style.pointerEvents = 'none';
+                cleanRow.appendChild(iconClone);
+                cc.appendChild(cleanRow);
+                cc.style.overflow = 'hidden';
+            }, 850);
         }
 
         // Load iframe
