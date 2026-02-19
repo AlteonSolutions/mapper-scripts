@@ -157,53 +157,39 @@
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // 5. After animation: return icon to normal responsive flow invisibly
+            // 5. After animation: swap to normal flow, scroll into view, show form
             setTimeout(function() {
-                // Hide icon during swap
-                clickedBtn.style.opacity = '0';
-
-                // Rebuild container as single centered row
+                // Rebuild container as single centered row (icon stays visible throughout)
                 var rows = cc.querySelectorAll('.category-row');
                 rows.forEach(function(row) { row.style.display = 'none'; });
 
                 var centerRow = document.createElement('div');
                 centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
-                clickedBtn.style.position = '';
-                clickedBtn.style.left = '';
-                clickedBtn.style.top = '';
-                clickedBtn.style.width = '';
-                clickedBtn.style.height = '';
-                clickedBtn.style.margin = '';
-                clickedBtn.style.flex = '0 0 auto';
-                clickedBtn.style.zIndex = '';
-                clickedBtn.style.transition = 'none';
-                clickedBtn.style.pointerEvents = 'none';
+
+                // Strip absolute positioning
+                clickedBtn.style.cssText = 'pointer-events:none;flex:0 0 auto;';
                 clickedBtn.classList.add('selected');
                 centerRow.appendChild(clickedBtn);
 
-                cc.style.position = '';
-                cc.style.height = '';
-                cc.style.minHeight = '';
-                cc.style.overflow = '';
-                cc.style.transition = '';
+                // Reset container — do all DOM changes in one batch
+                cc.innerHTML = '';
+                cc.style.cssText = '';
                 cc.appendChild(centerRow);
 
-                // Wait for layout to fully settle before showing icon + scrolling + revealing form
-                setTimeout(function() {
-                    clickedBtn.style.opacity = '1';
+                // After one full repaint, scroll and show form
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                        var headerH = header ? header.offsetHeight : 0;
+                        var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                        window.scrollTo({ top: iconTop, behavior: 'smooth' });
 
-                    // Scroll so icon is near top (below fixed header)
-                    var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
-                    var headerH = header ? header.offsetHeight : 0;
-                    var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
-                    window.scrollTo({ top: iconTop, behavior: 'smooth' });
-
-                    // Show form after scroll starts
-                    setTimeout(function() {
-                        var fc = document.getElementById('form-container');
-                        if (fc) fc.classList.add('show');
-                    }, 400);
-                }, 100);
+                        setTimeout(function() {
+                            var fc = document.getElementById('form-container');
+                            if (fc) fc.classList.add('show');
+                        }, 400);
+                    });
+                });
             }, 2000);
         }
 
