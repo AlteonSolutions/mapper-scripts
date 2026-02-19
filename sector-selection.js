@@ -1,5 +1,6 @@
 (function() {
     'use strict';
+    var VERSION = 'v2.1';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -107,7 +108,16 @@
             var btnH = clickedRect.height;
             // Use ccRect.width (viewport-relative) for centering, not offsetWidth
             var endX = (ccRect.width / 2) - (btnW / 2);
-            var endY = 0;
+            // Measure where icon will land in normal flow by checking parent padding
+            var parentPadding = 0;
+            var parent = cc.parentElement;
+            while (parent) {
+                var cs = window.getComputedStyle(parent);
+                parentPadding += parseFloat(cs.paddingTop) || 0;
+                if (parent === document.body) break;
+                parent = parent.parentElement;
+            }
+            var endY = parentPadding;
 
             var snapshots = [];
             allBtns.forEach(function(btn) {
@@ -216,6 +226,16 @@
 
 
     };
+
+        // Version badge - shows briefly on load then fades
+        var badge = document.createElement('div');
+        badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:rgba(0,0,0,0.6);color:white;'
+            + 'font-size:11px;padding:4px 8px;border-radius:4px;z-index:99999;'
+            + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
+        badge.textContent = 'sector-selection.js ' + VERSION;
+        document.body.appendChild(badge);
+        setTimeout(function() { badge.style.opacity = '0'; }, 3000);
+        setTimeout(function() { document.body.removeChild(badge); }, 4000);
 
     } // end init
 
