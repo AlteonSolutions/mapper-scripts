@@ -99,75 +99,42 @@
             if (img && img.alt === industryLabel) clickedBtn = btn;
         });
 
-        if (clickedBtn) {
-            // Get current position of clicked button
-            var rect = clickedBtn.getBoundingClientRect();
-            var btnW = rect.width;
-            var btnH = rect.height;
-
-            // Clone the button image for animation
-            var flyIcon = document.createElement('div');
-            flyIcon.style.cssText = [
-                'position:fixed',
-                'z-index:9999',
-                'width:' + btnW + 'px',
-                'height:' + btnH + 'px',
-                'top:' + rect.top + 'px',
-                'left:' + rect.left + 'px',
-                'transition:top 0.8s cubic-bezier(0.4,0,0.2,1),left 0.8s cubic-bezier(0.4,0,0.2,1),width 0.8s ease,height 0.8s ease,opacity 0.3s ease',
-                'pointer-events:none',
-                'overflow:hidden'
-            ].join(';');
-            flyIcon.innerHTML = clickedBtn.innerHTML;
-            document.body.appendChild(flyIcon);
-
-            // Fade out all other buttons
+        if (clickedBtn && cc) {
+            // Fade out all other buttons immediately
             allBtns.forEach(function(btn) {
-                if (btn !== clickedBtn) btn.style.transition = 'opacity 0.5s ease';
-                if (btn !== clickedBtn) btn.style.opacity = '0';
+                if (btn !== clickedBtn) {
+                    btn.style.transition = 'opacity 0.5s ease';
+                    btn.style.opacity = '0';
+                    btn.style.pointerEvents = 'none';
+                }
             });
-            clickedBtn.style.opacity = '0'; // hide original
 
-            // Animate to center of anchor div after a tick
+            // After others fade, move selected icon to top-center of container
             setTimeout(function() {
-                var targetSize = 180;
-                var anchor = document.getElementById('selected-icon-anchor');
-                var anchorRect = anchor ? anchor.getBoundingClientRect() : null;
-                var targetLeft = anchorRect
-                    ? anchorRect.left + (anchorRect.width - targetSize) / 2
-                    : (window.innerWidth - targetSize) / 2;
-                var targetTop = anchorRect
-                    ? anchorRect.top + (anchorRect.height - targetSize) / 2
-                    : window.innerHeight * 0.15;
+                // Hide the rows, show just the selected icon centered
+                var rows = cc.querySelectorAll('.category-row');
+                rows.forEach(function(row) { row.style.display = 'none'; });
 
-                flyIcon.style.width = targetSize + 'px';
-                flyIcon.style.height = targetSize + 'px';
-                flyIcon.style.top = targetTop + 'px';
-                flyIcon.style.left = targetLeft + 'px';
+                // Create a centered single-icon row
+                var centerRow = document.createElement('div');
+                centerRow.style.cssText = 'display:flex;justify-content:center;padding:10px 0;';
+                var iconSize = '180px';
+                var iconEl = document.createElement('div');
+                iconEl.style.cssText = 'width:' + iconSize + ';height:' + iconSize + ';opacity:0;transition:opacity 0.5s ease;';
+                iconEl.innerHTML = clickedBtn.innerHTML;
+                centerRow.appendChild(iconEl);
+                cc.appendChild(centerRow);
 
-                // Once animation ends, move icon into anchor and remove clone
-                flyIcon.addEventListener('transitionend', function handler() {
-                    flyIcon.removeEventListener('transitionend', handler);
-                    if (anchor) {
-                        var staticIcon = document.createElement('div');
-                        staticIcon.style.cssText = 'width:' + targetSize + 'px;height:' + targetSize + 'px;margin:0 auto;';
-                        staticIcon.innerHTML = flyIcon.innerHTML;
-                        anchor.innerHTML = '';
-                        anchor.appendChild(staticIcon);
-                    }
-                    document.body.removeChild(flyIcon);
-                });
-            }, 30);
+                // Shrink container height to fit single icon
+                cc.style.maxHeight = '220px';
+                cc.style.padding = '10px';
+
+                // Fade in the centered icon
+                setTimeout(function() { iconEl.style.opacity = '1'; }, 30);
+            }, 500);
         }
 
-        // Fade out container
-        if (cc) cc.classList.add('hide');
-
-        // Show anchor
-        var anchor = document.getElementById('selected-icon-anchor');
-        if (anchor) anchor.style.display = 'block';
-
-        // Load iframe src
+        // Load iframe
         var iframeEl = document.getElementById('ghl-form-iframe');
         var newSrc = formBase
             + '?industrytype=' + encodeURIComponent(industryLabel)
@@ -179,7 +146,7 @@
         setTimeout(function() {
             var fc = document.getElementById('form-container');
             if (fc) fc.classList.add('show');
-        }, 1500);
+        }, 1300);
     };
 
     } // end init
