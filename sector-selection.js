@@ -102,9 +102,11 @@
         if (clickedBtn && cc) {
             // Snapshot ALL positions before touching anything
             var ccRect = cc.getBoundingClientRect();
-            var btnW = clickedBtn.getBoundingClientRect().width;
-            var btnH = clickedBtn.getBoundingClientRect().height;
-            var endX = (cc.offsetWidth / 2) - (btnW / 2);
+            var clickedRect = clickedBtn.getBoundingClientRect();
+            var btnW = clickedRect.width;
+            var btnH = clickedRect.height;
+            // Use ccRect.width (viewport-relative) for centering, not offsetWidth
+            var endX = (ccRect.width / 2) - (btnW / 2);
             var endY = 20;
 
             var snapshots = [];
