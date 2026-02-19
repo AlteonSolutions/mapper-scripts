@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var VERSION = 'v2.2';
+    var VERSION = 'v2.4';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -191,16 +191,16 @@
                         window.scrollBy(0, shift);
                     }
 
-                    // Now scroll to bring icon to top of page
+                    // Show form first so page height is correct, then scroll
                     requestAnimationFrame(function() {
-                        var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
-                        var headerH = header ? header.offsetHeight : 0;
-                        var iconTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
-                        window.scrollTo({ top: iconTop, behavior: 'smooth' });
+                        var fc = document.getElementById('form-container');
+                        if (fc) fc.classList.add('show');
 
                         setTimeout(function() {
-                            var fc = document.getElementById('form-container');
-                            if (fc) fc.classList.add('show');
+                            var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                            var headerH = header ? header.offsetHeight : 0;
+                            var iconTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                            window.scrollTo({ top: iconTop, behavior: 'smooth' });
                         }, 400);
                     });
                 });
