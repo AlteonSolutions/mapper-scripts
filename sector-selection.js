@@ -134,18 +134,18 @@
                 }
             });
 
-            // Animate icon diagonally to top-center
+            // Wait for others to fade, then animate icon diagonally to top-center
             setTimeout(function() {
                 clickedBtn.style.transition = 'left 1.2s cubic-bezier(0.4,0,0.2,1), top 1.2s cubic-bezier(0.4,0,0.2,1)';
                 clickedBtn.style.left = endX + 'px';
                 clickedBtn.style.top = endY + 'px';
-            }, 30);
+            }, 700);
 
-            // Collapse container height after animation
+            // Collapse container height after animation completes
             setTimeout(function() {
                 cc.style.transition = 'height 0.3s ease';
                 cc.style.height = (btnH + 60) + 'px';
-            }, 1300);
+            }, 2000);
         }
 
         // Load iframe
