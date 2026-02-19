@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var VERSION = 'v2.6';
+    var VERSION = 'v2.8';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -191,17 +191,21 @@
                         window.scrollBy(0, shift);
                     }
 
-                    // Show form first so page height is correct, then scroll
-                    requestAnimationFrame(function() {
-                        var fc = document.getElementById('form-container');
-                        if (fc) fc.classList.add('show');
+                    // Show form
+                    var fc = document.getElementById('form-container');
+                    if (fc) fc.classList.add('show');
 
-                        setTimeout(function() {
-                            var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
-                            var headerH = header ? header.offsetHeight : 0;
-                            var iconTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
-                            window.scrollTo({ top: iconTop, behavior: 'smooth' });
-                        }, 400);
+                    // Scroll once Mapper.js signals it has finished processing the file
+                    window.addEventListener('message', function onMapperReady(event) {
+                        if (event.data && event.data.type === 'mapperBoxReady') {
+                            window.removeEventListener('message', onMapperReady);
+                            setTimeout(function() {
+                                var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                                var headerH = header ? header.offsetHeight : 0;
+                                var iconTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                                window.scrollTo({ top: iconTop, behavior: 'smooth' });
+                            }, 200);
+                        }
                     });
                 });
             }, 2000);
