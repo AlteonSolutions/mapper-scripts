@@ -1,5 +1,6 @@
 (function() {
     'use strict';
+    var MAPPER_VERSION = 'v8.1';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -475,6 +476,14 @@
                 document.getElementById('categorySetup').style.display = 'block';
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                 var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
+                // Scroll mappingBoxLabel to top of page
+                setTimeout(function() {
+                    var target = document.getElementById('mappingBoxLabel') || document.getElementById('mappingBox');
+                    if (target) {
+                        var top = target.getBoundingClientRect().top + window.pageYOffset - 20;
+                        window.scrollTo({ top: top, behavior: 'smooth' });
+                    }
+                }, 50);
 
             } catch (err) {
                 // Reset upload box on error
