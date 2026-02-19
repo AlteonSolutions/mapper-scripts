@@ -179,12 +179,13 @@
                 cc.style.cssText = '';
                 cc.appendChild(centerRow);
 
-                // After layout settles, show form and tell parent shell to scroll
+                // After layout settles, scroll to icon and show form
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
-                        // Tell the outer shell page to scroll to the icon
-                        var ccTop = cc.getBoundingClientRect().top;
-                        window.parent.postMessage({ type: 'scrollToIcon', offsetTop: ccTop }, '*');
+                        var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                        var headerH = header ? header.offsetHeight : 0;
+                        var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                        window.scrollTo({ top: iconTop, behavior: 'smooth' });
 
                         setTimeout(function() {
                             var fc = document.getElementById('form-container');
