@@ -284,11 +284,15 @@
 
         // uploadSection pre-styled in HTML
 
-        // Reveal mapper-container once JS is ready (was hidden to prevent flash)
+        // Reveal mapper-container once JS is ready, then signal parent to show iframe
         waitForElement('#mapper-container', function(mc) {
             var menuWrap = mc.closest('.menu-field-wrap');
             if (menuWrap) { menuWrap.style.paddingLeft = '0'; menuWrap.style.paddingRight = '0'; }
             mc.style.visibility = 'visible';
+            // Signal parent page that mapper is ready to be shown
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'mapperReady' }, '*');
+            }
         });
 
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
