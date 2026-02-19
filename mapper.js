@@ -284,10 +284,11 @@
 
         // uploadSection pre-styled in HTML
 
-        // mapper-container pre-styled in HTML - just handle menuWrap if needed
+        // Reveal mapper-container once JS is ready (was hidden to prevent flash)
         waitForElement('#mapper-container', function(mc) {
             var menuWrap = mc.closest('.menu-field-wrap');
             if (menuWrap) { menuWrap.style.paddingLeft = '0'; menuWrap.style.paddingRight = '0'; }
+            mc.style.visibility = 'visible';
         });
 
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
