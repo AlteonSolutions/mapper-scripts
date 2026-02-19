@@ -179,19 +179,12 @@
                 cc.style.cssText = '';
                 cc.appendChild(centerRow);
 
-                // After layout settles, scroll outer page and show form
+                // After layout settles, show form and tell parent shell to scroll
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
-                        // Scroll the PARENT window since we're inside a GHL iframe
-                        var scrollTarget = window.parent || window;
+                        // Tell the outer shell page to scroll to the icon
                         var ccTop = cc.getBoundingClientRect().top;
-                        var iframeTop = 0;
-                        try {
-                            var iframeEl = window.parent.document.getElementById('ghl-form-iframe');
-                            if (iframeEl) iframeTop = iframeEl.getBoundingClientRect().top + window.parent.pageYOffset;
-                        } catch(e) {}
-                        var targetY = iframeTop + ccTop - 80;
-                        scrollTarget.scrollTo({ top: targetY, behavior: 'smooth' });
+                        window.parent.postMessage({ type: 'scrollToIcon', offsetTop: ccTop }, '*');
 
                         setTimeout(function() {
                             var fc = document.getElementById('form-container');
