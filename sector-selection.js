@@ -127,20 +127,17 @@
                 clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px)';
             }, 30);
 
-            // After animation: shrink container height smoothly, swap to clean clone
+            // After animation: just hide the empty rows, leave icon in place
             setTimeout(function() {
-                var finalH = btnRect.height + 40;
-                cc.style.transition = 'height 0.3s ease, min-height 0.3s ease';
-                cc.style.height = finalH + 'px';
-                cc.style.minHeight = finalH + 'px';
-                cc.style.overflow = 'hidden';
-                cc.innerHTML = '';
-                var cleanRow = document.createElement('div');
-                cleanRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
-                var iconClone = clickedBtn.cloneNode(true);
-                iconClone.style.cssText = 'pointer-events:none;flex:0 0 auto;';
-                cleanRow.appendChild(iconClone);
-                cc.appendChild(cleanRow);
+                allBtns.forEach(function(btn) {
+                    if (btn !== clickedBtn) btn.style.display = 'none';
+                });
+                // Collapse rows that are now empty
+                var rows = cc.querySelectorAll('.category-row');
+                rows.forEach(function(row) {
+                    var visible = Array.from(row.querySelectorAll('.category-btn-icon')).some(function(b) { return b.style.display !== 'none'; });
+                    if (!visible) { row.style.height = '0'; row.style.margin = '0'; row.style.overflow = 'hidden'; }
+                });
             }, 1450);
         }
 
