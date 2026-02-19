@@ -100,35 +100,52 @@
         });
 
         if (clickedBtn && cc) {
-            // Step 1: Fade out all other buttons simultaneously
+            var ccRect = cc.getBoundingClientRect();
+            var btnRect = clickedBtn.getBoundingClientRect();
+
+            // Get icon position relative to container
+            var startX = btnRect.left - ccRect.left;
+            var startY = btnRect.top - ccRect.top;
+            var btnW = btnRect.width;
+            var btnH = btnRect.height;
+            var endX = (cc.offsetWidth / 2) - (btnW / 2);
+            var endY = 20;
+
+            // Make container relative + fixed height so icon can move freely inside it
+            cc.style.position = 'relative';
+            cc.style.height = ccRect.height + 'px';
+            cc.style.overflow = 'visible';
+
+            // Lift icon out of flow at its current position
+            clickedBtn.style.position = 'absolute';
+            clickedBtn.style.left = startX + 'px';
+            clickedBtn.style.top = startY + 'px';
+            clickedBtn.style.width = btnW + 'px';
+            clickedBtn.style.height = btnH + 'px';
+            clickedBtn.style.margin = '0';
+            clickedBtn.style.zIndex = '10';
+
+            // Fade out others
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
-                    btn.style.transition = 'opacity 0.7s ease, width 0.8s ease, padding 0.8s ease, margin 0.8s ease, flex 0.8s ease';
+                    btn.style.transition = 'opacity 0.6s ease';
                     btn.style.opacity = '0';
                     btn.style.pointerEvents = 'none';
-                    // Also collapse their width so selected slides to center
-                    setTimeout(function() {
-                        btn.style.width = '0';
-                        btn.style.minWidth = '0';
-                        btn.style.padding = '0';
-                        btn.style.margin = '0';
-                        btn.style.flex = '0 0 0';
-                        btn.style.overflow = 'hidden';
-                    }, 300);
                 }
             });
 
-            // Step 2: After animation, clean up into simple centered row
+            // Animate icon diagonally to top-center
             setTimeout(function() {
-                var rows = cc.querySelectorAll('.category-row');
-                rows.forEach(function(row) { row.style.display = 'none'; });
+                clickedBtn.style.transition = 'left 1.2s cubic-bezier(0.4,0,0.2,1), top 1.2s cubic-bezier(0.4,0,0.2,1)';
+                clickedBtn.style.left = endX + 'px';
+                clickedBtn.style.top = endY + 'px';
+            }, 30);
 
-                var centerRow = document.createElement('div');
-                centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
-                clickedBtn.style.cssText = 'pointer-events:none;';
-                centerRow.appendChild(clickedBtn);
-                cc.appendChild(centerRow);
-            }, 1200);
+            // Collapse container height after animation
+            setTimeout(function() {
+                cc.style.transition = 'height 0.3s ease';
+                cc.style.height = (btnH + 60) + 'px';
+            }, 1300);
         }
 
         // Load iframe
