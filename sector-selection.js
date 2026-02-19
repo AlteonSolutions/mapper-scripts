@@ -135,25 +135,24 @@
                 clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px)';
             }, 30);
 
-            // After animation, set container to exact icon height and hide the empty rows
+            // After animation, replace with clean static layout - fixed height to prevent reflow
             setTimeout(function() {
-                var rows = cc.querySelectorAll('.category-row');
-                rows.forEach(function(row) {
-                    row.style.visibility = 'hidden';
-                    row.style.height = '0';
-                    row.style.margin = '0';
-                    row.style.overflow = 'hidden';
-                });
-                // Re-add the icon in a clean centered row
+                var iconH = btnRect.height;
+                // Set container to exact final height BEFORE swapping content
+                cc.style.transition = 'none';
+                cc.style.height = (iconH + 40) + 'px';
+                cc.style.minHeight = (iconH + 40) + 'px';
+                cc.style.maxHeight = (iconH + 40) + 'px';
+                cc.style.overflow = 'hidden';
+
+                // Replace all content with clean centered icon
+                cc.innerHTML = '';
                 var cleanRow = document.createElement('div');
-                cleanRow.style.cssText = 'display:flex;justify-content:center;padding:10px 0;';
+                cleanRow.style.cssText = 'display:flex;justify-content:center;align-items:center;height:100%;padding:20px 0;';
                 var iconClone = clickedBtn.cloneNode(true);
-                iconClone.style.transform = '';
-                iconClone.style.transition = '';
-                iconClone.style.pointerEvents = 'none';
+                iconClone.style.cssText = 'pointer-events:none;flex:0 0 auto;';
                 cleanRow.appendChild(iconClone);
                 cc.appendChild(cleanRow);
-                cc.style.overflow = 'hidden';
             }, 850);
         }
 
