@@ -101,31 +101,28 @@
 
         if (clickedBtn && cc) {
             var ccRect = cc.getBoundingClientRect();
-            var btnRect = clickedBtn.getBoundingClientRect();
-
-            // Get icon position relative to container
-            var startX = btnRect.left - ccRect.left;
-            var startY = btnRect.top - ccRect.top;
-            var btnW = btnRect.width;
-            var btnH = btnRect.height;
+            var btnW = clickedBtn.getBoundingClientRect().width;
+            var btnH = clickedBtn.getBoundingClientRect().height;
             var endX = (cc.offsetWidth / 2) - (btnW / 2);
             var endY = 20;
 
-            // Make container relative + fixed height so icon can move freely inside it
+            // Lock container size
             cc.style.position = 'relative';
             cc.style.height = ccRect.height + 'px';
             cc.style.overflow = 'visible';
 
-            // Lift icon out of flow at its current position
-            clickedBtn.style.position = 'absolute';
-            clickedBtn.style.left = startX + 'px';
-            clickedBtn.style.top = startY + 'px';
-            clickedBtn.style.width = btnW + 'px';
-            clickedBtn.style.height = btnH + 'px';
-            clickedBtn.style.margin = '0';
-            clickedBtn.style.zIndex = '10';
+            // Freeze ALL buttons in place simultaneously before touching anything
+            allBtns.forEach(function(btn) {
+                var r = btn.getBoundingClientRect();
+                btn.style.position = 'absolute';
+                btn.style.left = (r.left - ccRect.left) + 'px';
+                btn.style.top = (r.top - ccRect.top) + 'px';
+                btn.style.width = r.width + 'px';
+                btn.style.height = r.height + 'px';
+                btn.style.margin = '0';
+            });
 
-            // Fade out others
+            // Now fade out all except clicked
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
                     btn.style.transition = 'opacity 0.6s ease';
@@ -134,14 +131,14 @@
                 }
             });
 
-            // Wait for others to fade, then animate icon diagonally to top-center
+            // After fade, animate clicked to center
             setTimeout(function() {
                 clickedBtn.style.transition = 'left 1.2s cubic-bezier(0.4,0,0.2,1), top 1.2s cubic-bezier(0.4,0,0.2,1)';
                 clickedBtn.style.left = endX + 'px';
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // Collapse container height after animation completes
+            // Collapse container after animation
             setTimeout(function() {
                 cc.style.transition = 'height 0.3s ease';
                 cc.style.height = (btnH + 60) + 'px';
