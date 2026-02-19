@@ -159,30 +159,28 @@
 
             // 5. After animation: swap to normal flow, scroll into view, show form
             setTimeout(function() {
-                // Rebuild container as single centered row (icon stays visible throughout)
-                var rows = cc.querySelectorAll('.category-row');
-                rows.forEach(function(row) { row.style.display = 'none'; });
+                // Snapshot container's page position BEFORE clearing it
+                var ccPageTop = cc.getBoundingClientRect().top + window.pageYOffset;
 
-                var centerRow = document.createElement('div');
-                centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
-
-                // Strip absolute positioning
+                // Strip absolute positioning from icon
                 clickedBtn.style.cssText = 'pointer-events:none;flex:0 0 auto;';
                 clickedBtn.classList.add('selected');
+
+                // Rebuild container with no padding so icon sits exactly where it was
+                var centerRow = document.createElement('div');
+                centerRow.style.cssText = 'display:flex;justify-content:center;';
                 centerRow.appendChild(clickedBtn);
 
-                // Reset container — do all DOM changes in one batch
                 cc.innerHTML = '';
                 cc.style.cssText = '';
                 cc.appendChild(centerRow);
 
-                // After one full repaint, scroll and show form
+                // Scroll using pre-captured position
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
                         var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
                         var headerH = header ? header.offsetHeight : 0;
-                        var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
-                        window.scrollTo({ top: iconTop, behavior: 'smooth' });
+                        window.scrollTo({ top: ccPageTop - headerH - 20, behavior: 'smooth' });
 
                         setTimeout(function() {
                             var fc = document.getElementById('form-container');
