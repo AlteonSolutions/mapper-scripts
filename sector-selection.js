@@ -200,15 +200,10 @@
                 });
             }, 2000);
 
-            // 6. Show form AND scroll simultaneously
+            // 6. Show form
             setTimeout(function() {
                 var fc = document.getElementById('form-container');
                 if (fc) fc.classList.add('show');
-
-                var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
-                var headerH = header ? header.offsetHeight : 0;
-                var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
-                window.scrollTo({ top: iconTop, behavior: 'smooth' });
             }, 2200);
         }
 
