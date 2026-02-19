@@ -100,23 +100,21 @@
         });
 
         if (clickedBtn && cc) {
-            // Get the clicked button's current position relative to the container
             var ccRect = cc.getBoundingClientRect();
             var btnRect = clickedBtn.getBoundingClientRect();
 
-            // Calculate where center of container is vs center of clicked button
+            // Lock container height immediately to prevent ANY reflow
+            cc.style.height = ccRect.height + 'px';
+            cc.style.minHeight = ccRect.height + 'px';
+            cc.style.overflow = 'visible';
+
+            // Calculate translate to top-center of container
             var containerCenterX = ccRect.left + ccRect.width / 2;
             var btnCenterX = btnRect.left + btnRect.width / 2;
-            var btnCenterY = btnRect.top + btnRect.height / 2;
-
-            // Target: top of container + half of target size
-            var targetSize = 180;
-            var targetY = ccRect.top + targetSize / 2;
             var translateX = containerCenterX - btnCenterX;
-            var translateY = targetY - btnCenterY;
-            var scaleRatio = targetSize / btnRect.width;
+            var translateY = (ccRect.top + 20 + btnRect.height / 2) - (btnRect.top + btnRect.height / 2);
 
-            // Fade out all other buttons simultaneously
+            // Fade out others + animate selected simultaneously
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
                     btn.style.transition = 'opacity 0.7s ease';
@@ -124,31 +122,21 @@
                     btn.style.pointerEvents = 'none';
                 }
             });
-
-            // Allow overflow during animation so icon isn't clipped
-            cc.style.overflow = 'visible';
-
-            // Animate selected icon to center-top simultaneously
             clickedBtn.style.transition = 'transform 0.8s cubic-bezier(0.4,0,0.2,1)';
-            clickedBtn.style.transformOrigin = 'center center';
             setTimeout(function() {
                 clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px)';
             }, 30);
 
-            // After animation, replace with clean static layout - fixed height to prevent reflow
+            // After animation: shrink container height smoothly, swap to clean clone
             setTimeout(function() {
-                var iconH = btnRect.height;
-                // Set container to exact final height BEFORE swapping content
-                cc.style.transition = 'none';
-                cc.style.height = (iconH + 40) + 'px';
-                cc.style.minHeight = (iconH + 40) + 'px';
-                cc.style.maxHeight = (iconH + 40) + 'px';
+                var finalH = btnRect.height + 40;
+                cc.style.transition = 'height 0.3s ease, min-height 0.3s ease';
+                cc.style.height = finalH + 'px';
+                cc.style.minHeight = finalH + 'px';
                 cc.style.overflow = 'hidden';
-
-                // Replace all content with clean centered icon
                 cc.innerHTML = '';
                 var cleanRow = document.createElement('div');
-                cleanRow.style.cssText = 'display:flex;justify-content:center;align-items:center;height:100%;padding:20px 0;';
+                cleanRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
                 var iconClone = clickedBtn.cloneNode(true);
                 iconClone.style.cssText = 'pointer-events:none;flex:0 0 auto;';
                 cleanRow.appendChild(iconClone);
