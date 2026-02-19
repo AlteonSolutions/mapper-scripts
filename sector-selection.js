@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var VERSION = 'v2.5';
+    var VERSION = 'v2.6';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -220,8 +220,8 @@
 
         // Version badge - shows briefly on load then fades
         var badge = document.createElement('div');
-        badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:rgba(0,0,0,0.7);color:white;'
-            + 'font-size:11px;padding:6px 10px;border-radius:4px;z-index:99999;line-height:1.8;'
+        badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:none;color:rgba(180,180,180,0.6);'
+            + 'font-size:10px;padding:4px 8px;z-index:99999;line-height:1.8;'
             + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
         badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js v8';
         document.body.appendChild(badge);
