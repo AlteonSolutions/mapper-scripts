@@ -109,15 +109,58 @@
 
             if (iframeEl) iframeEl.src = newSrc;
 
-            // Step 3: show form after delay to let mapper.js initialize
+            // Show spinner while mapper.js initializes
+            var loader = document.getElementById('mapper-loader');
+            var fc = document.getElementById('form-container');
+            if (loader) loader.style.display = 'block';
+            if (fc) fc.style.opacity = '0';
+
+            // Step 3: hide spinner, reveal form after delay
             setTimeout(function() {
-                var fc = document.getElementById('form-container');
-                if (fc) fc.classList.add('show');
-            }, 3000);
+                if (loader) loader.style.display = 'none';
+                if (fc) {
+                    fc.classList.add('show');
+                    setTimeout(function() { fc.style.opacity = '1'; }, 50);
+                }
+            }, 2500);
         }, 600);
     };
 
     } // end init
+
+    // ── SPINNER CSS ───────────────────────────────────────────────────────────
+    var spinnerStyle = document.createElement('style');
+    spinnerStyle.textContent = [
+        '#mapper-loader {',
+        '  display:none;',
+        '  text-align:center;',
+        '  padding:60px 20px;',
+        '}',
+        '#mapper-loader .spinner {',
+        '  width:48px;',
+        '  height:48px;',
+        '  border:5px solid #e0e0e0;',
+        '  border-top-color:' + (isSW ? '#00386c' : '#2c5f5d') + ';',
+        '  border-radius:50%;',
+        '  animation:spin 0.8s linear infinite;',
+        '  margin:0 auto 16px;',
+        '}',
+        '#mapper-loader p {',
+        '  color:#666;',
+        '  font-family:Roboto,sans-serif;',
+        '  font-size:14px;',
+        '}',
+        '@keyframes spin { to { transform:rotate(360deg); } }',
+        '#form-container { transition: opacity 0.5s ease; }'
+    ].join('');
+    document.head.appendChild(spinnerStyle);
+
+    // Insert spinner before form-container
+    var loaderDiv = document.createElement('div');
+    loaderDiv.id = 'mapper-loader';
+    loaderDiv.innerHTML = '<div class="spinner"></div><p>Loading your form...</p>';
+    var formContainerEl = document.getElementById('form-container');
+    if (formContainerEl) formContainerEl.parentNode.insertBefore(loaderDiv, formContainerEl);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
