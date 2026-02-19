@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var MAPPER_VERSION = 'v8.1';
+    var MAPPER_VERSION = 'v8.2';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
