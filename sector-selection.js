@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var VERSION = 'v2.1';
+    var VERSION = 'v2.2';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -108,16 +108,7 @@
             var btnH = clickedRect.height;
             // Use ccRect.width (viewport-relative) for centering, not offsetWidth
             var endX = (ccRect.width / 2) - (btnW / 2);
-            // Measure where icon will land in normal flow by checking parent padding
-            var parentPadding = 0;
-            var parent = cc.parentElement;
-            while (parent) {
-                var cs = window.getComputedStyle(parent);
-                parentPadding += parseFloat(cs.paddingTop) || 0;
-                if (parent === document.body) break;
-                parent = parent.parentElement;
-            }
-            var endY = parentPadding;
+            var endY = 10; // GHL column has 10px top padding
 
             var snapshots = [];
             allBtns.forEach(function(btn) {
