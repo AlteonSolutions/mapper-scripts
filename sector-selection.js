@@ -122,7 +122,7 @@
                     btn.style.pointerEvents = 'none';
                 }
             });
-            clickedBtn.style.transition = 'transform 0.8s cubic-bezier(0.4,0,0.2,1)';
+            clickedBtn.style.transition = 'transform 1.4s cubic-bezier(0.4,0,0.2,1)';
             setTimeout(function() {
                 clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px)';
             }, 30);
@@ -141,7 +141,7 @@
                 iconClone.style.cssText = 'pointer-events:none;flex:0 0 auto;';
                 cleanRow.appendChild(iconClone);
                 cc.appendChild(cleanRow);
-            }, 850);
+            }, 1450);
         }
 
         // Load iframe
@@ -156,7 +156,7 @@
         setTimeout(function() {
             var fc = document.getElementById('form-container');
             if (fc) fc.classList.add('show');
-        }, 1800);
+        }, 1200);
     };
 
     } // end init
