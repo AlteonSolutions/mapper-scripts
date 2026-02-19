@@ -161,9 +161,11 @@
                 cc.style.height = (btnH + 60) + 'px';
                 cc.style.minHeight = (btnH + 60) + 'px';
 
-                // Scroll so the icon is near the top of the viewport
+                // Scroll so the icon is near the top, accounting for fixed header
                 setTimeout(function() {
-                    var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - 20;
+                    var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                    var headerH = header ? header.offsetHeight : 0;
+                    var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
                     window.scrollTo({ top: iconTop, behavior: 'smooth' });
                 }, 350);
             }, 2000);
