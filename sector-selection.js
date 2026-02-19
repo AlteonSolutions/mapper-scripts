@@ -107,7 +107,7 @@
             var btnH = clickedRect.height;
             // Use ccRect.width (viewport-relative) for centering, not offsetWidth
             var endX = (ccRect.width / 2) - (btnW / 2);
-            var endY = 20;
+            var endY = 0;
 
             var snapshots = [];
             allBtns.forEach(function(btn) {
