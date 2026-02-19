@@ -100,12 +100,17 @@
             if (headerImg) { headerImg.src = brand.headers[fileCategory] || ''; headerImg.alt = industryLabel; }
             if (header) header.classList.add('show');
 
+            // Find iframe by any means possible
+            var iframeEl = document.getElementById('inline-' + brand.formId)
+                        || document.getElementById('ghl-form-iframe')
+                        || document.querySelector('#form-container iframe');
+
             var newSrc = formBase
                 + '?industrytype=' + encodeURIComponent(industryLabel)
                 + '&industry=' + encodeURIComponent(mapperKey)
                 + (isSW ? '&brand=sw' : '');
 
-            if (iframe && iframe.src !== newSrc) iframe.src = newSrc;
+            if (iframeEl) iframeEl.src = newSrc;
 
             // Step 3: show form after delay to let mapper.js initialize
             setTimeout(function() {
