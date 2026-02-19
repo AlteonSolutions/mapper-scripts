@@ -157,11 +157,38 @@
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // 5. Collapse container after animation
+            // 5. After animation: return icon to normal responsive flow
             setTimeout(function() {
-                cc.style.transition = 'height 0.3s ease';
-                cc.style.height = (btnH + 60) + 'px';
-                cc.style.minHeight = (btnH + 60) + 'px';
+                // Remove all absolute positioning from all buttons
+                allBtns.forEach(function(btn) {
+                    btn.style.position = '';
+                    btn.style.left = '';
+                    btn.style.top = '';
+                    btn.style.width = '';
+                    btn.style.height = '';
+                    btn.style.margin = '';
+                    btn.style.flex = '';
+                    btn.style.zIndex = '';
+                    btn.style.transition = '';
+                });
+
+                // Rebuild container as a single centered row
+                var rows = cc.querySelectorAll('.category-row');
+                rows.forEach(function(row) { row.style.display = 'none'; });
+
+                var centerRow = document.createElement('div');
+                centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
+                clickedBtn.style.cssText = 'pointer-events:none;flex:0 0 auto;';
+                clickedBtn.classList.add('selected');
+                centerRow.appendChild(clickedBtn);
+
+                // Reset container to auto height and normal flow
+                cc.style.position = '';
+                cc.style.height = '';
+                cc.style.minHeight = '';
+                cc.style.overflow = '';
+                cc.style.transition = '';
+                cc.appendChild(centerRow);
             }, 2000);
 
             // 6. Show form AND scroll simultaneously
