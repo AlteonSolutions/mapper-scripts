@@ -159,8 +159,8 @@
 
             // 5. After animation: swap to normal flow, scroll into view, show form
             setTimeout(function() {
-                // Snapshot container's page position BEFORE clearing it
-                var ccPageTop = cc.getBoundingClientRect().top + window.pageYOffset;
+                // Snapshot the icon's page position BEFORE clearing DOM
+                var ccPageTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset;
 
                 // Strip absolute positioning from icon
                 clickedBtn.style.cssText = 'pointer-events:none;flex:0 0 auto;';
