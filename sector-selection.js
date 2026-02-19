@@ -89,23 +89,27 @@
 
     // ── SELECTION HANDLER ─────────────────────────────────────────────────────
     window.selectIndustry = function(fileCategory, mapperKey, industryLabel) {
-        var headerImg = document.getElementById('industry-header-img');
-        var header = document.getElementById('industry-header');
-        if (headerImg) { headerImg.src = brand.headers[fileCategory] || ''; headerImg.alt = industryLabel; }
-        if (header) header.classList.add('show');
-
-        var newSrc = formBase
-            + '?industrytype=' + encodeURIComponent(industryLabel)
-            + '&industry=' + encodeURIComponent(mapperKey)
-            + (isSW ? '&brand=sw' : '');
-
-        if (iframe && iframe.src !== newSrc) iframe.src = newSrc;
-
-        var fc = document.getElementById('form-container');
-        if (fc) fc.classList.add('show');
-
+        // Step 1: slide icons away first
         var cc = document.querySelector('.category-container');
         if (cc) cc.classList.add('hide');
+
+        // Step 2: after icons are gone (600ms), show header + load form
+        setTimeout(function() {
+            var headerImg = document.getElementById('industry-header-img');
+            var header = document.getElementById('industry-header');
+            if (headerImg) { headerImg.src = brand.headers[fileCategory] || ''; headerImg.alt = industryLabel; }
+            if (header) header.classList.add('show');
+
+            var newSrc = formBase
+                + '?industrytype=' + encodeURIComponent(industryLabel)
+                + '&industry=' + encodeURIComponent(mapperKey)
+                + (isSW ? '&brand=sw' : '');
+
+            if (iframe && iframe.src !== newSrc) iframe.src = newSrc;
+
+            var fc = document.getElementById('form-container');
+            if (fc) fc.classList.add('show');
+        }, 600);
     };
 
     } // end init
