@@ -159,18 +159,15 @@
 
             // 5. After animation: return icon to normal responsive flow invisibly
             setTimeout(function() {
-                // Hide icon during swap to prevent visual jump
+                // Hide icon during swap
                 clickedBtn.style.opacity = '0';
 
-                // Rebuild container as a single centered row
+                // Rebuild container as single centered row
                 var rows = cc.querySelectorAll('.category-row');
                 rows.forEach(function(row) { row.style.display = 'none'; });
 
                 var centerRow = document.createElement('div');
-                centerRow.id = 'selected-center-row';
                 centerRow.style.cssText = 'display:flex;justify-content:center;padding:20px 0;';
-
-                // Reset button to normal flow styles before inserting
                 clickedBtn.style.position = '';
                 clickedBtn.style.left = '';
                 clickedBtn.style.top = '';
@@ -184,7 +181,6 @@
                 clickedBtn.classList.add('selected');
                 centerRow.appendChild(clickedBtn);
 
-                // Reset container to normal flow
                 cc.style.position = '';
                 cc.style.height = '';
                 cc.style.minHeight = '';
@@ -192,19 +188,23 @@
                 cc.style.transition = '';
                 cc.appendChild(centerRow);
 
-                // Fade icon back in on next frame so layout has settled
-                requestAnimationFrame(function() {
-                    requestAnimationFrame(function() {
-                        clickedBtn.style.opacity = '1';
-                    });
-                });
-            }, 2000);
+                // Wait for layout to fully settle before showing icon + scrolling + revealing form
+                setTimeout(function() {
+                    clickedBtn.style.opacity = '1';
 
-            // 6. Show form
-            setTimeout(function() {
-                var fc = document.getElementById('form-container');
-                if (fc) fc.classList.add('show');
-            }, 2200);
+                    // Scroll so icon is near top (below fixed header)
+                    var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                    var headerH = header ? header.offsetHeight : 0;
+                    var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                    window.scrollTo({ top: iconTop, behavior: 'smooth' });
+
+                    // Show form after scroll starts
+                    setTimeout(function() {
+                        var fc = document.getElementById('form-container');
+                        if (fc) fc.classList.add('show');
+                    }, 400);
+                }, 100);
+            }, 2000);
         }
 
         // Load iframe
