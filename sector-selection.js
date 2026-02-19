@@ -136,6 +136,9 @@
                 s.btn.style.flex = 'none';
             });
 
+            // Disable hover animation on clicked button immediately
+            clickedBtn.classList.add('selected');
+
             // 3. Fade out all except clicked
             allBtns.forEach(function(btn) {
                 if (btn !== clickedBtn) {
@@ -152,11 +155,17 @@
                 clickedBtn.style.top = endY + 'px';
             }, 700);
 
-            // 5. Collapse container after animation
+            // 5. Collapse container after animation, then scroll icon to top
             setTimeout(function() {
                 cc.style.transition = 'height 0.3s ease';
                 cc.style.height = (btnH + 60) + 'px';
                 cc.style.minHeight = (btnH + 60) + 'px';
+
+                // Scroll so the icon is near the top of the viewport
+                setTimeout(function() {
+                    var iconTop = cc.getBoundingClientRect().top + window.pageYOffset - 20;
+                    window.scrollTo({ top: iconTop, behavior: 'smooth' });
+                }, 350);
             }, 2000);
         }
 
