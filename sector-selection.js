@@ -89,32 +89,81 @@
 
     // ── SELECTION HANDLER ─────────────────────────────────────────────────────
     window.selectIndustry = function(fileCategory, mapperKey, industryLabel) {
-        // Step 1: slide icons away first
         var cc = document.querySelector('.category-container');
+        var allBtns = cc ? cc.querySelectorAll('.category-btn-icon') : [];
+
+        // Find the clicked button
+        var clickedBtn = null;
+        allBtns.forEach(function(btn) {
+            var img = btn.querySelector('img');
+            if (img && img.alt === industryLabel) clickedBtn = btn;
+        });
+
+        if (clickedBtn) {
+            // Get current position of clicked button
+            var rect = clickedBtn.getBoundingClientRect();
+            var btnW = rect.width;
+            var btnH = rect.height;
+
+            // Clone the button image for animation
+            var flyIcon = document.createElement('div');
+            flyIcon.style.cssText = [
+                'position:fixed',
+                'z-index:9999',
+                'width:' + btnW + 'px',
+                'height:' + btnH + 'px',
+                'top:' + rect.top + 'px',
+                'left:' + rect.left + 'px',
+                'transition:top 0.8s cubic-bezier(0.4,0,0.2,1),left 0.8s cubic-bezier(0.4,0,0.2,1),width 0.8s ease,height 0.8s ease,opacity 0.3s ease',
+                'pointer-events:none',
+                'overflow:hidden'
+            ].join(';');
+            flyIcon.innerHTML = clickedBtn.innerHTML;
+            document.body.appendChild(flyIcon);
+
+            // Fade out all other buttons
+            allBtns.forEach(function(btn) {
+                if (btn !== clickedBtn) btn.style.transition = 'opacity 0.5s ease';
+                if (btn !== clickedBtn) btn.style.opacity = '0';
+            });
+            clickedBtn.style.opacity = '0'; // hide original
+
+            // Animate to center after a tick
+            setTimeout(function() {
+                var targetSize = 180;
+                var targetLeft = (window.innerWidth - targetSize) / 2;
+                var anchor = document.getElementById('selected-icon-anchor');
+                var anchorTop = anchor
+                    ? anchor.getBoundingClientRect().top + (anchor.offsetHeight - targetSize) / 2
+                    : window.innerHeight * 0.15;
+
+                flyIcon.style.width = targetSize + 'px';
+                flyIcon.style.height = targetSize + 'px';
+                flyIcon.style.top = anchorTop + 'px';
+                flyIcon.style.left = targetLeft + 'px';
+            }, 30);
+        }
+
+        // Fade out container
         if (cc) cc.classList.add('hide');
 
-        // Step 2: after icons gone (1s to match slower fade), show header + load iframe
+        // Show anchor
+        var anchor = document.getElementById('selected-icon-anchor');
+        if (anchor) anchor.style.display = 'block';
+
+        // Load iframe src
+        var iframeEl = document.getElementById('ghl-form-iframe');
+        var newSrc = formBase
+            + '?industrytype=' + encodeURIComponent(industryLabel)
+            + '&industry=' + encodeURIComponent(mapperKey)
+            + (isSW ? '&brand=sw' : '');
+        if (iframeEl) iframeEl.src = newSrc;
+
+        // Show form after animation completes
         setTimeout(function() {
-            var headerImg = document.getElementById('industry-header-img');
-            var header = document.getElementById('industry-header');
-            if (headerImg) { headerImg.src = brand.headers[fileCategory] || ''; headerImg.alt = industryLabel; }
-            if (header) header.classList.add('show');
-
-            var iframeEl = document.getElementById('ghl-form-iframe');
-
-            var newSrc = formBase
-                + '?industrytype=' + encodeURIComponent(industryLabel)
-                + '&industry=' + encodeURIComponent(mapperKey)
-                + (isSW ? '&brand=sw' : '');
-
-            if (iframeEl) iframeEl.src = newSrc;
-
-            // Step 3: show form after short delay to let mapper.js initialize
-            setTimeout(function() {
-                var fc = document.getElementById('form-container');
-                if (fc) fc.classList.add('show');
-            }, 500);
-        }, 1000);
+            var fc = document.getElementById('form-container');
+            if (fc) fc.classList.add('show');
+        }, 1500);
     };
 
     } // end init
