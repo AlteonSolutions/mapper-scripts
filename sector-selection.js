@@ -152,11 +152,11 @@
             + (isSW ? '&brand=sw' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
-        // Show form after animation completes
+        // Show form after iframe has had time to fully load
         setTimeout(function() {
             var fc = document.getElementById('form-container');
             if (fc) fc.classList.add('show');
-        }, 1300);
+        }, 2500);
     };
 
     } // end init
