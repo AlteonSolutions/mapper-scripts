@@ -152,15 +152,10 @@
             + (isSW ? '&brand=sw' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
-        // Show form after animation completes, then fade overlay away
+        // Show form after animation completes
         setTimeout(function() {
             var fc = document.getElementById('form-container');
             if (fc) fc.classList.add('show');
-            // Fade out overlay after another 500ms to hide scrollbar flicker
-            setTimeout(function() {
-                var overlay = document.getElementById('form-overlay');
-                if (overlay) overlay.classList.add('hidden');
-            }, 500);
         }, 1300);
     };
 
