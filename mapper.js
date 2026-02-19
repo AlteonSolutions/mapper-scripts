@@ -476,6 +476,8 @@
                 document.getElementById('categorySetup').style.display = 'block';
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                 var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
+                // Notify outer shell page that mapper is ready to scroll
+                window.parent.postMessage({ type: 'mapperBoxReady' }, '*');
                 // Scroll mappingBoxLabel to top of page
                 setTimeout(function() {
                     var target = document.getElementById('mappingBoxLabel') || document.getElementById('mappingBox');
