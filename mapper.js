@@ -475,7 +475,7 @@
                 document.getElementById('categorySetup').style.display = 'block';
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                 var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
-                setTimeout(function() { var s = document.getElementById('uploadSection'); window.scrollTo({ top: s.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); }, 100);
+
             } catch (err) {
                 // Reset upload box on error
                 var uploadBox = document.getElementById('uploadBox');
