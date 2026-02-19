@@ -156,7 +156,7 @@
         setTimeout(function() {
             var fc = document.getElementById('form-container');
             if (fc) fc.classList.add('show');
-        }, 1600);
+        }, 2000);
     };
 
     } // end init
