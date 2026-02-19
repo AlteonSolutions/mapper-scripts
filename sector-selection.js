@@ -129,12 +129,12 @@
             clickedBtn.style.transition = 'transform 0.8s cubic-bezier(0.4,0,0.2,1)';
             clickedBtn.style.transformOrigin = 'center center';
             setTimeout(function() {
-                clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + scaleRatio + ')';
+                clickedBtn.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px)';
             }, 30);
 
             // Shrink container height after animation
             setTimeout(function() {
-                cc.style.maxHeight = (targetSize + 40) + 'px';
+                cc.style.maxHeight = (btnRect.height + 40) + 'px';
                 cc.style.padding = '20px 10px';
             }, 600);
         }
