@@ -84,7 +84,7 @@
     if (iframe) {
         iframe.setAttribute('data-layout-iframe-id', 'inline-' + brand.formId);
         iframe.setAttribute('data-form-id', brand.formId);
-        iframe.id = 'inline-' + brand.formId;
+        // Do NOT rename the iframe id - GHL form_embed.js needs it as-is
     }
 
     // ── SELECTION HANDLER ─────────────────────────────────────────────────────
@@ -100,10 +100,7 @@
             if (headerImg) { headerImg.src = brand.headers[fileCategory] || ''; headerImg.alt = industryLabel; }
             if (header) header.classList.add('show');
 
-            // Find iframe by any means possible
-            var iframeEl = document.getElementById('inline-' + brand.formId)
-                        || document.getElementById('ghl-form-iframe')
-                        || document.querySelector('#form-container iframe');
+            var iframeEl = document.getElementById('ghl-form-iframe');
 
             var newSrc = formBase
                 + '?industrytype=' + encodeURIComponent(industryLabel)
