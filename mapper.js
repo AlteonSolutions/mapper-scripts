@@ -708,12 +708,12 @@
     }
 
     function generateExcelBlob() {
-        var req = spotlightConfig ? 4 : 3;
-        var c1 = (Object.keys(mappings).length > 0 || specialEventSkipped) ? 1 : 0;
-        var c2 = spotlightConfig ? (Object.keys(spotlightMappings).length > 0 ? 1 : 0) : 0;
-        var c3 = Object.keys(constituentMappings).length > 0 ? 1 : 0;
-        var c4 = Object.keys(giftTypeMappings).length > 0 ? 1 : 0;
-        if ((c1 + c2 + c3 + c4) < req) return null;
+        var eventOk = specialEventSkipped || Object.keys(mappings).length > 0;
+        var spotlightOk = !spotlightConfig || Object.keys(spotlightMappings).length > 0;
+        var constituentOk = Object.keys(constituentMappings).length > 0;
+        var giftTypeOk = Object.keys(giftTypeMappings).length > 0;
+        console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk});
+        if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
         for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
