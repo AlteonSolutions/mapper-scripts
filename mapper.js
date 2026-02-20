@@ -29,6 +29,7 @@
     
     var workbook = null;
     var giftAppeals = [];
+    var specialEventSkipped = false;
     var constituentTypes = [];
     var spotlightSourceData = [];
     var categories = [];
@@ -352,6 +353,7 @@
         waitForElement('#skipSpecialEventBtn', function(el) {
             el.addEventListener('click', function() {
                 document.getElementById('categorySetup').style.display = 'none';
+                specialEventSkipped = true;
                 // Let the destination function set the tracker state correctly
                 if (spotlightConfig) { startSpotlightMapping(); }
                 else { startConstituentMapping(); }
@@ -707,14 +709,14 @@
 
     function generateExcelBlob() {
         var req = spotlightConfig ? 4 : 3;
-        var c1 = Object.keys(mappings).length > 0 ? 1 : 0;
+        var c1 = (Object.keys(mappings).length > 0 || specialEventSkipped) ? 1 : 0;
         var c2 = spotlightConfig ? (Object.keys(spotlightMappings).length > 0 ? 1 : 0) : 0;
         var c3 = Object.keys(constituentMappings).length > 0 ? 1 : 0;
         var c4 = Object.keys(giftTypeMappings).length > 0 ? 1 : 0;
         if ((c1 + c2 + c3 + c4) < req) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
-        for (var i = 0; i < gd.length; i++) { var raw = mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
+        for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
 
         if (spotlightConfig && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
