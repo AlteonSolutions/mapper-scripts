@@ -352,8 +352,7 @@
         waitForElement('#skipSpecialEventBtn', function(el) {
             el.addEventListener('click', function() {
                 document.getElementById('categorySetup').style.display = 'none';
-                // Mark step 0 as completed without showing its completion card
-                updateStepTracker(1);
+                // Let the destination function set the tracker state correctly
                 if (spotlightConfig) { startSpotlightMapping(); }
                 else { startConstituentMapping(); }
             });
