@@ -210,9 +210,8 @@
             [{ label: 'Special Event Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }];
         var html = '';
         for (var i = 0; i < steps.length; i++) {
-            html += '<div class="step-item"><div class="step-circle">' + steps[i].number + '</div><div class="step-label">' + steps[i].label + '</div>';
+            html += '<div class="step-item"><div class="step-circle">' + steps[i].number + '</div><div class="step-label">' + steps[i].label + '</div></div>';
             if (i < steps.length - 1) html += '<div class="step-connector"></div>';
-            html += '</div>';
         }
         stepTracker.innerHTML = html;
         // Set line offset based on number of steps so line doesn't extend past first/last circle
