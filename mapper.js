@@ -178,6 +178,14 @@
             selectedIndustryType = data.value;
             setIndustryTypeField(data.value);
         }
+        // Respond with mappingBoxLabel position for outer page scroll
+        if (data && data.type === 'getMapperBoxTop') {
+            var el = document.getElementById('mappingBoxLabel') || document.getElementById('mappingBox');
+            if (el) {
+                var offsetTop = el.getBoundingClientRect().top + window.pageYOffset;
+                window.parent.postMessage({ type: 'mapperBoxTop', offsetTop: offsetTop }, '*');
+            }
+        }
     });
 
     function setSpotlightConfig(industry) {
@@ -476,16 +484,8 @@
                 document.getElementById('categorySetup').style.display = 'block';
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                 var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
-                // Notify outer shell page that mapper is ready to scroll
+                // Notify outer shell page to scroll mappingBox into view
                 window.parent.postMessage({ type: 'mapperBoxReady' }, '*');
-                // Scroll mappingBoxLabel to top of page
-                setTimeout(function() {
-                    var target = document.getElementById('mappingBoxLabel') || document.getElementById('mappingBox');
-                    if (target) {
-                        var top = target.getBoundingClientRect().top + window.pageYOffset - 20;
-                        window.scrollTo({ top: top, behavior: 'smooth' });
-                    }
-                }, 50);
 
             } catch (err) {
                 // Reset upload box on error
