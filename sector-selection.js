@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var VERSION = 'v2.9';
+    var VERSION = 'v3.0';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -195,16 +195,41 @@
                     var fc = document.getElementById('form-container');
                     if (fc) fc.classList.add('show');
 
-                    // Scroll once Mapper.js signals it has finished processing the file
+                    // Scroll 1: bring selected icon to top after form appears
+                    setTimeout(function() {
+                        var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                        var headerH = header ? header.offsetHeight : 0;
+                        var iconTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
+                        window.scrollTo({ top: iconTop, behavior: 'smooth' });
+                    }, 400);
+
+                    // Scroll 2: after file processed, bring mapper box to top
                     window.addEventListener('message', function onMapperReady(event) {
                         if (event.data && event.data.type === 'mapperBoxReady') {
                             window.removeEventListener('message', onMapperReady);
                             setTimeout(function() {
+                                var iframe = document.getElementById('ghl-form-iframe');
+                                if (!iframe) return;
                                 var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
                                 var headerH = header ? header.offsetHeight : 0;
-                                var iconTop = clickedBtn.getBoundingClientRect().top + window.pageYOffset - headerH - 20;
-                                window.scrollTo({ top: iconTop, behavior: 'smooth' });
+                                // mappingBoxLabel is inside the iframe - get iframe top + element offset
+                                var iframeTop = iframe.getBoundingClientRect().top + window.pageYOffset;
+                                // postMessage the iframe to get the mappingBoxLabel offset
+                                iframe.contentWindow.postMessage({ type: 'getMapperBoxTop' }, '*');
                             }, 200);
+                        }
+                    });
+
+                    // Receive mapper box position from iframe and scroll to it
+                    window.addEventListener('message', function onMapperBoxTop(event) {
+                        if (event.data && event.data.type === 'mapperBoxTop') {
+                            window.removeEventListener('message', onMapperBoxTop);
+                            var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                            var headerH = header ? header.offsetHeight : 0;
+                            var iframe = document.getElementById('ghl-form-iframe');
+                            var iframeTop = iframe ? iframe.getBoundingClientRect().top + window.pageYOffset : 0;
+                            var targetY = iframeTop + event.data.offsetTop - headerH - 10;
+                            window.scrollTo({ top: targetY, behavior: 'smooth' });
                         }
                     });
                 });
