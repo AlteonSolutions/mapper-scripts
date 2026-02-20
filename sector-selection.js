@@ -1,6 +1,7 @@
+/* APPROVED */
 (function() {
     'use strict';
-    var VERSION = 'v3.4';
+    var VERSION = 'v3.5';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -252,13 +253,30 @@
         badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:none;color:rgba(180,180,180,0.6);'
             + 'font-size:10px;padding:4px 8px;z-index:99999;line-height:1.8;text-align:right;'
             + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
-        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js v8.4';
+        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js v8.5';
         document.body.appendChild(badge);
         setTimeout(function() { badge.style.opacity = '0'; }, 3000);
         setTimeout(function() { document.body.removeChild(badge); }, 4000);
 
         // Scroll to top on page load
         window.scrollTo({ top: 0, behavior: 'instant' });
+
+        // Scroll to bottom of mapper iframe when sections transition
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'scrollToMapperBottom') {
+                var iframe = document.getElementById('ghl-form-iframe');
+                if (!iframe) return;
+                setTimeout(function() {
+                    var iframeBottom = iframe.getBoundingClientRect().bottom + window.pageYOffset;
+                    var viewH = window.innerHeight;
+                    var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
+                    var headerH = header ? header.offsetHeight : 0;
+                    // Scroll so the bottom of the iframe is at the bottom of the viewport
+                    var targetY = iframeBottom - viewH + 40;
+                    window.scrollTo({ top: targetY, behavior: 'smooth' });
+                }, 200);
+            }
+        });
 
     } // end init
 
