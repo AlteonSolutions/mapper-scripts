@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var MAPPER_VERSION = 'v8.2';
+    var MAPPER_VERSION = 'v8.3';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -180,7 +180,7 @@
         }
         // Respond with mappingBoxLabel position for outer page scroll
         if (data && data.type === 'getMapperBoxTop') {
-            var el = document.getElementById('mappingBoxLabel') || document.getElementById('mappingBox');
+            var el = document.getElementById('uploadTitle') || document.getElementById('mappingBoxLabel') || document.getElementById('mappingBox');
             if (el) {
                 var offsetTop = el.getBoundingClientRect().top + window.pageYOffset;
                 window.parent.postMessage({ type: 'mapperBoxTop', offsetTop: offsetTop }, '*');
