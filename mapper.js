@@ -215,6 +215,9 @@
             html += '</div>';
         }
         stepTracker.innerHTML = html;
+        // Set line offset based on number of steps so line doesn't extend past first/last circle
+        var offset = 'calc(100% / ' + (steps.length * 2) + ')';
+        stepTracker.style.setProperty('--tracker-offset', offset);
         document.getElementById('stepProgress').style.display = 'block';
     }
 
