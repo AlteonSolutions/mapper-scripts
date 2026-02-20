@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var VERSION = 'v3.2';
+    var VERSION = 'v3.3';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
