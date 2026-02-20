@@ -1,3 +1,4 @@
+/* APPROVED */
 (function() {
     'use strict';
     var MAPPER_VERSION = 'v8.3';
@@ -348,6 +349,14 @@
         waitForElement('#categoryInput', function(el) { el.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCategory(); }); });
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
         waitForElement('#startMappingBtn', function(el) { el.addEventListener('click', startMapping); });
+        waitForElement('#skipSpecialEventBtn', function(el) {
+            el.addEventListener('click', function() {
+                document.getElementById('categorySetup').style.display = 'none';
+                if (spotlightConfig) { startSpotlightMapping(); }
+                else { startConstituentMapping(); }
+                updateStepTracker(spotlightConfig ? 2 : 2);
+            });
+        });
         waitForElement('#startConstituentMappingBtn', function(el) { el.addEventListener('click', startConstituentMapping); });
         waitForElement('#startGiftTypeMappingBtn', function(el) { el.addEventListener('click', startGiftTypeMapping); });
         waitForElement('#categoriesList', function(el) { el.addEventListener('click', function(e) { if (e.target.tagName === 'BUTTON') removeCategory(parseInt(e.target.getAttribute('data-index'))); }); });
@@ -533,7 +542,7 @@
         else { document.getElementById('completionNextStep').textContent = 'Click below to continue to Constituent Type mapping.'; document.getElementById('completionNextButton').textContent = 'Continue to Constituent Mapping ➝'; document.getElementById('completionNextButton').onclick = startConstituentMapping; }
         document.getElementById('mappingSection').style.display = 'block'; showCurrentAppeal(); updateProgress();
         document.getElementById('categorySetup').style.display = 'none';
-        setTimeout(function() { var s = document.getElementById('mappingSection'); window.scrollTo({ top: s.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); }, 50);
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
 
     function showCurrentAppeal() {
@@ -574,7 +583,7 @@
         document.getElementById('spotlightCompletionText').textContent = spotlightConfig.completionText;
         document.getElementById('spotlightMappingSection').style.display = 'block'; showCurrentSpotlight(); updateSpotlightProgress();
         document.getElementById('mappingSection').style.display = 'none';
-        setTimeout(function() { var s = document.getElementById('spotlightMappingSection'); window.scrollTo({ top: s.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); }, 50);
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
 
     function showCurrentSpotlight() {
@@ -614,7 +623,7 @@
         updateStepTracker(spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         document.getElementById('mappingSection').style.display = 'none'; document.getElementById('spotlightMappingSection').style.display = 'none';
-        setTimeout(function() { var s = document.getElementById('constituentMappingSection'); window.scrollTo({ top: s.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); }, 50);
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
 
     function showCurrentConstituentType() {
@@ -653,7 +662,7 @@
         updateStepTracker(spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
         document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
         document.getElementById('constituentMappingSection').style.display = 'none';
-        setTimeout(function() { var s = document.getElementById('giftTypeMappingSection'); window.scrollTo({ top: s.getBoundingClientRect().top + window.pageYOffset - 20, behavior: 'smooth' }); }, 50);
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
 
     function showCurrentGiftType() {
