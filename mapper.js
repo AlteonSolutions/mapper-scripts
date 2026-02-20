@@ -352,9 +352,10 @@
         waitForElement('#skipSpecialEventBtn', function(el) {
             el.addEventListener('click', function() {
                 document.getElementById('categorySetup').style.display = 'none';
+                // Mark step 0 as completed without showing its completion card
+                updateStepTracker(1);
                 if (spotlightConfig) { startSpotlightMapping(); }
                 else { startConstituentMapping(); }
-                updateStepTracker(spotlightConfig ? 2 : 2);
             });
         });
         waitForElement('#startConstituentMappingBtn', function(el) { el.addEventListener('click', startConstituentMapping); });
