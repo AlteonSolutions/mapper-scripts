@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var VERSION = 'v4.0';
+    var VERSION = 'v4.1';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -253,7 +253,7 @@
         badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:none;color:rgba(180,180,180,0.6);'
             + 'font-size:10px;padding:4px 8px;z-index:99999;line-height:1.8;text-align:right;'
             + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
-        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js v8.10';
+        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js v8.11';
         document.body.appendChild(badge);
         setTimeout(function() { badge.style.opacity = '0'; }, 3000);
         setTimeout(function() { document.body.removeChild(badge); }, 4000);
