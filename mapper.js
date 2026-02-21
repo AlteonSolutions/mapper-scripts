@@ -240,13 +240,8 @@
                 items[i].classList.add('active'); items[i].classList.remove('completed');
                 circles[i].classList.add('active'); circles[i].classList.remove('completed');
                 circles[i].textContent = (i+1).toString();
-            } else if (i < step && isSkipped) {
-                // Skipped step — show neutral, no checkmark
-                items[i].classList.remove('active','completed');
-                circles[i].classList.remove('active','completed');
-                circles[i].textContent = (i+1).toString();
             } else if (i < step) {
-                // Completed step — show checkmark
+                // Completed or skipped — both show checkmark
                 items[i].classList.remove('active'); items[i].classList.add('completed');
                 circles[i].classList.add('completed'); circles[i].classList.remove('active');
                 circles[i].textContent = '✓';
