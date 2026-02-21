@@ -229,11 +229,26 @@
         if (!stepTracker) return;
         var items = stepTracker.querySelectorAll('.step-item');
         var circles = stepTracker.querySelectorAll('.step-circle');
-        var connectors = stepTracker.querySelectorAll('.step-connector');
+        // Build list of skipped step indices
+        var skipped = [];
+        if (specialEventSkipped) skipped.push(0);
+        if (spotlightSkipped && spotlightConfig) skipped.push(1);
         for (var i = 0; i < items.length; i++) {
-            if (i === step) { items[i].classList.add('active'); items[i].classList.remove('completed'); circles[i].classList.add('active'); circles[i].classList.remove('completed'); circles[i].textContent = (i+1).toString(); }
-            else if (i < step) { items[i].classList.remove('active'); items[i].classList.add('completed'); circles[i].classList.add('completed'); circles[i].classList.remove('active'); circles[i].textContent = '✓'; }
-            else { items[i].classList.remove('active','completed'); circles[i].classList.remove('active','completed'); circles[i].textContent = (i+1).toString(); }
+            var isSkipped = skipped.indexOf(i) !== -1;
+            if (i === step) {
+                items[i].classList.add('active'); items[i].classList.remove('completed');
+                circles[i].classList.add('active'); circles[i].classList.remove('completed');
+                circles[i].textContent = (i+1).toString();
+            } else if (i < step && !isSkipped) {
+                items[i].classList.remove('active'); items[i].classList.add('completed');
+                circles[i].classList.add('completed'); circles[i].classList.remove('active');
+                circles[i].textContent = '✓';
+            } else {
+                // Not yet reached, or skipped — show neutral
+                items[i].classList.remove('active','completed');
+                circles[i].classList.remove('active','completed');
+                circles[i].textContent = (i+1).toString();
+            }
         }
     }
 
@@ -632,7 +647,7 @@
     }
 
     function startConstituentMapping() {
-        updateStepTracker(spotlightConfig ? (spotlightSkipped ? 1 : 2) : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
+        updateStepTracker(spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         document.getElementById('mappingSection').style.display = 'none'; document.getElementById('spotlightMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
