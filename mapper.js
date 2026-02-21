@@ -30,6 +30,7 @@
     var workbook = null;
     var giftAppeals = [];
     var specialEventSkipped = false;
+    var spotlightSkipped = false;
     var constituentTypes = [];
     var spotlightSourceData = [];
     var categories = [];
@@ -360,6 +361,14 @@
             });
         });
         waitForElement('#startConstituentMappingBtn', function(el) { el.addEventListener('click', startConstituentMapping); });
+        waitForElement('#skipSpotlightBtn', function(el) {
+            el.addEventListener('click', function() {
+                spotlightSkipped = true;
+                document.getElementById('spotlightMappingSection').style.display = 'none';
+                var ssw = document.getElementById('spotlightSkipWrapper'); if (ssw) ssw.style.display = 'none';
+                startConstituentMapping();
+            });
+        });
         waitForElement('#startGiftTypeMappingBtn', function(el) { el.addEventListener('click', startGiftTypeMapping); });
         waitForElement('#categoriesList', function(el) { el.addEventListener('click', function(e) { if (e.target.tagName === 'BUTTON') removeCategory(parseInt(e.target.getAttribute('data-index'))); }); });
 
@@ -584,6 +593,7 @@
         document.getElementById('spotlightMappingTitle').textContent = spotlightConfig.title;
         document.getElementById('spotlightCompletionText').textContent = spotlightConfig.completionText;
         document.getElementById('spotlightMappingSection').style.display = 'block'; showCurrentSpotlight(); updateSpotlightProgress();
+        var ssw = document.getElementById('spotlightSkipWrapper'); if (ssw) ssw.style.display = 'block';
         document.getElementById('mappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
@@ -622,7 +632,7 @@
     }
 
     function startConstituentMapping() {
-        updateStepTracker(spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
+        updateStepTracker(spotlightConfig ? (spotlightSkipped ? 1 : 2) : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         document.getElementById('mappingSection').style.display = 'none'; document.getElementById('spotlightMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -638,6 +648,7 @@
         container.innerHTML = html;
         if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } }
         var nb = container.querySelector('#constituentNextBtn'); if (nb && constituentHasUsedPrevious && cm) nb.style.display = 'block';
+        if (constituentHasUsedPrevious && cm) { setTimeout(function() { nextConstituentType(); }, 500); }
     }
 
     function selectConstituentType(origType, mappedType) {
@@ -686,6 +697,7 @@
         container.innerHTML = html;
         if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } } }
         var nb = container.querySelector('#giftTypeNextBtn'); if (nb && giftTypeHasUsedPrevious && cm) nb.style.display = 'block';
+        if (giftTypeHasUsedPrevious && cm) { setTimeout(function() { nextGiftType(); }, 500); }
     }
 
     function selectGiftType(origType, mappedType) {
@@ -709,7 +721,7 @@
 
     function generateExcelBlob() {
         var eventOk = specialEventSkipped || Object.keys(mappings).length > 0;
-        var spotlightOk = !spotlightConfig || Object.keys(spotlightMappings).length > 0;
+        var spotlightOk = !spotlightConfig || spotlightSkipped || Object.keys(spotlightMappings).length > 0;
         var constituentOk = Object.keys(constituentMappings).length > 0;
         var giftTypeOk = Object.keys(giftTypeMappings).length > 0;
         console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk});
@@ -718,7 +730,7 @@
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
         for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
 
-        if (spotlightConfig && Object.keys(spotlightMappings).length > 0) {
+        if (spotlightConfig && !spotlightSkipped && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
                 // Build a lookup from original Gift Data to get appeal names before they were deleted
                 var origGd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
