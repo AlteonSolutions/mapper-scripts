@@ -340,7 +340,7 @@
             downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
             downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
             downloadBtn.addEventListener('click', function() {
-                var templateUrl = 'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69936dfcceaa0532ee95fe02.xlsx';
+                var templateUrl = 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
                 var filename = 'Data Upload Template.xlsx';
                 fetch(templateUrl)
                     .then(function(response) { return response.blob(); })
