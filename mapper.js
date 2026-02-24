@@ -751,14 +751,10 @@
 
         if (spotlightConfig && !spotlightSkipped && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
-                // Build a lookup from original Gift Data to get appeal names before they were deleted
+                // Always look up spotlight by original Gift Appeal name (row index -> appeal name)
                 var origGd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
-                var appealByIdx = {};
-                for (var oi = 0; oi < origGd.length; oi++) { appealByIdx[oi] = origGd[oi]['Gift Appeal']; }
                 for (var j = 0; j < gd.length; j++) {
-                    var ap = specialEventSkipped
-                        ? appealByIdx[j]  // when skipped, look up appeal directly by row index
-                        : (function() { var ev = gd[j]['Event']; for (var k in mappings) { if (mappings.hasOwnProperty(k) && mappings[k] === ev) return k; } return null; })();
+                    var ap = origGd[j] ? origGd[j]['Gift Appeal'] : null;
                     var raw = spotlightMappings[ap]; var sl = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[j]['Spotlights'] = sl;
                 }
             } else if (spotlightConfig.type === 'constituentType') {
