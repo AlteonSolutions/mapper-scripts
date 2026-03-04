@@ -500,9 +500,9 @@
                 var ua = {};
                 for (var i = 0; i < giftJson.length; i++) { if (giftJson[i]['Gift Appeal']) ua[giftJson[i]['Gift Appeal']] = true; }
                 giftAppeals = Object.keys(ua).sort();
-                var constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
+                var constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
                 var uc = {};
-                for (var j = 0; j < constJson.length; j++) { if (constJson[j]['Constituent Type']) uc[constJson[j]['Constituent Type']] = true; }
+                for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
                 constituentTypes = Object.keys(uc).sort();
                 var ug = {};
                 for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
@@ -746,19 +746,19 @@
         console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk});
         if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk) return null;
 
-        var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
+        var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], { defval: '' });
         for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
 
         if (spotlightConfig && !spotlightSkipped && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
                 // Always look up spotlight by original Gift Appeal name (row index -> appeal name)
-                var origGd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
+                var origGd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], { defval: '' });
                 for (var j = 0; j < gd.length; j++) {
                     var ap = origGd[j] ? origGd[j]['Gift Appeal'] : null;
                     var raw = spotlightMappings[ap]; var sl = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[j]['Spotlights'] = sl;
                 }
             } else if (spotlightConfig.type === 'constituentType') {
-                var cd = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
+                var cd = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
                 var csm = {}; for (var m = 0; m < cd.length; m++) { var raw = spotlightMappings[cd[m]['Constituent Type']]; csm[cd[m]['Constituent ID']] = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); }
                 for (var n = 0; n < gd.length; n++) { var sv = csm[gd[n]['Constituent ID']]; gd[n]['Spotlights'] = sv !== undefined ? sv : ''; }
             }
@@ -769,8 +769,23 @@
         // Apply gift type mappings - replace Gift Type values in Gift Data
         for (var gt = 0; gt < gd.length; gt++) { var ogt = gd[gt]['Gift Type']; if (ogt !== undefined) { var mgt = giftTypeMappings[ogt]; gd[gt]['Gift Type'] = (mgt === 'Skip' || mgt === undefined) ? ogt : mgt; } }
 
-        var cd2 = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data']);
-        for (var p = 0; p < cd2.length; p++) { var ot = cd2[p]['Constituent Type']; cd2[p]['Constituent Type'] = constituentMappings[ot] || ot; }
+        var sheetCD = workbook.Sheets['Constituent Data'];
+        console.log('Constituent sheet !ref:', sheetCD['!ref']);
+        var cd2 = XLSX.utils.sheet_to_json(sheetCD, { defval: '' });
+        console.log('Constituent rows read:', cd2.length);
+        console.log('Constituent mappings defined:', Object.keys(constituentMappings));
+        var unmatchedTypes = {};
+        for (var p = 0; p < cd2.length; p++) {
+            var ot = (cd2[p]['Constituent Type'] || '').toString().trim();
+            var mapped = constituentMappings[ot];
+            if (mapped) {
+                cd2[p]['Constituent Type'] = mapped;
+            } else if (ot !== '') {
+                unmatchedTypes[ot] = true;
+                // keep original
+            }
+        }
+        if (Object.keys(unmatchedTypes).length > 0) console.warn('Unmatched constituent types:', Object.keys(unmatchedTypes));
 
         // Preserve original column order
         var origGiftHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], {header: 1})[0] || [];
