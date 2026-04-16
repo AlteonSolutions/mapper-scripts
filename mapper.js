@@ -273,7 +273,7 @@
             selectedIndustryType = industryDisplayLabels[detected] || null;
             console.log('✓ Industry from URL on init:', detected, '(' + selectedIndustryType + ')');
             if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
-            setSpotlightConfig(detected);
+            if (!isStaffing) setSpotlightConfig(detected);
         }
 
         // Hide custom submit button until all mapping is complete
