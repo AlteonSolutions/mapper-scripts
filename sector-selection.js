@@ -62,6 +62,7 @@
 
     // ── BRAND DETECTION ───────────────────────────────────────────────────────
     var isSW = window.location.href.includes('getdatabasey.com/sw');
+    var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var brand = isSW ? brands.sw : brands.alford;
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
@@ -242,7 +243,8 @@
         var newSrc = formBase
             + '?industrytype=' + encodeURIComponent(industryLabel)
             + '&industry=' + encodeURIComponent(mapperKey)
-            + (isSW ? '&brand=sw' : '');
+            + (isSW ? '&brand=sw' : '')
+            + (isStaffing ? '&variant=staffing' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
 
