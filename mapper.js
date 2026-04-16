@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = 'v8.3';
+    var MAPPER_VERSION = 'v8.18';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
