@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = 'v8.19';
+    var MAPPER_VERSION = 'v8.20';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -49,6 +49,9 @@
     var giftTypeHasUsedPrevious = false;
     var currentStep = 0;
     var selectedIndustryType = null;
+    var solicitors = [];
+    var selectedSolicitors = {};
+    var solicitorSelectionDone = false;
 
     var constituentCategories = [
         'Individual', 'Organization', 'Government', 'Foundation',
@@ -210,7 +213,9 @@
         var stepTracker = document.getElementById('stepTracker');
         if (!stepTracker) return;
         var steps = isStaffing ?
-            [{ label: 'Constituent Type Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }] :
+            (solicitors.length > 0 ?
+            [{ label: 'Solicitor Selection', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
+            [{ label: 'Constituent Type Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }]) :
             spotlightConfig ?
             [{ label: 'Special Event Mapping', number: 1 }, { label: 'Spotlight Mapping', number: 2 }, { label: 'Constituent Type Mapping', number: 3 }, { label: 'Gift Type Mapping', number: 4 }] :
             [{ label: 'Special Event Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }];
@@ -407,8 +412,20 @@
             // Insert label and box before categorySetup
             parent.insertBefore(label, catSetup);
             parent.insertBefore(box, catSetup);
+            // Create solicitor selection section dynamically (staffing only)
+            var solicitorSection = document.createElement('div');
+            solicitorSection.id = 'solicitorSelectionSection';
+            solicitorSection.style.display = 'none';
+            solicitorSection.innerHTML = '<h2 style="text-align:center;margin-bottom:10px;">Solicitor Selection</h2>'
+                + '<div style="text-align:center;margin-bottom:20px;color:#666;font-weight:600;">Please select active Solicitors</div>'
+                + '<div id="solicitorButtonsContainer" class="category-buttons allow-wrap" style="justify-content:center;gap:10px;"></div>'
+                + '<div style="text-align:center;margin-top:25px;">'
+                + '<button id="solicitorDoneBtn" type="button" style="background-color:' + themeColor + ';color:white;font-family:Roboto,sans-serif;font-size:15px;font-weight:600;padding:12px 40px;border:none;border-radius:8px;cursor:pointer;">Continue to Constituent Mapping ➡</button>'
+                + '</div>';
+            parent.insertBefore(solicitorSection, catSetup);
+
             // Move all mapping sections into the box
-            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'constituentMappingSection', 'giftTypeMappingSection', 'stepProgress'];
+            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'solicitorSelectionSection', 'constituentMappingSection', 'giftTypeMappingSection', 'stepProgress'];
             sections.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) box.appendChild(el);
@@ -463,8 +480,38 @@
                 else if (navType === 'spotlight') { if (action === 'previous') previousSpotlight(); else if (action === 'next') nextSpotlight(); }
                 else if (navType === 'constituent') { if (action === 'previous') previousConstituentType(); else if (action === 'next') nextConstituentType(); }
                 else if (navType === 'gifttype') { if (action === 'previous') previousGiftType(); else if (action === 'next') nextGiftType(); }
+            } else if (e.target.classList.contains('solicitor-toggle-btn')) {
+                var sol = e.target.getAttribute('data-solicitor');
+                selectedSolicitors[sol] = !selectedSolicitors[sol];
+                if (selectedSolicitors[sol]) {
+                    e.target.style.background = themeColor; e.target.style.color = 'white'; e.target.style.borderColor = themeColor;
+                } else {
+                    e.target.style.background = 'white'; e.target.style.color = themeColor; e.target.style.borderColor = themeColor;
+                }
             }
         });
+
+        waitForElement('#solicitorDoneBtn', function(btn) {
+            btn.addEventListener('click', function() {
+                solicitorSelectionDone = true;
+                document.getElementById('solicitorSelectionSection').style.display = 'none';
+                startConstituentMapping();
+            });
+        });
+    }
+
+    function startSolicitorSelection() {
+        updateStepTracker(0);
+        var section = document.getElementById('solicitorSelectionSection');
+        if (section) section.style.display = 'block';
+        var container = document.getElementById('solicitorButtonsContainer');
+        if (!container) return;
+        var html = '';
+        for (var i = 0; i < solicitors.length; i++) {
+            html += '<button class="category-btn solicitor-toggle-btn" data-solicitor="' + solicitors[i] + '" style="background:' + themeColor + ';color:white;border-color:' + themeColor + ';">' + solicitors[i] + '</button>';
+        }
+        container.innerHTML = html;
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
 
     function handleFileUpload(e) {
@@ -507,6 +554,13 @@
                 var uc = {};
                 for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
                 constituentTypes = Object.keys(uc).sort();
+                if (isStaffing) {
+                    var uSol = {};
+                    for (var s = 0; s < constJson.length; s++) { var solVal = (constJson[s]['Solicitor'] || '').toString().trim(); if (solVal) uSol[solVal] = true; }
+                    solicitors = Object.keys(uSol).sort();
+                    selectedSolicitors = {};
+                    for (var si = 0; si < solicitors.length; si++) selectedSolicitors[solicitors[si]] = true;
+                }
                 var ug = {};
                 for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
                 giftTypes = Object.keys(ug).sort();
@@ -529,7 +583,8 @@
                 window.parent.postMessage({ type: 'mapperBoxReady' }, '*');
                 if (isStaffing) {
                     specialEventSkipped = true;
-                    startConstituentMapping();
+                    if (solicitors.length > 0) { startSolicitorSelection(); }
+                    else { startConstituentMapping(); }
                 } else {
                     document.getElementById('categorySetup').style.display = 'block';
                 }
@@ -659,7 +714,7 @@
     }
 
     function startConstituentMapping() {
-        updateStepTracker(isStaffing ? 0 : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
+        updateStepTracker(isStaffing ? (solicitors.length > 0 ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         document.getElementById('mappingSection').style.display = 'none'; document.getElementById('spotlightMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -667,7 +722,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isStaffing ? 1 : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isStaffing ? (solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
@@ -699,7 +754,7 @@
 
 
     function startGiftTypeMapping() {
-        updateStepTracker(isStaffing ? 1 : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
+        updateStepTracker(isStaffing ? (solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
         document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
         document.getElementById('constituentMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -709,7 +764,7 @@
         var container = document.getElementById('giftTypeMappingContainer');
         if (giftTypeCurrentIndex >= giftTypes.length) {
             container.innerHTML = '';
-            updateStepTracker(isStaffing ? 2 : spotlightConfig ? 4 : 3);
+            updateStepTracker(isStaffing ? (solicitors.length > 0 ? 3 : 2) : spotlightConfig ? 4 : 3);
             document.getElementById('giftTypeCompletionCard').style.display = 'block';
             document.querySelector('#giftTypeMappingSection .progress-container').style.display = 'none';
             document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
@@ -751,8 +806,9 @@
         var spotlightOk = !spotlightConfig || spotlightSkipped || Object.keys(spotlightMappings).length > 0;
         var constituentOk = Object.keys(constituentMappings).length > 0;
         var giftTypeOk = Object.keys(giftTypeMappings).length > 0;
-        console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk});
-        if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk) return null;
+        var solicitorOk = !isStaffing || solicitors.length === 0 || solicitorSelectionDone;
+        console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk, solicitorOk: solicitorOk});
+        if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk || !solicitorOk) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], { defval: '' });
         for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
@@ -792,6 +848,10 @@
                 unmatchedTypes[ot] = true;
                 // keep original
             }
+            if (isStaffing && cd2[p].hasOwnProperty('Solicitor')) {
+                var solVal = (cd2[p]['Solicitor'] || '').toString().trim();
+                if (solVal && selectedSolicitors[solVal] === false) cd2[p]['Solicitor'] = '';
+            }
         }
         if (Object.keys(unmatchedTypes).length > 0) console.warn('Unmatched constituent types:', Object.keys(unmatchedTypes));
 
@@ -817,7 +877,7 @@
 
     window.attachToGHLForm = function() {
         var blob = generateExcelBlob();
-        if (!blob) { alert('Please complete all ' + (isStaffing ? 'two' : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
+        if (!blob) { alert('Please complete all ' + (isStaffing ? (solicitors.length > 0 ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
