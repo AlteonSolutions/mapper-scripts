@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapper.js Test</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Roboto, sans-serif; background: #f4f4f4; color: #333; }
+
+        /* ── Test Controls Bar ───────────────────────────────────────────── */
+        #test-controls {
+            background: #1a1a1a; color: #ccc; padding: 10px 20px;
+            font-size: 12px; font-family: monospace;
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        #test-controls strong { color: #fff; }
+        #test-controls a {
+            color: #7ec8e3; text-decoration: none; padding: 3px 10px;
+            border: 1px solid #444; border-radius: 4px;
+        }
+        #test-controls a:hover { background: #333; }
+        #test-controls a.active { background: #2a4a5a; border-color: #7ec8e3; color: #fff; }
+        #current-mode { color: #aaa; margin-left: auto; }
+
+        /* ── Page Layout ─────────────────────────────────────────────────── */
+        #page-wrap { max-width: 620px; margin: 30px auto; padding: 0 16px 60px; }
+
+        /* ── Upload Box ──────────────────────────────────────────────────── */
+        #uploadBox {
+            border: 2px dashed #ccc; border-radius: 8px; padding: 30px 20px;
+            text-align: center; cursor: pointer; background: #fafafa;
+            transition: border-color 0.2s;
+        }
+        #uploadBox:hover { border-color: #999; }
+
+        /* ── Mapping Card ────────────────────────────────────────────────── */
+        .mapping-card { padding: 10px 0; }
+        .appeal-label { font-size: 12px; color: #999; text-align: center; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .appeal-name { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 20px; color: #222; }
+
+        /* ── Category Buttons ────────────────────────────────────────────── */
+        .category-buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: nowrap; }
+        .category-buttons.allow-wrap { flex-wrap: wrap; }
+        .category-btn {
+            padding: 10px 18px; border-radius: 8px; border: 2px solid var(--theme-color, #2c5f5d);
+            background: white; color: var(--theme-color, #2c5f5d);
+            font-size: 14px; font-weight: 600; cursor: pointer; font-family: Roboto, sans-serif;
+            transition: background 0.15s, color 0.15s;
+        }
+        .category-btn:hover { opacity: 0.85; }
+        .non-event-btn { border-color: #999; color: #666; }
+        .non-event-btn:hover { background: #f5f5f5; }
+
+        /* ── Navigation Buttons ──────────────────────────────────────────── */
+        .navigation-buttons { display: flex; justify-content: space-between; margin-top: 10px; }
+        .nav-btn {
+            padding: 8px 20px; border-radius: 6px; border: 1px solid #ddd;
+            background: #f5f5f5; color: #555; font-size: 13px; font-weight: 600;
+            cursor: pointer; font-family: Roboto, sans-serif;
+        }
+        .nav-btn:disabled { opacity: 0.4; cursor: default; }
+        .nav-btn:not(:disabled):hover { background: #e8e8e8; }
+
+        /* ── Progress Bar ────────────────────────────────────────────────── */
+        .progress-container { margin-bottom: 20px; }
+        .progress-bar-track { background: #eee; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+        .progress-bar-fill { height: 100%; border-radius: 99px; background: var(--theme-color, #2c5f5d); transition: width 0.3s; width: 0%; }
+        .progress-bar-labels { display: flex; justify-content: space-between; font-size: 12px; color: #999; }
+
+        /* ── Step Tracker ────────────────────────────────────────────────── */
+        #stepProgress { margin-bottom: 20px; }
+        #stepTracker {
+            display: flex; align-items: center; justify-content: center;
+            position: relative; padding: 10px 0;
+        }
+        #stepTracker::before {
+            content: '';
+            position: absolute; top: 50%; left: var(--tracker-offset, 16.67%);
+            right: var(--tracker-offset, 16.67%);
+            height: 2px; background: #ddd; z-index: 0;
+            transform: translateY(-50%);
+        }
+        .step-item { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; flex: 1; }
+        .step-connector { flex: 1; height: 2px; background: #ddd; z-index: 0; }
+        .step-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            border: 2px solid #ddd; background: white; color: #bbb;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; transition: all 0.3s;
+        }
+        .step-circle.active {
+            border-color: var(--theme-color, #2c5f5d);
+            background: var(--theme-color, #2c5f5d); color: white;
+        }
+        .step-circle.completed {
+            border-color: var(--theme-color, #2c5f5d);
+            background: var(--theme-color, #2c5f5d); color: white;
+        }
+        .step-label { font-size: 11px; color: #999; margin-top: 6px; text-align: center; max-width: 90px; line-height: 1.3; }
+        .step-item.active .step-label { color: var(--theme-color, #2c5f5d); font-weight: 600; }
+        .step-item.completed .step-label { color: #aaa; }
+
+        /* ── Category Tags (event setup) ─────────────────────────────────── */
+        .category-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #f0f0f0; border-radius: 20px; padding: 4px 12px;
+            font-size: 13px; margin: 4px;
+        }
+        .category-tag button {
+            background: none; border: none; cursor: pointer; color: #999; font-size: 16px; line-height: 1; padding: 0;
+        }
+
+        /* ── Section Headings ────────────────────────────────────────────── */
+        h2 { font-size: 18px; font-weight: 700; text-align: center; margin: 0 0 16px; color: #222; }
+
+        /* ── Completion Cards ────────────────────────────────────────────── */
+        .completion-card { text-align: center; padding: 20px 0; }
+        .completion-card p { color: #555; margin-bottom: 20px; }
+        .continue-btn {
+            display: inline-block; padding: 12px 32px; border-radius: 8px;
+            background: var(--theme-color, #2c5f5d); color: white;
+            border: none; font-size: 15px; font-weight: 600; cursor: pointer;
+            font-family: Roboto, sans-serif;
+        }
+        .continue-btn:hover { opacity: 0.9; }
+
+        /* ── Category Setup ──────────────────────────────────────────────── */
+        .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .input-row input {
+            flex: 1; padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px;
+            font-size: 14px; font-family: Roboto, sans-serif;
+        }
+        .input-row button, .action-btn {
+            padding: 9px 18px; border-radius: 6px; border: none;
+            background: var(--theme-color, #2c5f5d); color: white;
+            font-size: 14px; font-weight: 600; cursor: pointer; font-family: Roboto, sans-serif;
+            white-space: nowrap;
+        }
+        .action-btn:hover { opacity: 0.9; }
+        .skip-link {
+            display: block; text-align: center; margin-top: 12px;
+            color: #999; font-size: 13px; cursor: pointer; text-decoration: underline;
+        }
+        .skip-link:hover { color: #666; }
+
+        /* ── Mapping Box (created by mapper.js) ──────────────────────────── */
+        #mappingBox { margin-top: 16px; }
+        #mappingBoxLabel { font-size: 14px; font-weight: 500; color: #2c3345; margin-bottom: 10px; }
+
+        /* ── Custom Submit Button ────────────────────────────────────────── */
+        #customSubmitBtn {
+            display: block; width: 100%; padding: 14px;
+            background: var(--theme-color, #2c5f5d); color: white;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+            cursor: pointer; font-family: Roboto, sans-serif; margin-top: 20px;
+        }
+        #customSubmitBtn:hover { opacity: 0.9; }
+
+        /* ── Theme vars (default Alford green; overridden by mapper.js for SW) */
+        :root { --theme-color: #2c5f5d; --theme-color-hover: #3d7672; }
+    </style>
+</head>
+<body>
+
+<!-- ── Test Controls ──────────────────────────────────────────────────────── -->
+<div id="test-controls">
+    <strong>Test Variant:</strong>
+    <a href="test.html">Alford (Green · Full flow)</a>
+    <a href="test.html?brand=sw">SW Campaign Readiness (Blue · Full flow)</a>
+    <a href="test.html?brand=sw&variant=staffing">SW Staffing (Blue · Staffing flow)</a>
+    <a href="test.html?brand=sw&variant=developmentassessment">SW Dev Assessment (Blue · 2-step)</a>
+    <a href="test.html?brand=sw&variant=campaigncounsel">SW Campaign Counsel (Blue · Pledge Status)</a>
+    <span id="current-mode"></span>
+</div>
+
+<!-- ── Simulated GHL Form Page ───────────────────────────────────────────── -->
+<div id="page-wrap">
+
+    <!-- mapper.js looks for #mapper-container and sets visibility:visible once ready -->
+    <div id="mapper-container" style="visibility:hidden;">
+
+        <!-- Upload area -->
+        <div id="uploadBox" style="border:2px dashed #ccc;border-radius:8px;padding:30px 20px;text-align:center;cursor:pointer;background:#fafafa;">
+            <svg width="30" height="30" viewBox="0 0 16 16" fill="#aaa" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 10px;">
+                <path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8z"/>
+                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"/>
+                <path fill-rule="evenodd" d="M5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"/>
+            </svg>
+            <div style="font-size:14px;color:#666;">Click to upload your Client Data file</div>
+            <div style="font-size:12px;color:#aaa;margin-top:4px;">.xlsx files only</div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;">
+        <div id="fileInfo"></div>
+        <div id="uploadNote" style="font-size:12px;color:#999;text-align:center;margin-top:8px;">
+            Note: the Client Data file <strong>must</strong> use the designated template.
+        </div>
+
+        <!-- Event category setup — shown after upload for non-staffing -->
+        <div id="categorySetup" style="display:none;padding:10px 0;">
+            <h2>Define Special Events</h2>
+            <p style="text-align:center;color:#666;font-size:14px;margin-bottom:16px;">Enter up to 3 special events to map your gift appeals against.</p>
+            <div class="input-row">
+                <input type="text" id="categoryInput" placeholder="Enter event name (e.g., Gala, Golf Tournament, Annual Auction)">
+                <button id="addCategoryBtn" class="action-btn">Add</button>
+            </div>
+            <div id="categoriesList" style="margin-bottom:16px;"></div>
+            <div style="text-align:center;display:flex;gap:12px;justify-content:center;">
+                <button id="startMappingBtn" class="continue-btn">Start Mapping ➡</button>
+            </div>
+            <span id="skipSpecialEventBtn" class="skip-link">Skip special event mapping</span>
+        </div>
+
+        <!-- Event mapping section -->
+        <div id="mappingSection" style="display:none;">
+            <h2>Special Event Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="progressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="progressText">0 of 0 appeals mapped</span>
+                    <span id="progressBarText"></span>
+                </div>
+            </div>
+            <div id="mappingContainer"></div>
+            <div id="completionCard" class="completion-card" style="display:none;">
+                <p id="completionNextStep"></p>
+                <button id="completionNextButton" class="continue-btn"></button>
+            </div>
+        </div>
+
+        <!-- Spotlight mapping section -->
+        <div id="spotlightMappingSection" style="display:none;">
+            <h2 id="spotlightMappingTitle">Spotlight Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="spotlightProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="spotlightProgressText">0 of 0 mapped</span>
+                    <span id="spotlightProgressBarText"></span>
+                </div>
+            </div>
+            <div id="spotlightMappingContainer"></div>
+            <div id="spotlightCompletionCard" class="completion-card" style="display:none;">
+                <p id="spotlightCompletionText"></p>
+                <button id="startConstituentMappingBtn" class="continue-btn">Continue to Constituent Mapping ➡</button>
+            </div>
+            <div id="spotlightSkipWrapper" style="display:none;">
+                <span id="skipSpotlightBtn" class="skip-link">Skip spotlight mapping</span>
+            </div>
+        </div>
+
+        <!-- Constituent mapping section -->
+        <div id="constituentMappingSection" style="display:none;">
+            <h2>Constituent Type Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="constituentProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="constituentProgressText">0 of 0 constituent types mapped</span>
+                    <span id="constituentProgressBarText"></span>
+                </div>
+            </div>
+            <div id="constituentMappingContainer"></div>
+            <div id="constituentCompletionCard" class="completion-card" style="display:none;">
+                <p>You have successfully mapped all Constituent Types.</p>
+                <button id="startGiftTypeMappingBtn" class="continue-btn">Continue to Gift Type Mapping ➡</button>
+            </div>
+        </div>
+
+        <!-- Gift type mapping section -->
+        <div id="giftTypeMappingSection" style="display:none;">
+            <h2>Gift Type Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="giftTypeProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="giftTypeProgressText">0 of 0 gift types mapped</span>
+                    <span id="giftTypeProgressBarText"></span>
+                </div>
+            </div>
+            <div id="giftTypeMappingContainer"></div>
+            <div id="giftTypeCompletionCard" class="completion-card" style="display:none;">
+                <p>You have successfully mapped all Gift Types. Click Submit below to generate your file.</p>
+            </div>
+        </div>
+
+        <!-- Step progress tracker -->
+        <div id="stepProgress" style="display:none;">
+            <div id="stepTracker"></div>
+        </div>
+
+        <!-- Custom submit button (hidden until all steps complete) -->
+        <div>
+            <button id="customSubmitBtn" type="button">Submit</button>
+        </div>
+
+    </div><!-- end #mapper-container -->
+
+    <!-- Fake GHL file input — needed for attachToGHLForm() to succeed -->
+    <input type="file" name="  Client Data File" style="display:none;">
+
+    <!-- Fake GHL submit button — mapper.js clicks this after attaching file -->
+    <button type="submit" style="display:none;" onclick="handleFakeSubmit()">GHL Submit</button>
+
+</div><!-- end #page-wrap -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="mapper.js"></script>
+<script>
+    // Highlight active test mode link
+    var params = new URLSearchParams(window.location.search);
+    var brand = params.get('brand');
+    var variant = params.get('variant');
+    var links = document.querySelectorAll('#test-controls a');
+    links.forEach(function(a) {
+        var lp = new URLSearchParams(a.href.split('?')[1] || '');
+        if (lp.get('brand') === brand && lp.get('variant') === variant) a.classList.add('active');
+    });
+    var modeLabel = variant === 'staffing' ? 'SW Staffing (Blue · 3-step)' : variant === 'developmentassessment' ? 'SW Dev Assessment (Blue · 2-step)' : variant === 'campaigncounsel' ? 'SW Campaign Counsel (Blue · Pledge Status)' : brand === 'sw' ? 'SW Campaign Readiness (Blue · Full)' : 'Alford (Green · Full)';
+    document.getElementById('current-mode').textContent = '▸ ' + modeLabel;
+
+    // Intercept the fake GHL submit — read the processed file back from the hidden input and download it
+    function handleFakeSubmit() {
+        var fi = document.querySelector('input[type="file"][name="  Client Data File"]');
+        if (fi && fi.files && fi.files[0]) {
+            var file = fi.files[0];
+            var url = URL.createObjectURL(file);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        } else {
+            alert('No processed file found — mapping may not be complete.');
+        }
+    }
+</script>
+</body>
+</html>
