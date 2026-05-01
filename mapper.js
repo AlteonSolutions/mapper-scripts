@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = 'v8.21';
+    var MAPPER_VERSION = 'v8.22';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -54,6 +54,11 @@
     var solicitors = [];
     var selectedSolicitors = {};
     var solicitorSelectionDone = false;
+    var appealCategories = [];
+    var appealCategoryMappings = {};
+    var appealCategoryCurrentIndex = 0;
+    var appealCategoryHasUsedPrevious = false;
+    var appealCategorySkipped = false;
 
     var constituentCategories = [
         'Individual', 'Organization', 'Government', 'Foundation',
@@ -217,6 +222,8 @@
         var steps = isSimpleFlow ?
             (isStaffing && solicitors.length > 0 ?
             [{ label: 'Solicitor Selection', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
+            isDevelopmentAssessment && appealCategories.length > 0 ?
+            [{ label: 'Appeals Category Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
             [{ label: 'Constituent Type Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }]) :
             spotlightConfig ?
             [{ label: 'Special Event Mapping', number: 1 }, { label: 'Spotlight Mapping', number: 2 }, { label: 'Constituent Type Mapping', number: 3 }, { label: 'Gift Type Mapping', number: 4 }] :
@@ -418,6 +425,20 @@
             // Insert label and box before categorySetup
             parent.insertBefore(label, catSetup);
             parent.insertBefore(box, catSetup);
+            // Create appeal category mapping section dynamically (DA only)
+            var appealCatSection = document.createElement('div');
+            appealCatSection.id = 'appealCategoryMappingSection';
+            appealCatSection.style.display = 'none';
+            appealCatSection.innerHTML = '<h2>Appeals Category Mapping</h2>'
+                + '<div class="progress-container"><div style="background:#eee;border-radius:99px;height:8px;overflow:hidden;margin-bottom:6px;"><div id="appealCategoryProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;"></div></div>'
+                + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#999;"><span id="appealCategoryProgressText">0 of 0 mapped</span><span id="appealCategoryProgressBarText"></span></div></div>'
+                + '<div id="appealCategoryMappingContainer"></div>'
+                + '<div id="appealCategoryCompletionCard" class="completion-card" style="display:none;">'
+                + '<p>You have successfully mapped all Gift Appeals to categories.</p>'
+                + '<button id="startConstituentFromAppealBtn" type="button" class="continue-btn">Continue to Constituent Mapping ➡</button>'
+                + '</div>';
+            parent.insertBefore(appealCatSection, catSetup);
+
             // Create solicitor selection section dynamically (staffing only)
             var solicitorSection = document.createElement('div');
             solicitorSection.id = 'solicitorSelectionSection';
@@ -431,7 +452,7 @@
             parent.insertBefore(solicitorSection, catSetup);
 
             // Move all mapping sections into the box
-            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'solicitorSelectionSection', 'constituentMappingSection', 'giftTypeMappingSection', 'stepProgress'];
+            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'appealCategoryMappingSection', 'solicitorSelectionSection', 'constituentMappingSection', 'giftTypeMappingSection', 'stepProgress'];
             sections.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) box.appendChild(el);
@@ -485,6 +506,7 @@
                 var type = e.target.getAttribute('data-mapping-type');
                 if (type === 'event') selectCategory(appeal, cat);
                 else if (type === 'spotlight') selectSpotlight(appeal, cat);
+                else if (type === 'appealcategory') selectAppealCategory(appeal, cat);
                 else if (type === 'constituent') selectConstituentType(appeal, cat);
                 else if (type === 'gifttype') selectGiftType(appeal, cat);
             } else if (e.target.classList.contains('nav-btn')) {
@@ -492,6 +514,7 @@
                 var navType = e.target.getAttribute('data-mapping-type');
                 if (navType === 'event') { if (action === 'previous') previousAppeal(); else if (action === 'next') nextAppeal(); }
                 else if (navType === 'spotlight') { if (action === 'previous') previousSpotlight(); else if (action === 'next') nextSpotlight(); }
+                else if (navType === 'appealcategory') { if (action === 'previous') previousAppealCategory(); else if (action === 'next') nextAppealCategory(); }
                 else if (navType === 'constituent') { if (action === 'previous') previousConstituentType(); else if (action === 'next') nextConstituentType(); }
                 else if (navType === 'gifttype') { if (action === 'previous') previousGiftType(); else if (action === 'next') nextGiftType(); }
             }
@@ -503,6 +526,10 @@
                 document.getElementById('solicitorSelectionSection').style.display = 'none';
                 startConstituentMapping();
             });
+        });
+
+        waitForElement('#startConstituentFromAppealBtn', function(btn) {
+            btn.addEventListener('click', startConstituentMapping);
         });
     }
 
@@ -567,6 +594,15 @@
                     selectedSolicitors = {};
                     for (var si = 0; si < solicitors.length; si++) selectedSolicitors[solicitors[si]] = true;
                 }
+                if (isDevelopmentAssessment) {
+                    appealCategories = [];
+                    if (workbook.SheetNames.indexOf('Appeals Data') !== -1) {
+                        var appealsJson = XLSX.utils.sheet_to_json(workbook.Sheets['Appeals Data'], { defval: '' });
+                        var uac = {};
+                        for (var ac = 0; ac < appealsJson.length; ac++) { var acVal = (appealsJson[ac]['Appeal Category'] || '').toString().trim(); if (acVal) uac[acVal] = true; }
+                        appealCategories = Object.keys(uac).sort();
+                    }
+                }
                 var ug = {};
                 for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
                 giftTypes = Object.keys(ug).sort();
@@ -590,6 +626,7 @@
                 if (isSimpleFlow) {
                     specialEventSkipped = true;
                     if (isStaffing && solicitors.length > 0) { startSolicitorSelection(); }
+                    else if (isDevelopmentAssessment && appealCategories.length > 0) { startAppealCategoryMapping(); }
                     else { startConstituentMapping(); }
                 } else {
                     document.getElementById('categorySetup').style.display = 'block';
@@ -719,8 +756,54 @@
         document.getElementById('spotlightProgressText').textContent = mapped + ' of ' + total + ' mapped';
     }
 
+    function startAppealCategoryMapping() {
+        updateStepTracker(0); appealCategoryCurrentIndex = 0; appealCategoryHasUsedPrevious = false;
+        document.getElementById('appealCategoryMappingSection').style.display = 'block';
+        showCurrentAppealCategory(); updateAppealCategoryProgress();
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
+    }
+
+    function showCurrentAppealCategory() {
+        var container = document.getElementById('appealCategoryMappingContainer');
+        if (appealCategoryCurrentIndex >= giftAppeals.length) {
+            container.innerHTML = '';
+            document.getElementById('appealCategoryCompletionCard').style.display = 'block';
+            document.querySelector('#appealCategoryMappingSection .progress-container').style.display = 'none';
+            document.querySelector('#appealCategoryMappingSection h2').style.display = 'none';
+            return;
+        }
+        var appeal = giftAppeals[appealCategoryCurrentIndex]; var cm = appealCategoryMappings[appeal] || null;
+        var html = '<div class="mapping-card"><div class="appeal-label">Gift Appeal ' + (appealCategoryCurrentIndex+1) + ' of ' + giftAppeals.length + '</div><div class="appeal-name">' + appeal + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select an appeal category:</div><div class="category-buttons allow-wrap">';
+        for (var i = 0; i < appealCategories.length; i++) html += '<button class="category-btn" data-appeal="' + appeal + '" data-category="' + appealCategories[i] + '" data-mapping-type="appealcategory">' + appealCategories[i] + '</button>';
+        html += '<button class="category-btn non-event-btn" data-appeal="' + appeal + '" data-category="Skip" data-mapping-type="appealcategory">Skip</button></div>';
+        html += '<div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="appealcategory"' + (appealCategoryCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="appealCategoryNextBtn" data-action="next" data-mapping-type="appealcategory"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
+        container.innerHTML = html;
+        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { if (cm === 'Skip') { btns[j].style.background = '#999'; btns[j].style.color = 'white'; btns[j].style.borderColor = '#999'; } else { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } } }
+        var nb = container.querySelector('#appealCategoryNextBtn'); if (nb && appealCategoryHasUsedPrevious && cm) nb.style.display = 'block';
+    }
+
+    function selectAppealCategory(appeal, category) {
+        var prevValue = appealCategoryMappings[appeal] || null;
+        appealCategoryMappings[appeal] = category; updateAppealCategoryProgress();
+        var btns = document.querySelectorAll('#appealCategoryMappingContainer .category-btn');
+        for (var i = 0; i < btns.length; i++) { var bc = btns[i].getAttribute('data-category'); if (bc === category) { if (category === 'Skip') { btns[i].style.background = '#999'; btns[i].style.color = 'white'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = themeColor; btns[i].style.color = 'white'; btns[i].style.borderColor = themeColor; } } else { if (btns[i].classList.contains('non-event-btn')) { btns[i].style.background = 'white'; btns[i].style.color = '#666'; btns[i].style.borderColor = '#999'; } else { btns[i].style.background = 'white'; btns[i].style.color = themeColor; btns[i].style.borderColor = themeColor; } } }
+        var nb = document.querySelector('#appealCategoryNextBtn'); if (nb && appealCategoryHasUsedPrevious) { nb.disabled = false; nb.style.display = 'block'; }
+        setTimeout(function() { if (!appealCategoryHasUsedPrevious || (appealCategoryHasUsedPrevious && prevValue !== null && prevValue !== category)) nextAppealCategory(); }, 500);
+    }
+
+    function nextAppealCategory() { if (appealCategoryCurrentIndex < giftAppeals.length) { appealCategoryCurrentIndex++; appealCategoryHasUsedPrevious = false; showCurrentAppealCategory(); updateAppealCategoryProgress(); } }
+    function previousAppealCategory() { if (appealCategoryCurrentIndex > 0) { appealCategoryCurrentIndex--; appealCategoryHasUsedPrevious = true; showCurrentAppealCategory(); updateAppealCategoryProgress(); } }
+
+    function updateAppealCategoryProgress() {
+        var mapped = Object.keys(appealCategoryMappings).length; var total = giftAppeals.length;
+        var pct = total > 0 ? Math.round((mapped/total)*100) : 0;
+        document.getElementById('appealCategoryProgressBar').style.width = pct + '%';
+        document.getElementById('appealCategoryProgressBarText').textContent = pct === 0 ? '' : pct + '%';
+        document.getElementById('appealCategoryProgressText').textContent = mapped + ' of ' + total + ' mapped';
+    }
+
     function startConstituentMapping() {
-        updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
+        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         document.getElementById('mappingSection').style.display = 'none'; document.getElementById('spotlightMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -728,7 +811,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
@@ -760,7 +843,7 @@
 
 
     function startGiftTypeMapping() {
-        updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
+        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 2 : 1) : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
         document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
         document.getElementById('constituentMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -770,7 +853,7 @@
         var container = document.getElementById('giftTypeMappingContainer');
         if (giftTypeCurrentIndex >= giftTypes.length) {
             container.innerHTML = '';
-            updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 3 : 2) : spotlightConfig ? 4 : 3);
+            updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 3 : 2) : spotlightConfig ? 4 : 3);
             document.getElementById('giftTypeCompletionCard').style.display = 'block';
             document.querySelector('#giftTypeMappingSection .progress-container').style.display = 'none';
             document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
@@ -813,11 +896,23 @@
         var constituentOk = Object.keys(constituentMappings).length > 0;
         var giftTypeOk = Object.keys(giftTypeMappings).length > 0;
         var solicitorOk = !isStaffing || solicitors.length === 0 || solicitorSelectionDone;
-        console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk, solicitorOk: solicitorOk});
-        if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk || !solicitorOk) return null;
+        var appealCategoryOk = !isDevelopmentAssessment || appealCategories.length === 0 || Object.keys(appealCategoryMappings).length > 0;
+        console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk, solicitorOk: solicitorOk, appealCategoryOk: appealCategoryOk});
+        if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk || !solicitorOk || !appealCategoryOk) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], { defval: '' });
-        for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
+        if (isDevelopmentAssessment) {
+            // Replace Gift Appeal values in place with mapped Appeal Category (or blank if Skip)
+            for (var i = 0; i < gd.length; i++) {
+                if (appealCategories.length > 0 && Object.keys(appealCategoryMappings).length > 0) {
+                    var mappedAC = appealCategoryMappings[gd[i]['Gift Appeal']];
+                    if (mappedAC === 'Skip') gd[i]['Gift Appeal'] = '';
+                    else if (mappedAC !== undefined) gd[i]['Gift Appeal'] = mappedAC;
+                }
+            }
+        } else {
+            for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
+        }
 
         if (spotlightConfig && !spotlightSkipped && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
@@ -865,13 +960,19 @@
         var origGiftHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], {header: 1})[0] || [];
         var origConstHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], {header: 1})[0] || [];
 
-        // Build gift data headers: remove 'Gift Appeal', append Event (and Spotlights) at end
+        // Build gift data headers
         var giftHeaders = [];
-        for (var gh = 0; gh < origGiftHeaders.length; gh++) {
-            if (origGiftHeaders[gh] !== 'Gift Appeal') giftHeaders.push(origGiftHeaders[gh]);
+        if (isDevelopmentAssessment) {
+            // Keep original column order including Gift Appeal (now replaced with Appeal Category values)
+            giftHeaders = origGiftHeaders.slice();
+        } else {
+            // Remove 'Gift Appeal', append Event and Spotlights at end
+            for (var gh = 0; gh < origGiftHeaders.length; gh++) {
+                if (origGiftHeaders[gh] !== 'Gift Appeal') giftHeaders.push(origGiftHeaders[gh]);
+            }
+            giftHeaders.push('Event');
+            giftHeaders.push('Spotlights');
         }
-        giftHeaders.push('Event');
-        giftHeaders.push('Spotlights');
 
         var wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
@@ -883,7 +984,7 @@
 
     window.attachToGHLForm = function() {
         var blob = generateExcelBlob();
-        if (!blob) { alert('Please complete all ' + (isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
+        if (!blob) { alert('Please complete all ' + (isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
