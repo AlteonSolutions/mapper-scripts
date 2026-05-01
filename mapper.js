@@ -419,7 +419,7 @@
             solicitorSection.id = 'solicitorSelectionSection';
             solicitorSection.style.display = 'none';
             solicitorSection.innerHTML = '<h2 style="text-align:center;margin-bottom:10px;">Solicitor Selection</h2>'
-                + '<div style="text-align:center;margin-bottom:20px;color:#666;font-weight:600;">Please select active Solicitors</div>'
+                + '<div style="text-align:center;margin-bottom:20px;color:#666;font-weight:600;">Review your solicitors below and deselect any who are no longer active.</div>'
                 + '<div id="solicitorButtonsContainer" class="category-buttons allow-wrap" style="justify-content:center;gap:10px;"></div>'
                 + '<div style="text-align:center;margin-top:25px;">'
                 + '<button id="solicitorDoneBtn" type="button" style="background-color:' + themeColor + ';color:white;font-family:Roboto,sans-serif;font-size:15px;font-weight:600;padding:12px 40px;border:none;border-radius:8px;cursor:pointer;">Continue to Constituent Mapping ➡</button>'
