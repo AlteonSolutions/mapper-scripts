@@ -1019,13 +1019,15 @@
                 }
             }
         } else {
-            for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
+            if (!isSimpleFlow) {
+                for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
+            }
             if (isCampaignCounsel && Object.keys(pledgeStatusMappings).length > 0) {
                 for (var sc = 0; sc < gd.length; sc++) { var origStat = (gd[sc]['Status'] || '').toString().trim(); var mappedStat = pledgeStatusMappings[origStat]; if (mappedStat !== undefined) gd[sc]['Status'] = mappedStat; }
             }
         }
 
-        if (spotlightConfig && !spotlightSkipped && Object.keys(spotlightMappings).length > 0) {
+        if (!isSimpleFlow && spotlightConfig && !spotlightSkipped && Object.keys(spotlightMappings).length > 0) {
             if (spotlightConfig.type === 'giftAppeal') {
                 // Always look up spotlight by original Gift Appeal name (row index -> appeal name)
                 var origGd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], { defval: '' });
@@ -1038,7 +1040,7 @@
                 var csm = {}; for (var m = 0; m < cd.length; m++) { var raw = spotlightMappings[cd[m]['Constituent Type']]; csm[cd[m]['Constituent ID']] = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); }
                 for (var n = 0; n < gd.length; n++) { var sv = csm[gd[n]['Constituent ID']]; gd[n]['Spotlights'] = sv !== undefined ? sv : ''; }
             }
-        } else {
+        } else if (!isSimpleFlow) {
             for (var r = 0; r < gd.length; r++) gd[r]['Spotlights'] = '';
         }
 
@@ -1073,8 +1075,8 @@
 
         // Build gift data headers
         var giftHeaders = [];
-        if (isDevelopmentAssessment) {
-            // Keep original column order including Gift Appeal (now replaced with Appeal Category values)
+        if (isSimpleFlow) {
+            // Keep original column order unchanged for simple flows
             giftHeaders = origGiftHeaders.slice();
         } else {
             // Remove 'Gift Appeal', append Event and Spotlights at end
