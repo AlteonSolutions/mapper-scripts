@@ -448,7 +448,7 @@
             if (!document.getElementById('pledge-tooltip-style')) {
                 var tipStyle = document.createElement('style');
                 tipStyle.id = 'pledge-tooltip-style';
-                tipStyle.textContent = '.info-icon-wrap{position:relative;display:inline-block;cursor:help;color:#aaa;font-size:13px;vertical-align:middle;margin-left:5px;}.info-icon-wrap:hover{color:#555;}.info-popup{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(30,30,30,0.95);color:#fff;font-size:12px;font-weight:400;padding:10px 14px;border-radius:8px;width:300px;z-index:9999;pointer-events:none;line-height:1.6;text-align:left;box-shadow:0 4px 12px rgba(0,0,0,0.3);}.info-popup-item{margin-bottom:5px;}.info-popup-item:last-child{margin-bottom:0;}.info-popup-label{font-weight:700;}.info-icon-wrap:hover .info-popup{display:block;}';
+                tipStyle.textContent = '.info-icon-wrap{position:relative;display:inline-block;cursor:help;color:#aaa;font-size:13px;vertical-align:middle;margin-left:5px;}.info-icon-wrap:hover{color:#555;}.info-popup{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(30,30,30,0.95);color:#fff;font-size:12px;font-weight:400;padding:10px 14px;border-radius:8px;width:420px;z-index:9999;pointer-events:none;line-height:1.6;text-align:left;box-shadow:0 4px 12px rgba(0,0,0,0.3);}.info-popup-item{margin-bottom:5px;}.info-popup-item:last-child{margin-bottom:0;}.info-popup-label{font-weight:700;}.info-icon-wrap:hover .info-popup{display:block;}';
                 document.head.appendChild(tipStyle);
             }
 
