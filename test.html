@@ -169,6 +169,7 @@
     <a href="test.html">Alford (Green · Full flow)</a>
     <a href="test.html?brand=sw">SW Campaign Readiness (Blue · Full flow)</a>
     <a href="test.html?brand=sw&variant=staffing">SW Staffing (Blue · Staffing flow)</a>
+    <a href="test.html?brand=sw&variant=developmentassessment">SW Dev Assessment (Blue · 2-step)</a>
     <span id="current-mode"></span>
 </div>
 
@@ -311,7 +312,7 @@
         var lp = new URLSearchParams(a.href.split('?')[1] || '');
         if (lp.get('brand') === brand && lp.get('variant') === variant) a.classList.add('active');
     });
-    var modeLabel = variant === 'staffing' ? 'SW Staffing (Blue · 3-step)' : brand === 'sw' ? 'SW Campaign Readiness (Blue · Full)' : 'Alford (Green · Full)';
+    var modeLabel = variant === 'staffing' ? 'SW Staffing (Blue · 3-step)' : variant === 'developmentassessment' ? 'SW Dev Assessment (Blue · 2-step)' : brand === 'sw' ? 'SW Campaign Readiness (Blue · Full)' : 'Alford (Green · Full)';
     document.getElementById('current-mode').textContent = '▸ ' + modeLabel;
 
     // Intercept the fake GHL submit — read the processed file back from the hidden input and download it

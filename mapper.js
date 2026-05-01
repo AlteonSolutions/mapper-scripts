@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = 'v8.20';
+    var MAPPER_VERSION = 'v8.21';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -16,6 +16,8 @@
     var _urlParams = new URLSearchParams(window.location.search);
     var isSW = _urlParams.get('brand') === 'sw';
     var isStaffing = _urlParams.get('variant') === 'staffing';
+    var isDevelopmentAssessment = _urlParams.get('variant') === 'developmentassessment';
+    var isSimpleFlow = isStaffing || isDevelopmentAssessment;
     var themeColor = isSW ? '#00386c' : '#2c5f5d';
     var themeColorHover = isSW ? '#004f99' : '#3d7672';
     var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : 'rgba(44, 95, 93, 0.1)';
@@ -212,8 +214,8 @@
     function initializeStepTracker() {
         var stepTracker = document.getElementById('stepTracker');
         if (!stepTracker) return;
-        var steps = isStaffing ?
-            (solicitors.length > 0 ?
+        var steps = isSimpleFlow ?
+            (isStaffing && solicitors.length > 0 ?
             [{ label: 'Solicitor Selection', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
             [{ label: 'Constituent Type Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }]) :
             spotlightConfig ?
@@ -278,7 +280,7 @@
             selectedIndustryType = industryDisplayLabels[detected] || null;
             console.log('✓ Industry from URL on init:', detected, '(' + selectedIndustryType + ')');
             if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
-            if (!isStaffing) setSpotlightConfig(detected);
+            if (!isSimpleFlow) setSpotlightConfig(detected);
         }
 
         // Hide custom submit button until all mapping is complete
@@ -520,7 +522,7 @@
         var file = e.target.files[0];
         if (!file) return;
         var detected = detectIndustry();
-        if (detected) { if (!isStaffing) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) { selectedIndustryType = lbl; setIndustryTypeField(lbl); } }
+        if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) { selectedIndustryType = lbl; setIndustryTypeField(lbl); } }
 
         // Show loading state
         var uploadBox = document.getElementById('uploadBox');
@@ -576,16 +578,16 @@
                 uploadBox.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000000;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 0 0 0;border-top:1px solid #eee;margin-top:8px;">'
                     + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
-                    + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : giftAppeals.length + ' Appeals &middot; ') + constituentTypes.length + ' Constituent Types &middot; ' + giftTypes.length + ' Gift Types</div>'
+                    + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + constituentTypes.length + ' Constituent Types &middot; ' + giftTypes.length + ' Gift Types</div>'
                     + '</div>';
                 document.getElementById('fileInfo').innerHTML = '';
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                 var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
                 // Notify outer shell page to scroll mappingBox into view
                 window.parent.postMessage({ type: 'mapperBoxReady' }, '*');
-                if (isStaffing) {
+                if (isSimpleFlow) {
                     specialEventSkipped = true;
-                    if (solicitors.length > 0) { startSolicitorSelection(); }
+                    if (isStaffing && solicitors.length > 0) { startSolicitorSelection(); }
                     else { startConstituentMapping(); }
                 } else {
                     document.getElementById('categorySetup').style.display = 'block';
@@ -716,7 +718,7 @@
     }
 
     function startConstituentMapping() {
-        updateStepTracker(isStaffing ? (solicitors.length > 0 ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
+        updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         document.getElementById('mappingSection').style.display = 'none'; document.getElementById('spotlightMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -724,7 +726,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isStaffing ? (solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
@@ -756,7 +758,7 @@
 
 
     function startGiftTypeMapping() {
-        updateStepTracker(isStaffing ? (solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
+        updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 2 : 1) : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
         document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
         document.getElementById('constituentMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -766,7 +768,7 @@
         var container = document.getElementById('giftTypeMappingContainer');
         if (giftTypeCurrentIndex >= giftTypes.length) {
             container.innerHTML = '';
-            updateStepTracker(isStaffing ? (solicitors.length > 0 ? 3 : 2) : spotlightConfig ? 4 : 3);
+            updateStepTracker(isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 3 : 2) : spotlightConfig ? 4 : 3);
             document.getElementById('giftTypeCompletionCard').style.display = 'block';
             document.querySelector('#giftTypeMappingSection .progress-container').style.display = 'none';
             document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
@@ -879,7 +881,7 @@
 
     window.attachToGHLForm = function() {
         var blob = generateExcelBlob();
-        if (!blob) { alert('Please complete all ' + (isStaffing ? (solicitors.length > 0 ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
+        if (!blob) { alert('Please complete all ' + (isSimpleFlow ? (isStaffing && solicitors.length > 0 ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
