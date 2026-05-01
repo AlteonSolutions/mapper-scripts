@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var VERSION = 'v4.8';
+    var VERSION = 'v4.9';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -64,6 +64,7 @@
     var isSW = window.location.href.includes('getdatabasey.com/sw');
     var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
+    var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
     var brand = isSW ? brands.sw : brands.alford;
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
@@ -245,7 +246,7 @@
             + '?industrytype=' + encodeURIComponent(industryLabel)
             + '&industry=' + encodeURIComponent(mapperKey)
             + (isSW ? '&brand=sw' : '')
-            + (isStaffing ? '&variant=staffing' : isDevelopmentAssessment ? '&variant=developmentassessment' : '');
+            + (isStaffing ? '&variant=staffing' : isDevelopmentAssessment ? '&variant=developmentassessment' : isCampaignCounsel ? '&variant=campaigncounsel' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
 
@@ -256,7 +257,7 @@
         badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:none;color:rgba(180,180,180,0.6);'
             + 'font-size:10px;padding:4px 8px;z-index:99999;line-height:1.8;text-align:right;'
             + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
-        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js v8.22';
+        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js v8.23';
         document.body.appendChild(badge);
         setTimeout(function() { badge.style.opacity = '0'; }, 3000);
         setTimeout(function() { document.body.removeChild(badge); }, 4000);

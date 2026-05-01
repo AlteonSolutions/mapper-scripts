@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = 'v8.22';
+    var MAPPER_VERSION = 'v8.23';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -17,7 +17,8 @@
     var isSW = _urlParams.get('brand') === 'sw';
     var isStaffing = _urlParams.get('variant') === 'staffing';
     var isDevelopmentAssessment = _urlParams.get('variant') === 'developmentassessment';
-    var isSimpleFlow = isStaffing || isDevelopmentAssessment;
+    var isCampaignCounsel = _urlParams.get('variant') === 'campaigncounsel';
+    var isSimpleFlow = isStaffing || isDevelopmentAssessment || isCampaignCounsel;
     var themeColor = isSW ? '#00386c' : '#2c5f5d';
     var themeColorHover = isSW ? '#004f99' : '#3d7672';
     var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : 'rgba(44, 95, 93, 0.1)';
@@ -67,6 +68,20 @@
 
     var giftTypeCategories = ['Cash', 'Pledge', 'Pledge Payment'];
     var giftTypes = [];
+
+    var pledgeStatusCategories = [
+        { label: 'Active',               desc: 'Pledge is open and on schedule' },
+        { label: 'Fulfilled',            desc: 'Paid in full' },
+        { label: 'Partially Fulfilled',  desc: 'Some payments received, balance remaining and on schedule' },
+        { label: 'Past Due',             desc: 'Payment(s) missed, pledge still considered collectible' },
+        { label: 'Cancelled',            desc: 'Donor or org cancelled before any payment' },
+        { label: 'Written Off',          desc: 'Uncollectible balance closed out' },
+        { label: 'On Hold',              desc: 'Paused intentionally (e.g., donor death, dispute, renegotiation)' }
+    ];
+    var pledgeStatuses = [];
+    var pledgeStatusMappings = {};
+    var pledgeStatusCurrentIndex = 0;
+    var pledgeStatusHasUsedPrevious = false;
 
     var spotlightConfig = null;
 
@@ -224,6 +239,8 @@
             [{ label: 'Solicitor Selection', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
             isDevelopmentAssessment && appealCategories.length > 0 ?
             [{ label: 'Appeals Category Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
+            isCampaignCounsel && pledgeStatuses.length > 0 ?
+            [{ label: 'Pledge Status Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
             [{ label: 'Constituent Type Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }]) :
             spotlightConfig ?
             [{ label: 'Special Event Mapping', number: 1 }, { label: 'Spotlight Mapping', number: 2 }, { label: 'Constituent Type Mapping', number: 3 }, { label: 'Gift Type Mapping', number: 4 }] :
@@ -361,6 +378,8 @@
                     ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f41949cad250291f4bf0cb.xlsx'
                     : isDevelopmentAssessment
                     ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f4d41f23e63d676c8653d7.xlsx'
+                    : isCampaignCounsel
+                    ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx'
                     : 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
                 var filename = 'Data Upload Template.xlsx';
                 fetch(templateUrl)
@@ -425,6 +444,28 @@
             // Insert label and box before categorySetup
             parent.insertBefore(label, catSetup);
             parent.insertBefore(box, catSetup);
+            // Inject tooltip CSS for pledge status buttons
+            if (!document.getElementById('pledge-tooltip-style')) {
+                var tipStyle = document.createElement('style');
+                tipStyle.id = 'pledge-tooltip-style';
+                tipStyle.textContent = '.pledge-status-btn{position:relative;}.pledge-status-btn[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(30,30,30,0.92);color:#fff;font-size:12px;font-weight:400;padding:7px 11px;border-radius:6px;white-space:normal;max-width:240px;text-align:center;z-index:9999;pointer-events:none;line-height:1.4;}.pledge-status-btn[data-tooltip]:hover::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(30,30,30,0.92);z-index:9999;pointer-events:none;}';
+                document.head.appendChild(tipStyle);
+            }
+
+            // Create pledge status mapping section dynamically (Campaign Counsel only)
+            var pledgeSection = document.createElement('div');
+            pledgeSection.id = 'pledgeStatusMappingSection';
+            pledgeSection.style.display = 'none';
+            pledgeSection.innerHTML = '<h2>Pledge Status Mapping</h2>'
+                + '<div class="progress-container"><div style="background:#eee;border-radius:99px;height:8px;overflow:hidden;margin-bottom:6px;"><div id="pledgeStatusProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;"></div></div>'
+                + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#999;"><span id="pledgeStatusProgressText">0 of 0 mapped</span><span id="pledgeStatusProgressBarText"></span></div></div>'
+                + '<div id="pledgeStatusMappingContainer"></div>'
+                + '<div id="pledgeStatusCompletionCard" class="completion-card" style="display:none;">'
+                + '<p>You have successfully mapped all Pledge Statuses.</p>'
+                + '<button id="startConstituentFromPledgeBtn" type="button" class="continue-btn">Continue to Constituent Mapping ➡</button>'
+                + '</div>';
+            parent.insertBefore(pledgeSection, catSetup);
+
             // Create appeal category mapping section dynamically (DA only)
             var appealCatSection = document.createElement('div');
             appealCatSection.id = 'appealCategoryMappingSection';
@@ -452,7 +493,7 @@
             parent.insertBefore(solicitorSection, catSetup);
 
             // Move all mapping sections into the box
-            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'appealCategoryMappingSection', 'solicitorSelectionSection', 'constituentMappingSection', 'giftTypeMappingSection', 'stepProgress'];
+            var sections = ['categorySetup', 'mappingSection', 'spotlightMappingSection', 'pledgeStatusMappingSection', 'appealCategoryMappingSection', 'solicitorSelectionSection', 'constituentMappingSection', 'giftTypeMappingSection', 'stepProgress'];
             sections.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) box.appendChild(el);
@@ -507,6 +548,7 @@
                 if (type === 'event') selectCategory(appeal, cat);
                 else if (type === 'spotlight') selectSpotlight(appeal, cat);
                 else if (type === 'appealcategory') selectAppealCategory(appeal, cat);
+                else if (type === 'pledgestatus') selectPledgeStatus(appeal, cat);
                 else if (type === 'constituent') selectConstituentType(appeal, cat);
                 else if (type === 'gifttype') selectGiftType(appeal, cat);
             } else if (e.target.classList.contains('nav-btn')) {
@@ -515,6 +557,7 @@
                 if (navType === 'event') { if (action === 'previous') previousAppeal(); else if (action === 'next') nextAppeal(); }
                 else if (navType === 'spotlight') { if (action === 'previous') previousSpotlight(); else if (action === 'next') nextSpotlight(); }
                 else if (navType === 'appealcategory') { if (action === 'previous') previousAppealCategory(); else if (action === 'next') nextAppealCategory(); }
+                else if (navType === 'pledgestatus') { if (action === 'previous') previousPledgeStatus(); else if (action === 'next') nextPledgeStatus(); }
                 else if (navType === 'constituent') { if (action === 'previous') previousConstituentType(); else if (action === 'next') nextConstituentType(); }
                 else if (navType === 'gifttype') { if (action === 'previous') previousGiftType(); else if (action === 'next') nextGiftType(); }
             }
@@ -529,6 +572,10 @@
         });
 
         waitForElement('#startConstituentFromAppealBtn', function(btn) {
+            btn.addEventListener('click', startConstituentMapping);
+        });
+
+        waitForElement('#startConstituentFromPledgeBtn', function(btn) {
             btn.addEventListener('click', startConstituentMapping);
         });
     }
@@ -594,6 +641,11 @@
                     selectedSolicitors = {};
                     for (var si = 0; si < solicitors.length; si++) selectedSolicitors[solicitors[si]] = true;
                 }
+                if (isCampaignCounsel) {
+                    var uPS = {};
+                    for (var ps = 0; ps < giftJson.length; ps++) { var psVal = (giftJson[ps]['Status'] || '').toString().trim(); if (psVal) uPS[psVal] = true; }
+                    pledgeStatuses = Object.keys(uPS).sort();
+                }
                 if (isDevelopmentAssessment) {
                     appealCategories = [];
                     if (workbook.SheetNames.indexOf('Appeals Data') !== -1) {
@@ -627,6 +679,7 @@
                     specialEventSkipped = true;
                     if (isStaffing && solicitors.length > 0) { startSolicitorSelection(); }
                     else if (isDevelopmentAssessment && appealCategories.length > 0) { startAppealCategoryMapping(); }
+                    else if (isCampaignCounsel && pledgeStatuses.length > 0) { startPledgeStatusMapping(); }
                     else { startConstituentMapping(); }
                 } else {
                     document.getElementById('categorySetup').style.display = 'block';
@@ -756,6 +809,53 @@
         document.getElementById('spotlightProgressText').textContent = mapped + ' of ' + total + ' mapped';
     }
 
+    function startPledgeStatusMapping() {
+        updateStepTracker(0); pledgeStatusCurrentIndex = 0; pledgeStatusHasUsedPrevious = false;
+        document.getElementById('pledgeStatusMappingSection').style.display = 'block';
+        showCurrentPledgeStatus(); updatePledgeStatusProgress();
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
+    }
+
+    function showCurrentPledgeStatus() {
+        var container = document.getElementById('pledgeStatusMappingContainer');
+        if (pledgeStatusCurrentIndex >= pledgeStatuses.length) {
+            container.innerHTML = '';
+            document.getElementById('pledgeStatusCompletionCard').style.display = 'block';
+            document.querySelector('#pledgeStatusMappingSection .progress-container').style.display = 'none';
+            document.querySelector('#pledgeStatusMappingSection h2').style.display = 'none';
+            return;
+        }
+        var status = pledgeStatuses[pledgeStatusCurrentIndex]; var cm = pledgeStatusMappings[status] || null;
+        var html = '<div class="mapping-card"><div class="appeal-label">Pledge Status ' + (pledgeStatusCurrentIndex+1) + ' of ' + pledgeStatuses.length + '</div><div class="appeal-name">' + status + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a pledge status category:</div><div class="category-buttons allow-wrap" style="justify-content:center;">';
+        for (var i = 0; i < pledgeStatusCategories.length; i++) {
+            html += '<button class="category-btn pledge-status-btn" data-appeal="' + status + '" data-category="' + pledgeStatusCategories[i].label + '" data-mapping-type="pledgestatus" data-tooltip="' + pledgeStatusCategories[i].desc + '">' + pledgeStatusCategories[i].label + '</button>';
+        }
+        html += '</div><div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="pledgestatus"' + (pledgeStatusCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="pledgeStatusNextBtn" data-action="next" data-mapping-type="pledgestatus"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
+        container.innerHTML = html;
+        if (cm) { var btns = container.querySelectorAll('.category-btn'); for (var j = 0; j < btns.length; j++) { if (btns[j].getAttribute('data-category') === cm) { btns[j].style.background = themeColor; btns[j].style.color = 'white'; btns[j].style.borderColor = themeColor; } } }
+        var nb = container.querySelector('#pledgeStatusNextBtn'); if (nb && pledgeStatusHasUsedPrevious && cm) nb.style.display = 'block';
+    }
+
+    function selectPledgeStatus(status, category) {
+        var prevValue = pledgeStatusMappings[status] || null;
+        pledgeStatusMappings[status] = category; updatePledgeStatusProgress();
+        var btns = document.querySelectorAll('#pledgeStatusMappingContainer .category-btn');
+        for (var i = 0; i < btns.length; i++) { if (btns[i].getAttribute('data-category') === category) { btns[i].style.background = themeColor; btns[i].style.color = 'white'; btns[i].style.borderColor = themeColor; } else { btns[i].style.background = 'white'; btns[i].style.color = themeColor; btns[i].style.borderColor = themeColor; } }
+        var nb = document.querySelector('#pledgeStatusNextBtn'); if (nb && pledgeStatusHasUsedPrevious) { nb.disabled = false; nb.style.display = 'block'; }
+        setTimeout(function() { if (!pledgeStatusHasUsedPrevious || (pledgeStatusHasUsedPrevious && prevValue !== null && prevValue !== category)) nextPledgeStatus(); }, 500);
+    }
+
+    function nextPledgeStatus() { if (pledgeStatusCurrentIndex < pledgeStatuses.length) { pledgeStatusCurrentIndex++; pledgeStatusHasUsedPrevious = false; showCurrentPledgeStatus(); updatePledgeStatusProgress(); } }
+    function previousPledgeStatus() { if (pledgeStatusCurrentIndex > 0) { pledgeStatusCurrentIndex--; pledgeStatusHasUsedPrevious = true; showCurrentPledgeStatus(); updatePledgeStatusProgress(); } }
+
+    function updatePledgeStatusProgress() {
+        var mapped = Object.keys(pledgeStatusMappings).length; var total = pledgeStatuses.length;
+        var pct = total > 0 ? Math.round((mapped/total)*100) : 0;
+        document.getElementById('pledgeStatusProgressBar').style.width = pct + '%';
+        document.getElementById('pledgeStatusProgressBarText').textContent = pct === 0 ? '' : pct + '%';
+        document.getElementById('pledgeStatusProgressText').textContent = mapped + ' of ' + total + ' mapped';
+    }
+
     function startAppealCategoryMapping() {
         updateStepTracker(0); appealCategoryCurrentIndex = 0; appealCategoryHasUsedPrevious = false;
         document.getElementById('appealCategoryMappingSection').style.display = 'block';
@@ -803,7 +903,7 @@
     }
 
     function startConstituentMapping() {
-        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
+        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         document.getElementById('mappingSection').style.display = 'none'; document.getElementById('spotlightMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -811,7 +911,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
@@ -843,7 +943,7 @@
 
 
     function startGiftTypeMapping() {
-        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 2 : 1) : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
+        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 2 : 1) : spotlightConfig ? 3 : 2); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
         document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
         document.getElementById('constituentMappingSection').style.display = 'none';
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -853,7 +953,7 @@
         var container = document.getElementById('giftTypeMappingContainer');
         if (giftTypeCurrentIndex >= giftTypes.length) {
             container.innerHTML = '';
-            updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 3 : 2) : spotlightConfig ? 4 : 3);
+            updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 3 : 2) : spotlightConfig ? 4 : 3);
             document.getElementById('giftTypeCompletionCard').style.display = 'block';
             document.querySelector('#giftTypeMappingSection .progress-container').style.display = 'none';
             document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
@@ -897,8 +997,9 @@
         var giftTypeOk = Object.keys(giftTypeMappings).length > 0;
         var solicitorOk = !isStaffing || solicitors.length === 0 || solicitorSelectionDone;
         var appealCategoryOk = !isDevelopmentAssessment || appealCategories.length === 0 || Object.keys(appealCategoryMappings).length > 0;
+        var pledgeStatusOk = !isCampaignCounsel || pledgeStatuses.length === 0 || Object.keys(pledgeStatusMappings).length >= pledgeStatuses.length;
         console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk, solicitorOk: solicitorOk, appealCategoryOk: appealCategoryOk});
-        if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk || !solicitorOk || !appealCategoryOk) return null;
+        if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk || !solicitorOk || !appealCategoryOk || !pledgeStatusOk) return null;
 
         var gd = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], { defval: '' });
         if (isDevelopmentAssessment) {
@@ -912,6 +1013,9 @@
             }
         } else {
             for (var i = 0; i < gd.length; i++) { var raw = specialEventSkipped ? undefined : mappings[gd[i]['Gift Appeal']]; var ev = raw === 'Skip' ? '' : (raw !== undefined ? raw : ''); gd[i]['Event'] = ev; delete gd[i]['Gift Appeal']; }
+            if (isCampaignCounsel && Object.keys(pledgeStatusMappings).length > 0) {
+                for (var sc = 0; sc < gd.length; sc++) { var origStat = (gd[sc]['Status'] || '').toString().trim(); var mappedStat = pledgeStatusMappings[origStat]; if (mappedStat !== undefined) gd[sc]['Status'] = mappedStat; }
+            }
         }
 
         if (spotlightConfig && !spotlightSkipped && Object.keys(spotlightMappings).length > 0) {
@@ -984,7 +1088,7 @@
 
     window.attachToGHLForm = function() {
         var blob = generateExcelBlob();
-        if (!blob) { alert('Please complete all ' + (isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
+        if (!blob) { alert('Please complete all ' + (isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
         if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
