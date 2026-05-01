@@ -314,9 +314,22 @@
     var modeLabel = variant === 'staffing' ? 'SW Staffing (Blue · 3-step)' : brand === 'sw' ? 'SW Campaign Readiness (Blue · Full)' : 'Alford (Green · Full)';
     document.getElementById('current-mode').textContent = '▸ ' + modeLabel;
 
-    // Intercept the fake GHL submit so the test doesn't navigate away
+    // Intercept the fake GHL submit — read the processed file back from the hidden input and download it
     function handleFakeSubmit() {
-        alert('✅ Form submitted successfully!\n\nIn production this would submit to GHL.\nCheck the browser console for mapping details.');
+        var fi = document.querySelector('input[type="file"][name="  Client Data File"]');
+        if (fi && fi.files && fi.files[0]) {
+            var file = fi.files[0];
+            var url = URL.createObjectURL(file);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        } else {
+            alert('No processed file found — mapping may not be complete.');
+        }
     }
 </script>
 </body>
