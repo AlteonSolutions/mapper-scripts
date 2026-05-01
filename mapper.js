@@ -448,7 +448,7 @@
             if (!document.getElementById('pledge-tooltip-style')) {
                 var tipStyle = document.createElement('style');
                 tipStyle.id = 'pledge-tooltip-style';
-                tipStyle.textContent = '.info-icon-wrap{position:relative;display:inline-block;cursor:help;color:#aaa;font-size:13px;vertical-align:middle;margin-left:5px;}.info-icon-wrap:hover{color:#555;}.info-popup{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(30,30,30,0.95);color:#fff;font-size:12px;font-weight:400;padding:10px 14px;border-radius:8px;width:420px;z-index:9999;pointer-events:none;line-height:1.6;text-align:left;box-shadow:0 4px 12px rgba(0,0,0,0.3);}.info-popup-item{margin-bottom:5px;}.info-popup-item:last-child{margin-bottom:0;}.info-popup-label{font-weight:700;}.info-icon-wrap:hover .info-popup{display:block;}';
+                tipStyle.textContent = '.info-icon-wrap{display:inline-block;cursor:help;color:#aaa;font-size:13px;vertical-align:middle;margin-left:5px;user-select:none;}.info-icon-wrap:hover{color:#555;}#pledgeInfoPopup{display:none;position:fixed;background:rgba(30,30,30,0.95);color:#fff;font-size:12px;font-weight:400;padding:10px 14px;border-radius:8px;width:calc(100% - 40px);max-width:380px;z-index:9999;pointer-events:none;line-height:1.6;text-align:left;box-shadow:0 4px 12px rgba(0,0,0,0.3);}.info-popup-item{margin-bottom:5px;}.info-popup-item:last-child{margin-bottom:0;}.info-popup-label{font-weight:700;}';
                 document.head.appendChild(tipStyle);
             }
 
@@ -826,9 +826,13 @@
             return;
         }
         var status = pledgeStatuses[pledgeStatusCurrentIndex]; var cm = pledgeStatusMappings[status] || null;
-        var popupHtml = '<span class="info-icon-wrap">ⓘ<div class="info-popup">';
-        for (var p = 0; p < pledgeStatusCategories.length; p++) { popupHtml += '<div class="info-popup-item"><span class="info-popup-label">' + pledgeStatusCategories[p].label + '</span> — ' + pledgeStatusCategories[p].desc + '</div>'; }
-        popupHtml += '</div></span>';
+        if (!document.getElementById('pledgeInfoPopup')) {
+            var popupDiv = document.createElement('div');
+            popupDiv.id = 'pledgeInfoPopup';
+            for (var p = 0; p < pledgeStatusCategories.length; p++) { popupDiv.innerHTML += '<div class="info-popup-item"><span class="info-popup-label">' + pledgeStatusCategories[p].label + '</span> — ' + pledgeStatusCategories[p].desc + '</div>'; }
+            document.body.appendChild(popupDiv);
+        }
+        var popupHtml = '<span class="info-icon-wrap" onmouseenter="var el=document.getElementById(\'pledgeInfoPopup\'),r=this.getBoundingClientRect();el.style.display=\'block\';el.style.left=Math.max(10,Math.min(r.left+r.width/2-el.offsetWidth/2,window.innerWidth-el.offsetWidth-10))+\'px\';el.style.top=(r.top-el.offsetHeight-10)+\'px\';" onmouseleave="document.getElementById(\'pledgeInfoPopup\').style.display=\'none\';">ⓘ</span>';
         var html = '<div class="mapping-card"><div class="appeal-label">Pledge Status ' + (pledgeStatusCurrentIndex+1) + ' of ' + pledgeStatuses.length + '</div><div class="appeal-name">' + status + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a pledge status category:' + popupHtml + '</div><div class="category-buttons allow-wrap" style="justify-content:center;">';
         for (var i = 0; i < pledgeStatusCategories.length; i++) {
             html += '<button class="category-btn" data-appeal="' + status + '" data-category="' + pledgeStatusCategories[i].label + '" data-mapping-type="pledgestatus">' + pledgeStatusCategories[i].label + '</button>';
