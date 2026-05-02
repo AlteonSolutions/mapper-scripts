@@ -481,11 +481,10 @@
                 + '</div>'
                 + '<div id="appealCategoryMappingContainer"></div>'
                 + '<div id="appealCategoryCompletionCard" class="completion-card" style="display:none;">'
-                + '<div style="font-size:2.5rem;margin-bottom:10px;">🎉</div>'
-                + '<div style="font-size:1.4rem;font-weight:700;color:#111827;margin-bottom:14px;">Appeals Mapping Complete!</div>'
+                + '<div style="font-size:1.4rem;font-weight:700;color:#111827;margin-bottom:14px;">🎉 Appeals Mapping Complete!</div>'
                 + '<p>You\'ve successfully mapped all Gift Appeals to categories.</p>'
                 + '<p style="margin-bottom:24px;">Click below to continue to Constituent Type mapping.</p>'
-                + '<button id="startConstituentFromAppealBtn" type="button" class="continue-btn">Continue to Constituent Mapping ➡</button>'
+                + '<button id="startConstituentFromAppealBtn" type="button" style="background-color:' + themeColor + ';color:#fff;font-family:Roboto,sans-serif;font-size:15px;font-weight:600;padding:12px 40px;border:none;border-radius:8px;cursor:pointer;">Continue to Constituent Mapping ➡</button>'
                 + '</div>';
             parent.insertBefore(appealCatSection, catSetup);
 
