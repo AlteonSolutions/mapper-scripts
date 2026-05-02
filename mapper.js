@@ -457,12 +457,20 @@
             pledgeSection.id = 'pledgeStatusMappingSection';
             pledgeSection.style.display = 'none';
             pledgeSection.innerHTML = '<h2>Pledge Status Mapping</h2>'
-                + '<div class="progress-container"><div style="background:#eee;border-radius:99px;height:8px;overflow:hidden;margin-bottom:6px;"><div id="pledgeStatusProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;"></div></div>'
-                + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#999;"><span id="pledgeStatusProgressText">0 of 0 mapped</span><span id="pledgeStatusProgressBarText"></span></div></div>'
+                + '<div class="progress-container" style="margin-top:16px;margin-bottom:16px;">'
+                + '<div style="background:#eee;border-radius:99px;height:24px;overflow:hidden;margin-bottom:8px;">'
+                + '<div id="pledgeStatusProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;display:flex;align-items:center;justify-content:center;">'
+                + '<span id="pledgeStatusProgressBarText" style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;"></span>'
+                + '</div>'
+                + '</div>'
+                + '<div style="text-align:center;font-size:14px;color:#6b7280;margin-top:6px;"><span id="pledgeStatusProgressText">0 of 0 mapped</span></div>'
+                + '</div>'
                 + '<div id="pledgeStatusMappingContainer"></div>'
                 + '<div id="pledgeStatusCompletionCard" class="completion-card" style="display:none;">'
-                + '<p>You have successfully mapped all Pledge Statuses.</p>'
-                + '<button id="startConstituentFromPledgeBtn" type="button" class="continue-btn">Continue to Constituent Mapping ➡</button>'
+                + '<div style="font-size:1.4rem;font-weight:700;color:#111827;margin-bottom:14px;">🎉 Pledge Status Mapping Complete!</div>'
+                + '<p>You\'ve successfully mapped all Pledge Statuses.</p>'
+                + '<p style="margin-bottom:24px;">Click below to continue to Constituent Type mapping.</p>'
+                + '<button id="startConstituentFromPledgeBtn" type="button" style="background-color:' + themeColor + ';color:#fff;font-family:Roboto,sans-serif;font-size:15px;font-weight:600;padding:12px 40px;border:none;border-radius:8px;cursor:pointer;">Continue to Constituent Mapping ➡</button>'
                 + '</div>';
             parent.insertBefore(pledgeSection, catSetup);
 
@@ -477,7 +485,7 @@
                 + '<span id="appealCategoryProgressBarText" style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;"></span>'
                 + '</div>'
                 + '</div>'
-                + '<div style="text-align:center;font-size:13px;color:#888;"><span id="appealCategoryProgressText">0 of 0 mapped</span></div>'
+                + '<div style="text-align:center;font-size:14px;color:#6b7280;margin-top:6px;"><span id="appealCategoryProgressText">0 of 0 mapped</span></div>'
                 + '</div>'
                 + '<div id="appealCategoryMappingContainer"></div>'
                 + '<div id="appealCategoryCompletionCard" class="completion-card" style="display:none;">'
