@@ -471,11 +471,19 @@
             appealCatSection.id = 'appealCategoryMappingSection';
             appealCatSection.style.display = 'none';
             appealCatSection.innerHTML = '<h2>Appeals Category Mapping</h2>'
-                + '<div class="progress-container"><div style="background:#eee;border-radius:99px;height:8px;overflow:hidden;margin-bottom:6px;"><div id="appealCategoryProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;"></div></div>'
-                + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#999;"><span id="appealCategoryProgressText">0 of 0 mapped</span><span id="appealCategoryProgressBarText"></span></div></div>'
+                + '<div class="progress-container" style="margin-bottom:16px;">'
+                + '<div style="position:relative;background:#eee;border-radius:99px;height:24px;overflow:hidden;margin-bottom:8px;">'
+                + '<div id="appealCategoryProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;"></div>'
+                + '<span id="appealCategoryProgressBarText" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;font-weight:600;color:#fff;white-space:nowrap;"></span>'
+                + '</div>'
+                + '<div style="text-align:center;font-size:13px;color:#888;"><span id="appealCategoryProgressText">0 of 0 mapped</span></div>'
+                + '</div>'
                 + '<div id="appealCategoryMappingContainer"></div>'
                 + '<div id="appealCategoryCompletionCard" class="completion-card" style="display:none;">'
-                + '<p>You have successfully mapped all Gift Appeals to categories.</p>'
+                + '<div style="font-size:2.5rem;margin-bottom:10px;">🎉</div>'
+                + '<div style="font-size:1.4rem;font-weight:700;color:#111827;margin-bottom:14px;">Appeals Mapping Complete!</div>'
+                + '<p>You\'ve successfully mapped all Gift Appeals to categories.</p>'
+                + '<p style="margin-bottom:24px;">Click below to continue to Constituent Type mapping.</p>'
                 + '<button id="startConstituentFromAppealBtn" type="button" class="continue-btn">Continue to Constituent Mapping ➡</button>'
                 + '</div>';
             parent.insertBefore(appealCatSection, catSetup);
