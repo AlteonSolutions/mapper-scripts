@@ -471,10 +471,11 @@
             appealCatSection.id = 'appealCategoryMappingSection';
             appealCatSection.style.display = 'none';
             appealCatSection.innerHTML = '<h2>Appeals Category Mapping</h2>'
-                + '<div class="progress-container" style="margin-bottom:16px;">'
-                + '<div style="position:relative;background:#eee;border-radius:99px;height:24px;overflow:hidden;margin-bottom:8px;">'
-                + '<div id="appealCategoryProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;"></div>'
-                + '<span id="appealCategoryProgressBarText" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;font-weight:600;color:#fff;white-space:nowrap;"></span>'
+                + '<div class="progress-container" style="margin-top:16px;margin-bottom:16px;">'
+                + '<div style="background:#eee;border-radius:99px;height:24px;overflow:hidden;margin-bottom:8px;">'
+                + '<div id="appealCategoryProgressBar" style="height:100%;border-radius:99px;background:' + themeColor + ';width:0%;transition:width 0.3s;display:flex;align-items:center;justify-content:center;">'
+                + '<span id="appealCategoryProgressBarText" style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;"></span>'
+                + '</div>'
                 + '</div>'
                 + '<div style="text-align:center;font-size:13px;color:#888;"><span id="appealCategoryProgressText">0 of 0 mapped</span></div>'
                 + '</div>'
