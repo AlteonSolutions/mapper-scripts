@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.2.2026 00:15';
+    var MAPPER_VERSION = '5.2.2026 00:30';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -463,7 +463,7 @@
                 + '<span id="pledgeStatusProgressBarText" style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;"></span>'
                 + '</div>'
                 + '</div>'
-                + '<div style="text-align:center;font-size:14px;color:' + themeColor + ';margin-top:6px;"><span id="pledgeStatusProgressText">0 of 0 mapped</span></div>'
+                + '<div style="text-align:center;font-size:14px;font-weight:600;color:' + themeColor + ';margin-top:6px;"><span id="pledgeStatusProgressText">0 of 0 Pledge Statuses Mapped</span></div>'
                 + '</div>'
                 + '<div id="pledgeStatusMappingContainer"></div>'
                 + '<div id="pledgeStatusCompletionCard" class="completion-card" style="display:none;">'
@@ -485,7 +485,7 @@
                 + '<span id="appealCategoryProgressBarText" style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;"></span>'
                 + '</div>'
                 + '</div>'
-                + '<div style="text-align:center;font-size:14px;color:' + themeColor + ';margin-top:6px;"><span id="appealCategoryProgressText">0 of 0 mapped</span></div>'
+                + '<div style="text-align:center;font-size:14px;font-weight:600;color:' + themeColor + ';margin-top:6px;"><span id="appealCategoryProgressText">0 of 0 Appeals Mapped</span></div>'
                 + '</div>'
                 + '<div id="appealCategoryMappingContainer"></div>'
                 + '<div id="appealCategoryCompletionCard" class="completion-card" style="display:none;">'
@@ -876,7 +876,7 @@
         var pct = total > 0 ? Math.round((mapped/total)*100) : 0;
         document.getElementById('pledgeStatusProgressBar').style.width = pct + '%';
         document.getElementById('pledgeStatusProgressBarText').textContent = pct === 0 ? '' : pct + '%';
-        document.getElementById('pledgeStatusProgressText').textContent = mapped + ' of ' + total + ' mapped';
+        document.getElementById('pledgeStatusProgressText').textContent = mapped + ' of ' + total + ' Pledge Statuses Mapped';
     }
 
     function startAppealCategoryMapping() {
@@ -922,7 +922,7 @@
         var pct = total > 0 ? Math.round((mapped/total)*100) : 0;
         document.getElementById('appealCategoryProgressBar').style.width = pct + '%';
         document.getElementById('appealCategoryProgressBarText').textContent = pct === 0 ? '' : pct + '%';
-        document.getElementById('appealCategoryProgressText').textContent = mapped + ' of ' + total + ' mapped';
+        document.getElementById('appealCategoryProgressText').textContent = mapped + ' of ' + total + ' Appeals Mapped';
     }
 
     function startConstituentMapping() {
