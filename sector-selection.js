@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var VERSION = '5.2.2026 00:30';
+    var VERSION = '5.4.2026 09:33';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -81,6 +81,38 @@
         btn.innerHTML = '<div class="category-icon"><img src="' + brand.icons[ind.key] + '" alt="' + ind.label + '"></div>'
                       + '<div class="category-label">' + ind.label + '</div>';
         row.appendChild(btn);
+    });
+
+    // ── DOWNLOAD TEMPLATE BUTTON ──────────────────────────────────────────────
+    var templateUrl = isStaffing
+        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f41949cad250291f4bf0cb.xlsx'
+        : isDevelopmentAssessment
+        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f4d41f23e63d676c8653d7.xlsx'
+        : isCampaignCounsel
+        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f50560daa24d98950cd696.xlsx'
+        : 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
+    var themeColor = isSW ? '#00386c' : '#2c5f5d';
+
+    var templateBanner = document.createElement('div');
+    templateBanner.style.cssText = 'text-align:center;margin-bottom:28px;';
+    templateBanner.innerHTML = '<p style="font-family:Roboto,sans-serif;font-size:14px;color:#666;margin-bottom:10px;">Before you begin, download the data template and prepare your file.</p>'
+        + '<button id="sectorTemplateBtn" type="button" style="background:#fff;color:' + themeColor + ';font-family:Roboto,sans-serif;font-size:14px;font-weight:600;padding:10px 28px;border:2px solid ' + themeColor + ';border-radius:8px;cursor:pointer;transition:transform 0.2s;">⬇ Download Data Template</button>';
+
+    var catContainer = document.querySelector('.category-container');
+    if (catContainer) catContainer.parentNode.insertBefore(templateBanner, catContainer);
+
+    document.getElementById('sectorTemplateBtn').addEventListener('click', function() {
+        fetch(templateUrl)
+            .then(function(r) { return r.blob(); })
+            .then(function(blob) {
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = 'Data Upload Template.xlsx'; document.body.appendChild(a);
+                a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+            })
+            .catch(function() {
+                var a = document.createElement('a'); a.href = templateUrl;
+                a.download = 'Data Upload Template.xlsx'; a.click();
+            });
     });
 
     // ── SET IFRAME FORM ID ────────────────────────────────────────────────────
@@ -257,7 +289,7 @@
         badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:none;color:rgba(180,180,180,0.6);'
             + 'font-size:10px;padding:4px 8px;z-index:99999;line-height:1.8;text-align:right;'
             + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
-        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js 5.2.2026 00:30';
+        badge.innerHTML = 'sector-selection.js 5.4.2026 09:33<br>mapper.js 5.2.2026 00:45';
         document.body.appendChild(badge);
         setTimeout(function() { badge.style.opacity = '0'; }, 3000);
         setTimeout(function() { document.body.removeChild(badge); }, 4000);
