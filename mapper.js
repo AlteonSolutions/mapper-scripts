@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.2.2026 00:45';
+    var MAPPER_VERSION = '5.4.2026 09:43';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -358,6 +358,13 @@
             if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ type: 'mapperReady' }, '*');
             }
+            // Version badge
+            var b = document.createElement('div');
+            b.style.cssText = 'position:fixed;bottom:10px;right:10px;background:none;color:rgba(180,180,180,0.6);font-size:10px;padding:4px 8px;z-index:99999;opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
+            b.textContent = 'mapper.js ' + MAPPER_VERSION;
+            document.body.appendChild(b);
+            setTimeout(function() { b.style.opacity = '0'; }, 3000);
+            setTimeout(function() { if (b.parentNode) b.parentNode.removeChild(b); }, 4000);
         });
 
         waitForElement('#fileInput', function(el) { el.addEventListener('change', handleFileUpload); });
