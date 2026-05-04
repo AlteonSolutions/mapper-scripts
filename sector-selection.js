@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var VERSION = '5.4.2026 09:43';
+    var VERSION = '5.4.2026 09:48';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -257,10 +257,17 @@
         badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:none;color:rgba(180,180,180,0.6);'
             + 'font-size:10px;padding:4px 8px;z-index:99999;line-height:1.8;text-align:right;'
             + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
-        badge.innerHTML = 'sector-selection.js ' + VERSION;
+        badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js —';
         document.body.appendChild(badge);
-        setTimeout(function() { badge.style.opacity = '0'; }, 3000);
-        setTimeout(function() { document.body.removeChild(badge); }, 4000);
+        var badgeFadeTimer = setTimeout(function() { badge.style.opacity = '0'; }, 4000);
+        setTimeout(function() { if (badge.parentNode) badge.parentNode.removeChild(badge); }, 5000);
+
+        // Listen for mapper.js version from iframe
+        window.addEventListener('message', function onMapperVersion(event) {
+            if (event.data && event.data.type === 'mapperReady' && event.data.mapperVersion) {
+                badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js ' + event.data.mapperVersion;
+            }
+        });
 
         // Scroll to top on page load
         window.scrollTo({ top: 0, behavior: 'instant' });
