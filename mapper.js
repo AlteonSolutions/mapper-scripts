@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.4.2026 09:48';
+    var MAPPER_VERSION = '5.7.2026 09:06';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -1074,7 +1074,9 @@
             var mapped = constituentMappings[ot];
             if (mapped) {
                 cd2[p]['Constituent Type'] = mapped;
-            } else if (ot !== '') {
+            } else if (ot === '') {
+                cd2[p]['Constituent Type'] = 'Individual';
+            } else {
                 unmatchedTypes[ot] = true;
                 // keep original
             }
