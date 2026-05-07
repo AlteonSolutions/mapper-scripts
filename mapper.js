@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.7.2026 09:06';
+    var MAPPER_VERSION = '5.7.2026 09:40';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -674,6 +674,8 @@
                 var ug = {};
                 for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
                 giftTypes = Object.keys(ug).sort();
+                var hasBlankGiftType = giftJson.some(function(row) { return !row['Gift Type']; });
+                if (hasBlankGiftType) giftTypes.push('__blank__');
                 if (spotlightConfig) {
                     if (spotlightConfig.type === 'giftAppeal') spotlightSourceData = giftAppeals.slice();
                     else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice();
@@ -984,7 +986,8 @@
             return;
         }
         var gt = giftTypes[giftTypeCurrentIndex]; var cm = giftTypeMappings[gt] || null;
-        var html = '<div class="mapping-card"><div class="appeal-label">Gift Type ' + (giftTypeCurrentIndex+1) + ' of ' + giftTypes.length + '</div><div class="appeal-name">' + gt + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a gift type:</div><div class="category-buttons">';
+        var gtLabel = gt === '__blank__' ? 'Gift Type Not Specified' : gt;
+        var html = '<div class="mapping-card"><div class="appeal-label">Gift Type ' + (giftTypeCurrentIndex+1) + ' of ' + giftTypes.length + '</div><div class="appeal-name">' + gtLabel + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a gift type:</div><div class="category-buttons">';
         for (var i = 0; i < giftTypeCategories.length; i++) html += '<button class="category-btn" data-appeal="' + gt + '" data-category="' + giftTypeCategories[i] + '" data-mapping-type="gifttype">' + giftTypeCategories[i] + '</button>';
         html += '<button class="category-btn non-event-btn" data-appeal="' + gt + '" data-category="Skip" data-mapping-type="gifttype">Skip</button></div>';
         html += '<div class="navigation-buttons"><button class="nav-btn" data-action="previous" data-mapping-type="gifttype"' + (giftTypeCurrentIndex === 0 ? ' disabled' : '') + '>← Previous</button><button class="nav-btn" id="giftTypeNextBtn" data-action="next" data-mapping-type="gifttype"' + (!cm ? ' disabled' : '') + ' style="display:none;">Next →</button></div></div>';
@@ -1061,7 +1064,7 @@
         }
 
         // Apply gift type mappings - replace Gift Type values in Gift Data
-        for (var gt = 0; gt < gd.length; gt++) { var ogt = gd[gt]['Gift Type']; if (ogt !== undefined) { var mgt = giftTypeMappings[ogt]; gd[gt]['Gift Type'] = (mgt === 'Skip' || mgt === undefined) ? ogt : mgt; } }
+        for (var gt = 0; gt < gd.length; gt++) { var ogt = (gd[gt]['Gift Type'] || '').toString().trim(); var mgt = ogt === '' ? giftTypeMappings['__blank__'] : giftTypeMappings[ogt]; gd[gt]['Gift Type'] = (mgt === 'Skip' || mgt === undefined) ? (ogt || '') : mgt; }
 
         var sheetCD = workbook.Sheets['Constituent Data'];
         console.log('Constituent sheet !ref:', sheetCD['!ref']);
