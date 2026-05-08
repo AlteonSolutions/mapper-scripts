@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.8.2026 12:53';
+    var MAPPER_VERSION = '5.8.2026 16:10';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -55,6 +55,7 @@
     var solicitors = [];
     var selectedSolicitors = {};
     var solicitorSelectionDone = false;
+    var constituentMappingSkipped = false;
     var appealCategories = [];
     var appealCategoryMappings = {};
     var appealCategoryCurrentIndex = 0;
@@ -649,7 +650,8 @@
                 var constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
                 var uc = {};
                 for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
-                constituentTypes = Object.keys(uc).sort();
+                constituentTypes = Object.keys(uc).sort().filter(function(ct) { return constituentCategories.indexOf(ct) === -1; });
+                constituentMappingSkipped = constituentTypes.length === 0;
                 if (isStaffing) {
                     var uSol = {};
                     for (var s = 0; s < constJson.length; s++) { var solVal = (constJson[s]['Solicitor'] || '').toString().trim(); if (solVal) uSol[solVal] = true; }
@@ -928,6 +930,7 @@
     }
 
     function startConstituentMapping() {
+        if (constituentMappingSkipped) { startGiftTypeMapping(); return; }
         updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
@@ -1019,7 +1022,7 @@
     function generateExcelBlob() {
         var eventOk = specialEventSkipped || Object.keys(mappings).length > 0;
         var spotlightOk = !spotlightConfig || spotlightSkipped || Object.keys(spotlightMappings).length > 0;
-        var constituentOk = Object.keys(constituentMappings).length > 0;
+        var constituentOk = constituentMappingSkipped || Object.keys(constituentMappings).length > 0;
         var giftTypeOk = Object.keys(giftTypeMappings).length > 0;
         var solicitorOk = !isStaffing || solicitors.length === 0 || solicitorSelectionDone;
         var appealCategoryOk = !isDevelopmentAssessment || appealCategories.length === 0 || Object.keys(appealCategoryMappings).length > 0;
@@ -1079,9 +1082,8 @@
                 cd2[p]['Constituent Type'] = mapped;
             } else if (ot === '') {
                 cd2[p]['Constituent Type'] = 'Individual';
-            } else {
+            } else if (constituentCategories.indexOf(ot) === -1) {
                 unmatchedTypes[ot] = true;
-                // keep original
             }
             if (isStaffing && cd2[p].hasOwnProperty('Solicitor')) {
                 var solVal = (cd2[p]['Solicitor'] || '').toString().trim();
