@@ -1,3 +1,4 @@
+/* APPROVED */
 (function() {
     'use strict';
     var MAPPER_VERSION = '5.8.2026 12:53';
@@ -577,7 +578,6 @@
                 else if (navType === 'gifttype') { if (action === 'previous') previousGiftType(); else if (action === 'next') nextGiftType(); }
             }
         });
-                });
 
         waitForElement('#solicitorDoneBtn', function(btn) {
             btn.addEventListener('click', function() {
