@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.8.2026 12:53';
+    var MAPPER_VERSION = '5.7.2026 09:40';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -1094,33 +1094,6 @@
         var origGiftHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], {header: 1})[0] || [];
         var origConstHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], {header: 1})[0] || [];
 
-        // Auto-add constituent records for any Constituent IDs in Gift Data missing from Constituent Data
-        var cdIdSet = {};
-        for (var ci = 0; ci < cd2.length; ci++) cdIdSet[(cd2[ci]['Constituent ID'] || '').toString().trim()] = true;
-        var missingCids = {};
-        for (var mi = 0; mi < gd.length; mi++) {
-            var mcid = (gd[mi]['Constituent ID'] || '').toString().trim();
-            if (mcid && !cdIdSet[mcid]) {
-                if (!missingCids[mcid]) missingCids[mcid] = [];
-                var gdate = gd[mi]['Gift Date'];
-                if (gdate !== undefined && gdate !== '') missingCids[mcid].push(gdate);
-            }
-        }
-        Object.keys(missingCids).forEach(function(cid) {
-            var dates = missingCids[cid];
-            var oldest = dates.length > 0 ? dates.reduce(function(a, b) {
-                var ta = typeof a === 'number' ? (a - 25569) * 86400000 : new Date(a).getTime();
-                var tb = typeof b === 'number' ? (b - 25569) * 86400000 : new Date(b).getTime();
-                return ta <= tb ? a : b;
-            }) : '';
-            var newRow = {};
-            for (var h = 0; h < origConstHeaders.length; h++) newRow[origConstHeaders[h]] = '';
-            newRow['Constituent ID'] = cid;
-            newRow['Constituent Type'] = 'Individual';
-            newRow['First Gift Date'] = oldest;
-            cd2.push(newRow);
-        });
-
         // Build gift data headers
         var giftHeaders = [];
         if (isSimpleFlow) {
@@ -1138,22 +1111,7 @@
         var wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cd2, {header: origConstHeaders}), 'Constituent Data');
-        for (var q = 0; q < workbook.SheetNames.length; q++) {
-            var sn = workbook.SheetNames[q];
-            if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') {
-                var srcSheet = workbook.Sheets[sn];
-                var valSheet = {};
-                var cellKeys = Object.keys(srcSheet);
-                for (var ck = 0; ck < cellKeys.length; ck++) {
-                    var ck2 = cellKeys[ck];
-                    if (ck2[0] === '!') { valSheet[ck2] = srcSheet[ck2]; continue; }
-                    var srcCell = srcSheet[ck2];
-                    valSheet[ck2] = { v: srcCell.v, t: srcCell.t };
-                    if (srcCell.w) valSheet[ck2].w = srcCell.w;
-                }
-                XLSX.utils.book_append_sheet(wb, valSheet, sn);
-            }
-        }
+        for (var q = 0; q < workbook.SheetNames.length; q++) { var sn = workbook.SheetNames[q]; if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') XLSX.utils.book_append_sheet(wb, workbook.Sheets[sn], sn); }
 
         return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
