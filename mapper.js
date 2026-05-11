@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 13:21';
+    var MAPPER_VERSION = '5.11.2026 13:24';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||

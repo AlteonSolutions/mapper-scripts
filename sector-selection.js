@@ -259,8 +259,8 @@
             + 'opacity:1;transition:opacity 1s ease;font-family:monospace;pointer-events:none;';
         badge.innerHTML = 'sector-selection.js ' + VERSION + '<br>mapper.js —';
         document.body.appendChild(badge);
-        var badgeFadeTimer = setTimeout(function() { badge.style.opacity = '0'; }, 4000);
-        setTimeout(function() { if (badge.parentNode) badge.parentNode.removeChild(badge); }, 5000);
+        var badgeFadeTimer = setTimeout(function() { badge.style.opacity = '0'; }, 8000);
+        setTimeout(function() { if (badge.parentNode) badge.parentNode.removeChild(badge); }, 9000);
 
         // Listen for mapper.js version from iframe
         window.addEventListener('message', function onMapperVersion(event) {
