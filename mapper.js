@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 10:37';
+    var MAPPER_VERSION = '5.11.2026 10:55';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -32,6 +32,7 @@
     }
     
     var workbook = null;
+    var uploadIconSvg = '<svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:46px;height:46px;display:block;margin:0 auto;"><rect x="3" y="3" width="40" height="40" rx="20" fill="#F2F4F7"></rect><rect x="3" y="3" width="40" height="40" rx="20" stroke="#F9FAFB" stroke-width="6"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M20.9167 16.3334C17.9252 16.3334 15.5 18.7585 15.5 21.7501C15.5 23.2425 16.1025 24.5926 17.0795 25.5732C17.4043 25.8992 17.4034 26.4268 17.0773 26.7517C16.7513 27.0765 16.2237 27.0756 15.8988 26.7495C14.6233 25.4693 13.8334 23.7012 13.8334 21.7501C13.8334 17.8381 17.0047 14.6667 20.9167 14.6667C23.454 14.6667 25.6787 16.0013 26.9288 18.003C29.8376 18.0973 32.1667 20.485 32.1667 23.4167C32.1667 25.0991 31.3987 26.6028 30.1974 27.595C29.8425 27.8881 29.3172 27.838 29.0242 27.4831C28.7311 27.1282 28.7812 26.603 29.1361 26.3099C29.9705 25.6208 30.5 24.581 30.5 23.4167C30.5 21.3457 28.8211 19.6667 26.75 19.6667C26.2803 19.6667 25.8332 19.422 25.5872 19.0046C24.6441 17.4042 22.905 16.3334 20.9167 16.3334ZM22.4108 22.4108C22.7362 22.0854 23.2639 22.0854 23.5893 22.4108L26.9226 25.7442C27.2481 26.0696 27.2481 26.5972 26.9226 26.9227C26.5972 27.2481 26.0696 27.2481 25.7441 26.9227L23.8334 25.0119V30.5001C23.8334 30.9603 23.4603 31.3334 23 31.3334C22.5398 31.3334 22.1667 30.9603 22.1667 30.5001V25.0119L20.256 26.9227C19.9305 27.2481 19.4029 27.2481 19.0775 26.9227C18.752 26.5972 18.752 26.0696 19.0775 25.7442L22.4108 22.4108Z" fill="#2c3345FF"></path></svg>';
     var giftAppeals = [];
     var specialEventSkipped = false;
     var spotlightSkipped = false;
@@ -364,6 +365,7 @@
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
             el.style.minHeight = '74px';
+            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:14px 0;">' + uploadIconSvg + '</div>';
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
@@ -711,7 +713,7 @@
                 }
                 // Update upload box to show file info like GHL style
                 var uploadBox = document.getElementById('uploadBox');
-                uploadBox.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000000;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>'
+                uploadBox.innerHTML = uploadIconSvg
                     + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 0 0 0;border-top:1px solid #eee;margin-top:8px;">'
                     + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
                     + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + constituentTypes.length + ' Constituent Types &middot; ' + giftTypes.length + ' Gift Types</div>'
@@ -735,7 +737,7 @@
                 // Reset upload box on error
                 var uploadBox = document.getElementById('uploadBox');
                 uploadBox.style.cursor = 'pointer';
-                uploadBox.innerHTML = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000000;"><path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
+                uploadBox.innerHTML = uploadIconSvg;
                 var dn = document.getElementById('uploadNote'); if (dn) dn.style.display = '';
                 var dd = document.getElementById('download-container'); if (dd) dd.style.display = '';
                 alert('Error reading file: ' + err.message);
