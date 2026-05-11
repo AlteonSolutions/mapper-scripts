@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 10:27';
+    var MAPPER_VERSION = '5.11.2026 10:37';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -363,6 +363,7 @@
         waitForElement('#uploadBox', function(el) {
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
+            el.style.minHeight = '74px';
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
