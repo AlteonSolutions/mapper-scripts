@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 10:55';
+    var MAPPER_VERSION = '5.11.2026 12:58';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -57,6 +57,8 @@
     var selectedSolicitors = {};
     var solicitorSelectionDone = false;
     var constituentMappingSkipped = false;
+    var giftTypeMappingSkipped = false;
+    var pledgeStatusMappingSkipped = false;
     var appealCategories = [];
     var appealCategoryMappings = {};
     var appealCategoryCurrentIndex = 0;
@@ -236,43 +238,38 @@
     function initializeStepTracker() {
         var stepTracker = document.getElementById('stepTracker');
         if (!stepTracker) return;
-        var steps;
+        var stepLabels = [];
         if (isSimpleFlow) {
-            if (isStaffing && solicitors.length > 0)
-                steps = constituentMappingSkipped ?
-                    [{ label: 'Solicitor Selection', number: 1 }, { label: 'Gift Type Mapping', number: 2 }] :
-                    [{ label: 'Solicitor Selection', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }];
-            else if (isDevelopmentAssessment && appealCategories.length > 0)
-                steps = constituentMappingSkipped ?
-                    [{ label: 'Appeals Category Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }] :
-                    [{ label: 'Appeals Category Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }];
-            else if (isCampaignCounsel && pledgeStatuses.length > 0)
-                steps = constituentMappingSkipped ?
-                    [{ label: 'Pledge Status Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }] :
-                    [{ label: 'Pledge Status Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }];
-            else
-                steps = constituentMappingSkipped ?
-                    [{ label: 'Gift Type Mapping', number: 1 }] :
-                    [{ label: 'Constituent Type Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }];
+            if (isStaffing && solicitors.length > 0) stepLabels.push('Solicitor Selection');
+            else if (isDevelopmentAssessment && appealCategories.length > 0) stepLabels.push('Appeals Category Mapping');
+            else if (isCampaignCounsel && pledgeStatuses.length > 0) stepLabels.push('Pledge Status Mapping');
+            if (!constituentMappingSkipped) stepLabels.push('Constituent Type Mapping');
+            if (!giftTypeMappingSkipped) stepLabels.push('Gift Type Mapping');
         } else {
-            steps = spotlightConfig ?
-                (constituentMappingSkipped ?
-                    [{ label: 'Special Event Mapping', number: 1 }, { label: 'Spotlight Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }] :
-                    [{ label: 'Special Event Mapping', number: 1 }, { label: 'Spotlight Mapping', number: 2 }, { label: 'Constituent Type Mapping', number: 3 }, { label: 'Gift Type Mapping', number: 4 }]) :
-                (constituentMappingSkipped ?
-                    [{ label: 'Special Event Mapping', number: 1 }, { label: 'Gift Type Mapping', number: 2 }] :
-                    [{ label: 'Special Event Mapping', number: 1 }, { label: 'Constituent Type Mapping', number: 2 }, { label: 'Gift Type Mapping', number: 3 }]);
+            stepLabels.push('Special Event Mapping');
+            if (spotlightConfig) stepLabels.push('Spotlight Mapping');
+            if (!constituentMappingSkipped) stepLabels.push('Constituent Type Mapping');
+            if (!giftTypeMappingSkipped) stepLabels.push('Gift Type Mapping');
         }
+        if (stepLabels.length === 0) { document.getElementById('stepProgress').style.display = 'none'; return; }
+        var steps = stepLabels.map(function(label, i) { return { label: label, number: i + 1 }; });
         var html = '';
         for (var i = 0; i < steps.length; i++) {
             html += '<div class="step-item"><div class="step-circle">' + steps[i].number + '</div><div class="step-label">' + steps[i].label + '</div></div>';
             if (i < steps.length - 1) html += '<div class="step-connector"></div>';
         }
         stepTracker.innerHTML = html;
-        // Set line offset based on number of steps so line doesn't extend past first/last circle
         var offset = 'calc(100% / ' + (steps.length * 2) + ')';
         stepTracker.style.setProperty('--tracker-offset', offset);
         document.getElementById('stepProgress').style.display = 'block';
+    }
+
+    function getStepIndex(label) {
+        var tracker = document.getElementById('stepTracker');
+        if (!tracker) return 0;
+        var items = tracker.querySelectorAll('.step-label');
+        for (var i = 0; i < items.length; i++) { if (items[i].textContent === label) return i; }
+        return items.length; // past all steps → all completed
     }
 
     function updateStepTracker(step) {
@@ -365,7 +362,6 @@
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
             el.style.minHeight = '74px';
-            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:14px 0;">' + uploadIconSvg + '</div>';
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
@@ -621,7 +617,7 @@
     }
 
     function startSolicitorSelection() {
-        updateStepTracker(0);
+        updateStepTracker(getStepIndex('Solicitor Selection'));
         var section = document.getElementById('solicitorSelectionSection');
         if (section) section.style.display = 'block';
         var container = document.getElementById('solicitorButtonsContainer');
@@ -685,7 +681,9 @@
                 if (isCampaignCounsel) {
                     var uPS = {};
                     for (var ps = 0; ps < giftJson.length; ps++) { var psVal = (giftJson[ps]['Status'] || '').toString().trim(); if (psVal) uPS[psVal] = true; }
-                    pledgeStatuses = Object.keys(uPS).sort();
+                    var psLabels = pledgeStatusCategories.map(function(c) { return c.label; });
+                    pledgeStatuses = Object.keys(uPS).sort().filter(function(s) { return psLabels.indexOf(s) === -1; });
+                    pledgeStatusMappingSkipped = pledgeStatuses.length === 0;
                 }
                 if (isDevelopmentAssessment) {
                     appealCategories = [];
@@ -698,18 +696,26 @@
                 }
                 var ug = {};
                 for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
-                giftTypes = Object.keys(ug).sort();
-                var hasBlankGiftType = giftJson.some(function(row) { return !row['Gift Type']; });
+                giftTypes = Object.keys(ug).sort().filter(function(gt) { return giftTypeCategories.indexOf(gt) === -1; });
+                giftTypeMappingSkipped = giftTypes.length === 0;
+                var hasBlankGiftType = !giftTypeMappingSkipped && giftJson.some(function(row) { return !row['Gift Type']; });
                 if (hasBlankGiftType) giftTypes.push('__blank__');
                 if (spotlightConfig) {
                     if (spotlightConfig.type === 'giftAppeal') spotlightSourceData = giftAppeals.slice();
                     else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice();
                 }
                 initializeStepTracker(); updateStepTracker(0);
-                if (constituentMappingSkipped) {
+                if (constituentMappingSkipped && giftTypeMappingSkipped) {
+                    ['solicitorDoneBtn','startConstituentFromPledgeBtn','startConstituentFromAppealBtn','startConstituentMappingBtn'].forEach(function(id) {
+                        var el = document.getElementById(id); if (el) el.textContent = 'Submit ➡';
+                    });
+                } else if (constituentMappingSkipped) {
                     ['solicitorDoneBtn','startConstituentFromPledgeBtn','startConstituentFromAppealBtn','startConstituentMappingBtn'].forEach(function(id) {
                         var el = document.getElementById(id); if (el) el.textContent = 'Continue to Gift Type Mapping ➡';
                     });
+                }
+                if (giftTypeMappingSkipped) {
+                    var gtBtn = document.getElementById('startGiftTypeMappingBtn'); if (gtBtn) gtBtn.textContent = 'Submit ➡';
                 }
                 // Update upload box to show file info like GHL style
                 var uploadBox = document.getElementById('uploadBox');
@@ -772,9 +778,11 @@
     function startMapping() {
         if (categories.length === 0) { alert('Please add at least one event'); return; }
         if (!spotlightConfig) { var d = detectIndustry(); if (d) { setSpotlightConfig(d); if (spotlightConfig) { if (spotlightConfig.type === 'giftAppeal') spotlightSourceData = giftAppeals.slice(); else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice(); } } }
-        updateStepTracker(0); currentIndex = 0; hasUsedPrevious = false;
+        updateStepTracker(getStepIndex('Special Event Mapping')); currentIndex = 0; hasUsedPrevious = false;
         if (spotlightConfig) { document.getElementById('completionNextStep').textContent = 'Click below to continue to spotlight mapping.'; document.getElementById('completionNextButton').textContent = 'Continue to Spotlight Mapping ➝'; document.getElementById('completionNextButton').onclick = startSpotlightMapping; }
+        else if (constituentMappingSkipped && giftTypeMappingSkipped) { document.getElementById('completionNextStep').textContent = 'Click below to submit.'; document.getElementById('completionNextButton').textContent = 'Submit ➝'; document.getElementById('completionNextButton').onclick = startGiftTypeMapping; }
         else if (constituentMappingSkipped) { document.getElementById('completionNextStep').textContent = 'Click below to continue to Gift Type mapping.'; document.getElementById('completionNextButton').textContent = 'Continue to Gift Type Mapping ➝'; document.getElementById('completionNextButton').onclick = startGiftTypeMapping; }
+        else if (giftTypeMappingSkipped) { document.getElementById('completionNextStep').textContent = 'Click below to continue to Constituent Type mapping.'; document.getElementById('completionNextButton').textContent = 'Continue to Constituent Mapping ➝'; document.getElementById('completionNextButton').onclick = startConstituentMapping; }
         else { document.getElementById('completionNextStep').textContent = 'Click below to continue to Constituent Type mapping.'; document.getElementById('completionNextButton').textContent = 'Continue to Constituent Mapping ➝'; document.getElementById('completionNextButton').onclick = startConstituentMapping; }
         document.getElementById('mappingSection').style.display = 'block'; showCurrentAppeal(); updateProgress();
         document.getElementById('categorySetup').style.display = 'none';
@@ -815,7 +823,7 @@
     }
 
     function startSpotlightMapping() {
-        updateStepTracker(1); spotlightCurrentIndex = 0; spotlightHasUsedPrevious = false;
+        updateStepTracker(getStepIndex('Spotlight Mapping')); spotlightCurrentIndex = 0; spotlightHasUsedPrevious = false;
         document.getElementById('spotlightMappingTitle').textContent = spotlightConfig.title;
         document.getElementById('spotlightCompletionText').textContent = spotlightConfig.completionText;
         document.getElementById('spotlightMappingSection').style.display = 'block'; showCurrentSpotlight(); updateSpotlightProgress();
@@ -859,7 +867,8 @@
     }
 
     function startPledgeStatusMapping() {
-        updateStepTracker(0); pledgeStatusCurrentIndex = 0; pledgeStatusHasUsedPrevious = false;
+        if (pledgeStatusMappingSkipped) { startConstituentMapping(); return; }
+        updateStepTracker(getStepIndex('Pledge Status Mapping')); pledgeStatusCurrentIndex = 0; pledgeStatusHasUsedPrevious = false;
         document.getElementById('pledgeStatusMappingSection').style.display = 'block';
         showCurrentPledgeStatus(); updatePledgeStatusProgress();
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -913,7 +922,7 @@
     }
 
     function startAppealCategoryMapping() {
-        updateStepTracker(0); appealCategoryCurrentIndex = 0; appealCategoryHasUsedPrevious = false;
+        updateStepTracker(getStepIndex('Appeals Category Mapping')); appealCategoryCurrentIndex = 0; appealCategoryHasUsedPrevious = false;
         document.getElementById('appealCategoryMappingSection').style.display = 'block';
         showCurrentAppealCategory(); updateAppealCategoryProgress();
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -960,7 +969,7 @@
 
     function startConstituentMapping() {
         if (constituentMappingSkipped) { startGiftTypeMapping(); return; }
-        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 1 : 0) : spotlightConfig ? 2 : 1); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
+        updateStepTracker(getStepIndex('Constituent Type Mapping')); constituentCurrentIndex = 0; constituentHasUsedPrevious = false;
         document.getElementById('constituentMappingSection').style.display = 'block'; showCurrentConstituentType(); updateConstituentProgress();
         ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -968,7 +977,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 2 : 1) : spotlightConfig ? 3 : 2); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(getStepIndex('Gift Type Mapping')); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
@@ -1000,8 +1009,12 @@
 
 
     function startGiftTypeMapping() {
-        var _cs = constituentMappingSkipped ? 1 : 0;
-        updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 2 - _cs : 1 - _cs) : spotlightConfig ? 3 - _cs : 2 - _cs); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
+        if (giftTypeMappingSkipped) {
+            ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection','constituentMappingSection','giftTypeMappingSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+            var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
+            updateStepTracker(99); return;
+        }
+        updateStepTracker(getStepIndex('Gift Type Mapping')); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
         document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
         ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection','constituentMappingSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
@@ -1011,8 +1024,7 @@
         var container = document.getElementById('giftTypeMappingContainer');
         if (giftTypeCurrentIndex >= giftTypes.length) {
             container.innerHTML = '';
-            var _cs = constituentMappingSkipped ? 1 : 0;
-            updateStepTracker(isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 3 - _cs : 2 - _cs) : spotlightConfig ? 4 - _cs : 3 - _cs);
+            updateStepTracker(99);
             document.getElementById('giftTypeCompletionCard').style.display = 'block';
             document.querySelector('#giftTypeMappingSection .progress-container').style.display = 'none';
             document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
@@ -1054,10 +1066,10 @@
         var eventOk = specialEventSkipped || Object.keys(mappings).length > 0;
         var spotlightOk = !spotlightConfig || spotlightSkipped || Object.keys(spotlightMappings).length > 0;
         var constituentOk = constituentMappingSkipped || Object.keys(constituentMappings).length > 0;
-        var giftTypeOk = Object.keys(giftTypeMappings).length > 0;
+        var giftTypeOk = giftTypeMappingSkipped || Object.keys(giftTypeMappings).length > 0;
         var solicitorOk = !isStaffing || solicitors.length === 0 || solicitorSelectionDone;
         var appealCategoryOk = !isDevelopmentAssessment || appealCategories.length === 0 || Object.keys(appealCategoryMappings).length > 0;
-        var pledgeStatusOk = !isCampaignCounsel || pledgeStatuses.length === 0 || Object.keys(pledgeStatusMappings).length >= pledgeStatuses.length;
+        var pledgeStatusOk = !isCampaignCounsel || pledgeStatuses.length === 0 || pledgeStatusMappingSkipped || Object.keys(pledgeStatusMappings).length >= pledgeStatuses.length;
         console.log('generateExcelBlob check:', {specialEventSkipped: specialEventSkipped, eventOk: eventOk, spotlightOk: spotlightOk, constituentOk: constituentOk, giftTypeOk: giftTypeOk, solicitorOk: solicitorOk, appealCategoryOk: appealCategoryOk});
         if (!eventOk || !spotlightOk || !constituentOk || !giftTypeOk || !solicitorOk || !appealCategoryOk || !pledgeStatusOk) return null;
 
