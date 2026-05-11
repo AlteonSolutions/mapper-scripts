@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 13:24';
+    var MAPPER_VERSION = '5.11.2026 13:32';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -362,7 +362,10 @@
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
             el.style.minHeight = '74px';
-            // Insert SVG icon without replacing existing children (preserves any GHL form elements)
+            // Remove GHL's default icon elements but keep any <input> elements
+            var kids = Array.prototype.slice.call(el.children);
+            for (var k = 0; k < kids.length; k++) { if (kids[k].tagName !== 'INPUT') el.removeChild(kids[k]); }
+            // Insert our SVG icon before any remaining inputs
             var iconWrap = document.createElement('div');
             iconWrap.id = 'uploadIconWrap';
             iconWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:14px 0;pointer-events:none;';
