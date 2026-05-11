@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 12:58';
+    var MAPPER_VERSION = '5.11.2026 13:21';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -362,6 +362,12 @@
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
             el.style.minHeight = '74px';
+            // Insert SVG icon without replacing existing children (preserves any GHL form elements)
+            var iconWrap = document.createElement('div');
+            iconWrap.id = 'uploadIconWrap';
+            iconWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:14px 0;pointer-events:none;';
+            iconWrap.innerHTML = uploadIconSvg;
+            el.insertBefore(iconWrap, el.firstChild);
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
@@ -669,6 +675,7 @@
                 var constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
                 var uc = {};
                 for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
+                var allConstituentTypeCount = Object.keys(uc).length;
                 constituentTypes = Object.keys(uc).sort().filter(function(ct) { return constituentCategories.indexOf(ct) === -1; });
                 constituentMappingSkipped = constituentTypes.length === 0;
                 if (isStaffing) {
@@ -696,6 +703,7 @@
                 }
                 var ug = {};
                 for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
+                var allGiftTypeCount = Object.keys(ug).length;
                 giftTypes = Object.keys(ug).sort().filter(function(gt) { return giftTypeCategories.indexOf(gt) === -1; });
                 giftTypeMappingSkipped = giftTypes.length === 0;
                 var hasBlankGiftType = !giftTypeMappingSkipped && giftJson.some(function(row) { return !row['Gift Type']; });
@@ -722,7 +730,7 @@
                 uploadBox.innerHTML = uploadIconSvg
                     + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 0 0 0;border-top:1px solid #eee;margin-top:8px;">'
                     + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
-                    + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + constituentTypes.length + ' Constituent Types &middot; ' + giftTypes.length + ' Gift Types</div>'
+                    + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
                     + '</div>';
                 document.getElementById('fileInfo').innerHTML = '';
                 var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
@@ -1011,6 +1019,8 @@
     function startGiftTypeMapping() {
         if (giftTypeMappingSkipped) {
             ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection','constituentMappingSection','giftTypeMappingSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+            var mb2 = document.getElementById('mappingBox'); if (mb2) mb2.style.display = 'none';
+            var ml2 = document.getElementById('mappingBoxLabel'); if (ml2) ml2.style.display = 'none';
             var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
             updateStepTracker(99); return;
         }
