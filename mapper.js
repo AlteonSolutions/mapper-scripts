@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 10:16';
+    var MAPPER_VERSION = '5.11.2026 10:27';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -361,6 +361,8 @@
 
         // uploadBox pre-styled in HTML - just attach click listener
         waitForElement('#uploadBox', function(el) {
+            el.style.border = '1px solid #ACACACFF';
+            el.style.borderRadius = '8px';
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
@@ -373,8 +375,6 @@
             mc.style.visibility = 'visible';
             mc.style.padding = '0px 0px';
             mc.style.width = '713px';
-            mc.style.border = '1px solid #ACACACFF';
-            mc.style.borderRadius = '8px';
             // Signal parent page that mapper is ready to be shown
             if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ type: 'mapperReady', mapperVersion: MAPPER_VERSION }, '*');
