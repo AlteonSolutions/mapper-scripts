@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.8.2026 16:45';
+    var MAPPER_VERSION = '5.8.2026 17:05';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -371,6 +371,10 @@
             var menuWrap = mc.closest('.menu-field-wrap');
             if (menuWrap) { menuWrap.style.paddingLeft = '0'; menuWrap.style.paddingRight = '0'; }
             mc.style.visibility = 'visible';
+            mc.style.padding = '0px 0px';
+            mc.style.width = '713px';
+            mc.style.border = '1px solid #ACACACFF';
+            mc.style.borderRadius = '8px';
             // Signal parent page that mapper is ready to be shown
             if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ type: 'mapperReady', mapperVersion: MAPPER_VERSION }, '*');
