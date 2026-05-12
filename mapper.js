@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.12.2026 07:52';
+    var MAPPER_VERSION = '5.12.2026 08:11';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -1230,10 +1230,21 @@
             if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') {
                 try {
                     var srcSheet = workbook.Sheets[sn];
-                    // Use sheet_to_json + aoa_to_sheet to force-evaluate cached formula values;
-                    // cells whose v is undefined get defval '' instead of being dropped
-                    var rows = XLSX.utils.sheet_to_json(srcSheet, { header: 1, defval: '' });
-                    var valSheet = XLSX.utils.aoa_to_sheet(rows);
+                    // Clone sheet as values-only: preserve cell type (t), value (v), and
+                    // number format (z) so dates/currencies display correctly; strip formula (f)
+                    var valSheet = {};
+                    for (var addr in srcSheet) {
+                        if (addr[0] === '!') {
+                            valSheet[addr] = srcSheet[addr];
+                        } else {
+                            var cell = srcSheet[addr];
+                            var nc = { t: cell.t };
+                            if (cell.v !== undefined) nc.v = cell.v;
+                            if (cell.z !== undefined) nc.z = cell.z;
+                            if (cell.f && nc.v === undefined) { nc.v = ''; nc.t = 's'; }
+                            valSheet[addr] = nc;
+                        }
+                    }
                     XLSX.utils.book_append_sheet(wb, valSheet, sn);
                 } catch(e) { console.warn('Could not copy sheet ' + sn + ':', e); }
             }
