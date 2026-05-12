@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 13:32';
+    var MAPPER_VERSION = '5.11.2026 22:35';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -469,7 +469,7 @@
             // Create wrapper box
             var box = document.createElement('div');
             box.id = 'mappingBox';
-            box.style.cssText = 'border:1px solid #ccc;border-radius:4px;padding:20px;background:white;width:100%;box-sizing:border-box;display:none;';
+            box.style.cssText = 'border:none;padding:20px;background:white;width:100%;box-sizing:border-box;display:none;';
             // Insert label and box before categorySetup
             parent.insertBefore(label, catSetup);
             parent.insertBefore(box, catSetup);
@@ -889,6 +889,8 @@
         var container = document.getElementById('pledgeStatusMappingContainer');
         if (pledgeStatusCurrentIndex >= pledgeStatuses.length) {
             container.innerHTML = '';
+            // If nothing else to map, go straight to submit state instead of showing an intermediate button
+            if (constituentMappingSkipped && giftTypeMappingSkipped) { startGiftTypeMapping(); return; }
             document.getElementById('pledgeStatusCompletionCard').style.display = 'block';
             document.querySelector('#pledgeStatusMappingSection .progress-container').style.display = 'none';
             document.querySelector('#pledgeStatusMappingSection h2').style.display = 'none';
