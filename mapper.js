@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 22:57';
+    var MAPPER_VERSION = '5.11.2026 23:13';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -1204,15 +1204,10 @@
             if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') {
                 try {
                     var srcSheet = workbook.Sheets[sn];
-                    var valSheet = { '!ref': srcSheet['!ref'] };
-                    var cellKeys = Object.keys(srcSheet);
-                    for (var ck = 0; ck < cellKeys.length; ck++) {
-                        var ck2 = cellKeys[ck];
-                        if (ck2[0] === '!') continue;
-                        var srcCell = srcSheet[ck2];
-                        valSheet[ck2] = { v: srcCell.v, t: srcCell.t };
-                        if (srcCell.w) valSheet[ck2].w = srcCell.w;
-                    }
+                    // Use sheet_to_json + aoa_to_sheet to force-evaluate cached formula values;
+                    // cells whose v is undefined get defval '' instead of being dropped
+                    var rows = XLSX.utils.sheet_to_json(srcSheet, { header: 1, defval: '' });
+                    var valSheet = XLSX.utils.aoa_to_sheet(rows);
                     XLSX.utils.book_append_sheet(wb, valSheet, sn);
                 } catch(e) { console.warn('Could not copy sheet ' + sn + ':', e); }
             }
