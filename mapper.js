@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 22:44';
+    var MAPPER_VERSION = '5.11.2026 22:57';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -1202,17 +1202,19 @@
         for (var q = 0; q < workbook.SheetNames.length; q++) {
             var sn = workbook.SheetNames[q];
             if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') {
-                var srcSheet = workbook.Sheets[sn];
-                var valSheet = {};
-                var cellKeys = Object.keys(srcSheet);
-                for (var ck = 0; ck < cellKeys.length; ck++) {
-                    var ck2 = cellKeys[ck];
-                    if (ck2[0] === '!') { valSheet[ck2] = srcSheet[ck2]; continue; }
-                    var srcCell = srcSheet[ck2];
-                    valSheet[ck2] = { v: srcCell.v, t: srcCell.t };
-                    if (srcCell.w) valSheet[ck2].w = srcCell.w;
-                }
-                XLSX.utils.book_append_sheet(wb, valSheet, sn);
+                try {
+                    var srcSheet = workbook.Sheets[sn];
+                    var valSheet = { '!ref': srcSheet['!ref'] };
+                    var cellKeys = Object.keys(srcSheet);
+                    for (var ck = 0; ck < cellKeys.length; ck++) {
+                        var ck2 = cellKeys[ck];
+                        if (ck2[0] === '!') continue;
+                        var srcCell = srcSheet[ck2];
+                        valSheet[ck2] = { v: srcCell.v, t: srcCell.t };
+                        if (srcCell.w) valSheet[ck2].w = srcCell.w;
+                    }
+                    XLSX.utils.book_append_sheet(wb, valSheet, sn);
+                } catch(e) { console.warn('Could not copy sheet ' + sn + ':', e); }
             }
         }
 
