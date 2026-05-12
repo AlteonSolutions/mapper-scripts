@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.12.2026 08:11';
+    var MAPPER_VERSION = '5.12.2026 08:26';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -1230,12 +1230,49 @@
             if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') {
                 try {
                     var srcSheet = workbook.Sheets[sn];
-                    // Clone sheet as values-only: preserve cell type (t), value (v), and
-                    // number format (z) so dates/currencies display correctly; strip formula (f)
+                    // For CC Campaign Data, evaluate tier formulas from direct inputs
+                    // (formula cells have stale cached v:0 until opened in Excel)
+                    var computedCells = {};
+                    if (isCampaignCounsel && sn === 'Campaign Data') {
+                        var goal = srcSheet['B4'] ? (srcSheet['B4'].v || 0) : 0;
+                        if (goal > 0) {
+                            var tierMults = [0.1, 0.05, 0.025, 0.0125, 0.005, 0.0025, 0.001];
+                            var bv = [], cv = [], dv = [];
+                            for (var ti = 0; ti < 7; ti++) {
+                                var tr = ti + 7;
+                                var bCell = srcSheet['B' + tr];
+                                bv[ti] = (bCell && bCell.t !== 'z' && bCell.v !== undefined && !bCell.f) ? bCell.v : goal * tierMults[ti];
+                                computedCells['B' + tr] = { v: bv[ti], t: 'n', z: '"$"#,##0' };
+                                var cCell = srcSheet['C' + tr];
+                                cv[ti] = (cCell && cCell.v !== undefined && cCell.t !== 'z') ? cCell.v : 0;
+                                dv[ti] = bv[ti] * cv[ti];
+                                computedCells['D' + tr] = { v: dv[ti], t: 'n', z: '"$"#,##0' };
+                                computedCells['E' + tr] = { v: dv[ti] / goal, t: 'n', z: '0.0%' };
+                            }
+                            var b14c = srcSheet['B14'];
+                            bv[7] = (b14c && b14c.t !== 'z' && b14c.v !== undefined && !b14c.f) ? b14c.v : bv[6] - 1;
+                            computedCells['B14'] = { v: bv[7], t: 'n', z: '"$"#,##0' };
+                            var sumD7_13 = dv.reduce(function(s, x) { return s + x; }, 0);
+                            dv[7] = goal - sumD7_13;
+                            computedCells['D14'] = { v: dv[7], t: 'n', z: '"$"#,##0' };
+                            computedCells['E14'] = { v: dv[7] / goal, t: 'n', z: '0.0%' };
+                            var d15 = sumD7_13 + dv[7];
+                            computedCells['D15'] = { v: d15, t: 'n', z: '"$"#,##0' };
+                            computedCells['E15'] = { v: d15 / goal, t: 'n', z: '0.0%' };
+                            computedCells['F7'] = { v: dv[0] / goal, t: 'n', z: '0.0%' };
+                            for (var fi = 1; fi < 7; fi++) {
+                                computedCells['F' + (fi + 7)] = { v: computedCells['F' + (fi + 6)].v + dv[fi] / goal, t: 'n', z: '0.0%' };
+                            }
+                            computedCells['F14'] = { v: computedCells['F13'].v + dv[7] / goal, t: 'n', z: '0.0%' };
+                        }
+                    }
+                    // Clone sheet as values-only: preserve t, v, z; strip f; inject computed cells
                     var valSheet = {};
                     for (var addr in srcSheet) {
                         if (addr[0] === '!') {
                             valSheet[addr] = srcSheet[addr];
+                        } else if (computedCells[addr]) {
+                            valSheet[addr] = computedCells[addr];
                         } else {
                             var cell = srcSheet[addr];
                             var nc = { t: cell.t };
@@ -1245,6 +1282,7 @@
                             valSheet[addr] = nc;
                         }
                     }
+                    for (var ca in computedCells) { if (!valSheet[ca]) valSheet[ca] = computedCells[ca]; }
                     XLSX.utils.book_append_sheet(wb, valSheet, sn);
                 } catch(e) { console.warn('Could not copy sheet ' + sn + ':', e); }
             }
