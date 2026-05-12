@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.12.2026 08:26';
+    var MAPPER_VERSION = '5.12.2026 09:01';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -1236,34 +1236,36 @@
                     if (isCampaignCounsel && sn === 'Campaign Data') {
                         var goal = srcSheet['B4'] ? (srcSheet['B4'].v || 0) : 0;
                         if (goal > 0) {
-                            var tierMults = [0.1, 0.05, 0.025, 0.0125, 0.005, 0.0025, 0.001];
-                            var bv = [], cv = [], dv = [];
+                            // B: LOOKUP(goal*mult, standard_gift_table); C: MAX(1,ROUND(goal*coeff/B,0))
+                            var ltbl = [10,25,50,100,250,500,1000,2500,5000,10000,25000,50000,100000,250000,500000,1000000,2500000,5000000,10000000,25000000,50000000,100000000,250000000,500000000,1000000000];
+                            function xlLookup(v){var r=ltbl[0];for(var i=0;i<ltbl.length;i++){if(ltbl[i]<=v)r=ltbl[i];else break;}return r;}
+                            var bMults  = [0.15, 0.05, 0.025, 0.0125, 0.005, 0.0025, 0.001];
+                            var cCoeffs = [0.13, 0.13, 0.13,  0.13,   0.13,  0.12,   0.11];
+                            var bv = [], cv = [], dv = [], cumF = 0;
                             for (var ti = 0; ti < 7; ti++) {
                                 var tr = ti + 7;
                                 var bCell = srcSheet['B' + tr];
-                                bv[ti] = (bCell && bCell.t !== 'z' && bCell.v !== undefined && !bCell.f) ? bCell.v : goal * tierMults[ti];
+                                var bIsFormula = bCell && (bCell.t === 'z' || bCell.f);
+                                bv[ti] = (!bIsFormula && bCell && bCell.v !== undefined) ? bCell.v : xlLookup(goal * bMults[ti]);
                                 computedCells['B' + tr] = { v: bv[ti], t: 'n', z: '"$"#,##0' };
                                 var cCell = srcSheet['C' + tr];
-                                cv[ti] = (cCell && cCell.v !== undefined && cCell.t !== 'z') ? cCell.v : 0;
+                                var cIsFormula = cCell && (cCell.t === 'z' || cCell.f);
+                                cv[ti] = (!cIsFormula && cCell && typeof cCell.v === 'number') ? cCell.v : Math.max(1, Math.round(goal * cCoeffs[ti] / bv[ti]));
+                                computedCells['C' + tr] = { v: cv[ti], t: 'n', z: '#,##0' };
                                 dv[ti] = bv[ti] * cv[ti];
                                 computedCells['D' + tr] = { v: dv[ti], t: 'n', z: '"$"#,##0' };
-                                computedCells['E' + tr] = { v: dv[ti] / goal, t: 'n', z: '0.0%' };
+                                computedCells['E' + tr] = { v: dv[ti] / goal, t: 'n', z: '0%' };
+                                cumF += dv[ti] / goal;
+                                computedCells['F' + tr] = { v: cumF, t: 'n', z: '0%' };
                             }
-                            var b14c = srcSheet['B14'];
-                            bv[7] = (b14c && b14c.t !== 'z' && b14c.v !== undefined && !b14c.f) ? b14c.v : bv[6] - 1;
-                            computedCells['B14'] = { v: bv[7], t: 'n', z: '"$"#,##0' };
                             var sumD7_13 = dv.reduce(function(s, x) { return s + x; }, 0);
-                            dv[7] = goal - sumD7_13;
-                            computedCells['D14'] = { v: dv[7], t: 'n', z: '"$"#,##0' };
-                            computedCells['E14'] = { v: dv[7] / goal, t: 'n', z: '0.0%' };
-                            var d15 = sumD7_13 + dv[7];
+                            var d14 = goal - sumD7_13;
+                            computedCells['D14'] = { v: d14, t: 'n', z: '"$"#,##0' };
+                            computedCells['E14'] = { v: d14 / goal, t: 'n', z: '0%' };
+                            computedCells['F14'] = { v: cumF + d14 / goal, t: 'n', z: '0%' };
+                            var d15 = goal;
                             computedCells['D15'] = { v: d15, t: 'n', z: '"$"#,##0' };
-                            computedCells['E15'] = { v: d15 / goal, t: 'n', z: '0.0%' };
-                            computedCells['F7'] = { v: dv[0] / goal, t: 'n', z: '0.0%' };
-                            for (var fi = 1; fi < 7; fi++) {
-                                computedCells['F' + (fi + 7)] = { v: computedCells['F' + (fi + 6)].v + dv[fi] / goal, t: 'n', z: '0.0%' };
-                            }
-                            computedCells['F14'] = { v: computedCells['F13'].v + dv[7] / goal, t: 'n', z: '0.0%' };
+                            computedCells['E15'] = { v: 1, t: 'n', z: '0%' };
                         }
                     }
                     // Clone sheet as values-only: preserve t, v, z; strip f; inject computed cells
