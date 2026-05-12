@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.12.2026 07:44';
+    var MAPPER_VERSION = '5.12.2026 07:52';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -904,7 +904,12 @@
             container.innerHTML = '';
             // If nothing else to map, go straight to submit state instead of showing an intermediate button
             if (constituentMappingSkipped && giftTypeMappingSkipped) { startGiftTypeMapping(); return; }
-            document.getElementById('pledgeStatusCompletionCard').style.display = 'block';
+            var nextLabel = constituentMappingSkipped ? 'Gift Type Mapping' : 'Constituent Type Mapping';
+            var psCard = document.getElementById('pledgeStatusCompletionCard');
+            var psBtnEl = document.getElementById('startConstituentFromPledgeBtn');
+            if (psCard) { var psParts = psCard.querySelectorAll('p'); if (psParts.length >= 2) psParts[1].textContent = 'Click below to continue to ' + nextLabel + '.'; }
+            if (psBtnEl) psBtnEl.textContent = 'Continue to ' + nextLabel + ' ➡';
+            psCard.style.display = 'block';
             document.querySelector('#pledgeStatusMappingSection .progress-container').style.display = 'none';
             document.querySelector('#pledgeStatusMappingSection h2').style.display = 'none';
             return;
@@ -959,7 +964,12 @@
         if (appealCategoryCurrentIndex >= giftAppeals.length) {
             container.innerHTML = '';
             if (constituentMappingSkipped && giftTypeMappingSkipped) { startGiftTypeMapping(); return; }
-            document.getElementById('appealCategoryCompletionCard').style.display = 'block';
+            var nextLabel = constituentMappingSkipped ? 'Gift Type Mapping' : 'Constituent Type Mapping';
+            var acCard = document.getElementById('appealCategoryCompletionCard');
+            var acBtnEl = document.getElementById('startConstituentFromAppealBtn');
+            if (acCard) { var acParts = acCard.querySelectorAll('p'); if (acParts.length >= 2) acParts[1].textContent = 'Click below to continue to ' + nextLabel + '.'; }
+            if (acBtnEl) acBtnEl.textContent = 'Continue to ' + nextLabel + ' ➡';
+            acCard.style.display = 'block';
             document.querySelector('#appealCategoryMappingSection .progress-container').style.display = 'none';
             document.querySelector('#appealCategoryMappingSection h2').style.display = 'none';
             return;
