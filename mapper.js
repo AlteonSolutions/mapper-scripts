@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 22:35';
+    var MAPPER_VERSION = '5.11.2026 22:44';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -945,6 +945,7 @@
         var container = document.getElementById('appealCategoryMappingContainer');
         if (appealCategoryCurrentIndex >= giftAppeals.length) {
             container.innerHTML = '';
+            if (constituentMappingSkipped && giftTypeMappingSkipped) { startGiftTypeMapping(); return; }
             document.getElementById('appealCategoryCompletionCard').style.display = 'block';
             document.querySelector('#appealCategoryMappingSection .progress-container').style.display = 'none';
             document.querySelector('#appealCategoryMappingSection h2').style.display = 'none';
@@ -990,7 +991,7 @@
 
     function showCurrentConstituentType() {
         var container = document.getElementById('constituentMappingContainer');
-        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; updateStepTracker(getStepIndex('Gift Type Mapping')); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
+        if (constituentCurrentIndex >= constituentTypes.length) { container.innerHTML = ''; if (giftTypeMappingSkipped) { startGiftTypeMapping(); return; } updateStepTracker(getStepIndex('Gift Type Mapping')); document.getElementById('constituentCompletionCard').style.display = 'block'; document.querySelector('#constituentMappingSection .progress-container').style.display = 'none'; document.querySelector('#constituentMappingSection h2').style.display = 'none'; return; }
         var ct = constituentTypes[constituentCurrentIndex]; var cm = constituentMappings[ct] || null;
         var html = '<div class="mapping-card"><div class="appeal-label">Constituent Type ' + (constituentCurrentIndex+1) + ' of ' + constituentTypes.length + '</div><div class="appeal-name">' + ct + '</div><div style="text-align:center;margin-bottom:15px;color:#666;font-weight:600;">Select a constituent type:</div><div class="category-buttons allow-wrap">';
         for (var i = 0; i < constituentCategories.length; i++) html += '<button class="category-btn" data-appeal="' + ct + '" data-category="' + constituentCategories[i] + '" data-mapping-type="constituent">' + constituentCategories[i] + '</button>';
