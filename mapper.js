@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.11.2026 23:13';
+    var MAPPER_VERSION = '5.12.2026 07:44';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -543,6 +543,19 @@
                 var el = document.getElementById(id);
                 if (el) box.appendChild(el);
             });
+
+            // Inject unified "All Done" card into giftTypeMappingSection
+            var giftTypeSec = document.getElementById('giftTypeMappingSection');
+            if (giftTypeSec) {
+                var allDoneCard = document.createElement('div');
+                allDoneCard.id = 'allDoneCard';
+                allDoneCard.className = 'completion-card';
+                allDoneCard.style.display = 'none';
+                allDoneCard.innerHTML = '<div style="font-size:1.4rem;font-weight:700;color:#111827;margin-bottom:14px;">🎉 All Done!</div>'
+                    + '<p>You\'ve successfully mapped all data.</p>'
+                    + '<p style="margin-bottom:0;">Your data is ready to submit.</p>';
+                giftTypeSec.appendChild(allDoneCard);
+            }
         });
 
         waitForElement('#customSubmitBtn', function(btn) {
@@ -1022,13 +1035,22 @@
     }
 
 
+    function showAllDoneCard() {
+        ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection','constituentMappingSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+        var gts = document.getElementById('giftTypeMappingSection'); if (gts) gts.style.display = 'block';
+        var h2 = gts ? gts.querySelector('h2') : null; if (h2) h2.style.display = 'none';
+        var pc = gts ? gts.querySelector('.progress-container') : null; if (pc) pc.style.display = 'none';
+        var gtc = document.getElementById('giftTypeCompletionCard'); if (gtc) gtc.style.display = 'none';
+        var gtContainer = document.getElementById('giftTypeMappingContainer'); if (gtContainer) gtContainer.innerHTML = '';
+        var adc = document.getElementById('allDoneCard'); if (adc) adc.style.display = 'block';
+        var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
+        updateStepTracker(99);
+        setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
+    }
+
     function startGiftTypeMapping() {
         if (giftTypeMappingSkipped) {
-            ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection','constituentMappingSection','giftTypeMappingSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
-            var mb2 = document.getElementById('mappingBox'); if (mb2) mb2.style.display = 'none';
-            var ml2 = document.getElementById('mappingBoxLabel'); if (ml2) ml2.style.display = 'none';
-            var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
-            updateStepTracker(99); return;
+            showAllDoneCard(); return;
         }
         updateStepTracker(getStepIndex('Gift Type Mapping')); giftTypeCurrentIndex = 0; giftTypeHasUsedPrevious = false;
         document.getElementById('giftTypeMappingSection').style.display = 'block'; showCurrentGiftType(); updateGiftTypeProgress();
@@ -1039,13 +1061,7 @@
     function showCurrentGiftType() {
         var container = document.getElementById('giftTypeMappingContainer');
         if (giftTypeCurrentIndex >= giftTypes.length) {
-            container.innerHTML = '';
-            updateStepTracker(99);
-            document.getElementById('giftTypeCompletionCard').style.display = 'block';
-            document.querySelector('#giftTypeMappingSection .progress-container').style.display = 'none';
-            document.querySelector('#giftTypeMappingSection h2').style.display = 'none';
-            var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
-            return;
+            showAllDoneCard(); return;
         }
         var gt = giftTypes[giftTypeCurrentIndex]; var cm = giftTypeMappings[gt] || null;
         var gtLabel = gt === '__blank__' ? 'Gift Type Not Specified' : gt;
