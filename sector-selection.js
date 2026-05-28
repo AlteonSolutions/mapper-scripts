@@ -110,6 +110,7 @@
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
     var brand = isSW ? brands.sw : isKellogg ? brands.kellogg : isDatabasey ? brands.databasey : brands.alford;
+    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isDatabasey ? '#4F788D' : '#2c5f5d';
     var iconFilter = '';
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
@@ -143,7 +144,9 @@
     dlLink.href = templateUrl;
     dlLink.download = 'Data Upload Template.xlsx';
     dlLink.textContent = 'Download Data Template';
-    dlLink.style.cssText = 'font-size:13px;color:#888;text-decoration:underline;cursor:pointer;';
+    dlLink.style.cssText = 'display:inline-block;font-family:Roboto,sans-serif;font-size:14px;font-weight:400;color:' + themeColor + ';border:1px solid ' + themeColor + ';border-radius:8px;padding:9px 28px;text-decoration:none;cursor:pointer;background:#fff;transition:transform 0.3s ease;';
+    dlLink.onmouseover = function() { this.style.transform = 'translateY(-3px)'; };
+    dlLink.onmouseout  = function() { this.style.transform = 'translateY(0)'; };
     dlLink.addEventListener('click', function(e) {
         e.preventDefault();
         fetch(templateUrl)
