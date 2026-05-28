@@ -68,7 +68,7 @@
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
     var brand = isSW ? brands.sw : brands.alford;
-    var iconFilter = isKellogg ? 'hue-rotate(88deg) saturate(1.5) brightness(1.2)'
+    var iconFilter = isKellogg ? 'hue-rotate(88deg) saturate(2) brightness(0.8)'
                   : isDatabasey ? 'hue-rotate(22deg) saturate(0.76) brightness(1.5)'
                   : '';
 
