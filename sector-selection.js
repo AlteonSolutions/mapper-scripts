@@ -46,6 +46,27 @@
                 human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931905d47e737bf20b4.svg',
                 religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962932905d47012fbf20b8.svg'
             }
+        },
+        kellogg: {
+            formId: '5GIq2FyRJrWJv32C9avI',
+            icons: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db0f58810f313b39b17.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68f58810f313b3af1f.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e688c6ee94929b7a342.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e6860904d91054158b3.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68fedd58e234bc1d1c.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e687b799e67777fc875.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db1054f002268c9ecf1.svg'
+            },
+            headers: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db0f58810f313b39b17.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68f58810f313b3af1f.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e688c6ee94929b7a342.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e6860904d91054158b3.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68fedd58e234bc1d1c.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e687b799e67777fc875.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db1054f002268c9ecf1.svg'
+            }
         }
     };
 
@@ -67,10 +88,8 @@
     var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
-    var brand = isSW ? brands.sw : brands.alford;
-    var iconFilter = isKellogg ? 'hue-rotate(88deg) saturate(2) brightness(0.8)'
-                  : isDatabasey ? 'hue-rotate(22deg) saturate(0.76) brightness(1.5)'
-                  : '';
+    var brand = isSW ? brands.sw : isKellogg ? brands.kellogg : brands.alford;
+    var iconFilter = isDatabasey ? 'hue-rotate(22deg) saturate(0.76) brightness(1.5)' : '';
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
     function init() {
