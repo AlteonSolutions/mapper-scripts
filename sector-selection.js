@@ -128,6 +128,39 @@
         row.appendChild(btn);
     });
 
+    // ── TEMPLATE DOWNLOAD LINK ───────────────────────────────────────────────
+    var templateUrl = isStaffing
+        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f41949cad250291f4bf0cb.xlsx'
+        : isDevelopmentAssessment
+        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f4d41f23e63d676c8653d7.xlsx'
+        : isCampaignCounsel
+        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f50560daa24d98950cd696.xlsx'
+        : 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
+    var dlWrap = document.createElement('div');
+    dlWrap.id = 'template-download-wrap';
+    dlWrap.style.cssText = 'text-align:center;margin-top:14px;';
+    var dlLink = document.createElement('a');
+    dlLink.href = templateUrl;
+    dlLink.download = 'Data Upload Template.xlsx';
+    dlLink.textContent = 'Download Data Template';
+    dlLink.style.cssText = 'font-size:13px;color:#888;text-decoration:underline;cursor:pointer;';
+    dlLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        fetch(templateUrl)
+            .then(function(r) { return r.blob(); })
+            .then(function(blob) {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'Data Upload Template.xlsx';
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(a.href);
+            })
+            .catch(function() { window.open(templateUrl, '_blank'); });
+    });
+    dlWrap.appendChild(dlLink);
+    var row2 = document.getElementById('row2');
+    if (row2 && row2.parentNode) row2.parentNode.insertBefore(dlWrap, row2.nextSibling);
+
     // ── SET IFRAME FORM ID ────────────────────────────────────────────────────
     var iframe = document.getElementById('ghl-form-iframe');
     var formBase = 'https://api.leadconnectorhq.com/widget/form/' + brand.formId;
@@ -139,6 +172,8 @@
 
     // ── SELECTION HANDLER ─────────────────────────────────────────────────────
     window.selectIndustry = function(fileCategory, mapperKey, industryLabel) {
+        var dlw = document.getElementById('template-download-wrap');
+        if (dlw) dlw.style.display = 'none';
         var cc = document.querySelector('.category-container');
         var allBtns = cc ? cc.querySelectorAll('.category-btn-icon') : [];
 
