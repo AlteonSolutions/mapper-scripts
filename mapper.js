@@ -248,8 +248,8 @@
             if (!constituentMappingSkipped) stepLabels.push('Constituent Type Mapping');
             if (!giftTypeMappingSkipped) stepLabels.push('Gift Type Mapping');
         } else {
-            stepLabels.push('Special Event Mapping');
-            if (spotlightConfig) stepLabels.push('Spotlight Mapping');
+            if (!specialEventSkipped) stepLabels.push('Special Event Mapping');
+            if (!spotlightSkipped && spotlightConfig) stepLabels.push('Spotlight Mapping');
             if (!constituentMappingSkipped) stepLabels.push('Constituent Type Mapping');
             if (!giftTypeMappingSkipped) stepLabels.push('Gift Type Mapping');
         }
@@ -280,12 +280,7 @@
         if (!stepTracker) return;
         var items = stepTracker.querySelectorAll('.step-item');
         var circles = stepTracker.querySelectorAll('.step-circle');
-        // Build list of skipped step indices
-        var skipped = [];
-        if (specialEventSkipped) skipped.push(0);
-        if (spotlightSkipped && spotlightConfig) skipped.push(1);
         for (var i = 0; i < items.length; i++) {
-            var isSkipped = skipped.indexOf(i) !== -1;
             if (i === step) {
                 // Current active step
                 items[i].classList.add('active'); items[i].classList.remove('completed');
