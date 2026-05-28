@@ -62,6 +62,8 @@
 
     // ── BRAND DETECTION ───────────────────────────────────────────────────────
     var isSW = window.location.href.includes('getdatabasey.com/sw');
+    var isDatabasey = window.location.href.includes('getdatabasey.com/analytics');
+    var isKellogg = window.location.href.includes('getdatabasey.com/kellogg');
     var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
@@ -245,7 +247,7 @@
         var newSrc = formBase
             + '?industrytype=' + encodeURIComponent(industryLabel)
             + '&industry=' + encodeURIComponent(mapperKey)
-            + (isSW ? '&brand=sw' : '')
+            + (isSW ? '&brand=sw' : isDatabasey ? '&brand=databasey' : isKellogg ? '&brand=kellogg' : '')
             + (isStaffing ? '&variant=staffing' : isDevelopmentAssessment ? '&variant=developmentassessment' : isCampaignCounsel ? '&variant=campaigncounsel' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
