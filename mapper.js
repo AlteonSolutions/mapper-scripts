@@ -21,11 +21,11 @@
     var isDevelopmentAssessment = _urlParams.get('variant') === 'developmentassessment';
     var isCampaignCounsel = _urlParams.get('variant') === 'campaigncounsel';
     var isSimpleFlow = isStaffing || isDevelopmentAssessment || isCampaignCounsel;
-    var themeColor = isSW ? '#00386c' : isDatabasey ? '#4F788C' : isKellogg ? '#4F2683' : '#2c5f5d';
+    var themeColor = isSW ? '#00386c' : isDatabasey ? '#4F788D' : isKellogg ? '#4F2683' : '#2c5f5d';
     var themeColorHover = isSW ? '#004f99' : isDatabasey ? '#5d8fa5' : isKellogg ? '#6535a8' : '#3d7672';
-    var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isDatabasey ? 'rgba(79, 120, 140, 0.1)' : isKellogg ? 'rgba(79, 38, 131, 0.1)' : 'rgba(44, 95, 93, 0.1)';
-    var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isDatabasey ? 'rgba(79, 120, 140, 0.3)' : isKellogg ? 'rgba(79, 38, 131, 0.3)' : 'rgba(44, 95, 93, 0.3)';
-    console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isDatabasey ? 'Databasey (#4F788C)' : isKellogg ? 'Kellogg (#4F2683)' : 'Default (#2c5f5d)');
+    var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isDatabasey ? 'rgba(79, 120, 141, 0.1)' : isKellogg ? 'rgba(79, 38, 131, 0.1)' : 'rgba(44, 95, 93, 0.1)';
+    var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isDatabasey ? 'rgba(79, 120, 141, 0.3)' : isKellogg ? 'rgba(79, 38, 131, 0.3)' : 'rgba(44, 95, 93, 0.3)';
+    console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isDatabasey ? 'Databasey (#4F788D)' : isKellogg ? 'Kellogg (#4F2683)' : 'Default (#2c5f5d)');
 
     // Apply theme to CSS variables so static CSS in HTML also picks up the color
     if (isSW || isDatabasey || isKellogg) {
