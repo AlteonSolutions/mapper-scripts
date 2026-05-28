@@ -68,6 +68,9 @@
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
     var brand = isSW ? brands.sw : brands.alford;
+    var iconFilter = isKellogg ? 'hue-rotate(88deg) saturate(1.5) brightness(1.2)'
+                  : isDatabasey ? 'hue-rotate(22deg) saturate(0.76) brightness(1.5)'
+                  : '';
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
     function init() {
@@ -80,7 +83,7 @@
         btn.className = 'category-btn-icon';
         btn.type = 'button';
         btn.onclick = function() { selectIndustry(ind.key, ind.mapperKey, ind.label); };
-        btn.innerHTML = '<div class="category-icon"><img src="' + brand.icons[ind.key] + '" alt="' + ind.label + '"></div>'
+        btn.innerHTML = '<div class="category-icon"><img src="' + brand.icons[ind.key] + '" alt="' + ind.label + '"' + (iconFilter ? ' style="filter:' + iconFilter + '"' : '') + '></div>'
                       + '<div class="category-label">' + ind.label + '</div>';
         row.appendChild(btn);
     });
