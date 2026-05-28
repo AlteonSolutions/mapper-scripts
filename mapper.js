@@ -762,7 +762,13 @@
                     else if (isCampaignCounsel && pledgeStatuses.length > 0) { startPledgeStatusMapping(); }
                     else { startConstituentMapping(); }
                 } else {
-                    document.getElementById('categorySetup').style.display = 'block';
+                    if (giftAppeals.length === 0) {
+                        specialEventSkipped = true;
+                        spotlightSkipped = true;
+                        startConstituentMapping();
+                    } else {
+                        document.getElementById('categorySetup').style.display = 'block';
+                    }
                 }
 
             } catch (err) {
