@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.28.2026 15:05 EST';
+    var MAPPER_VERSION = '5.28.2026 15:28 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -725,6 +725,10 @@
                     if (spotlightConfig.type === 'giftAppeal') spotlightSourceData = giftAppeals.slice();
                     else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice();
                 }
+                if (!isSimpleFlow && giftAppeals.length === 0) {
+                    specialEventSkipped = true;
+                    spotlightSkipped = true;
+                }
                 initializeStepTracker(); updateStepTracker(0);
                 if (constituentMappingSkipped && giftTypeMappingSkipped) {
                     ['solicitorDoneBtn','startConstituentFromPledgeBtn','startConstituentFromAppealBtn','startConstituentMappingBtn'].forEach(function(id) {
@@ -758,8 +762,6 @@
                     else { startConstituentMapping(); }
                 } else {
                     if (giftAppeals.length === 0) {
-                        specialEventSkipped = true;
-                        spotlightSkipped = true;
                         startConstituentMapping();
                     } else {
                         document.getElementById('categorySetup').style.display = 'block';
