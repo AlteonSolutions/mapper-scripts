@@ -105,7 +105,7 @@
     // ── BRAND DETECTION ───────────────────────────────────────────────────────
     var isSW = window.location.href.includes('getdatabasey.com/sw');
     var isDatabasey = window.location.href.includes('getdatabasey.com/analytics');
-    var isKellogg = window.location.href.includes('getdatabasey.com/kellogg');
+    var isKellogg = window.location.href.includes('heyfundraiser.com/kellogg');
     var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
