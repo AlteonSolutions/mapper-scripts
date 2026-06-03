@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '5.28.2026 15:28 EST';
+    var MAPPER_VERSION = '6.3.2026 14:43 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -346,11 +346,24 @@
             });
             var submitBtn = document.querySelector('#_builder-form button[type="submit"]');
             if (submitBtn) {
+                submitBtn.style.display = 'none';
                 var wrapper = submitBtn.closest('.form-field-wrapper');
                 if (wrapper) wrapper.style.display = 'none';
             }
             if (!allFound) setTimeout(hideGHLElements, 500);
         })();
+
+        // Block native form submission if no file has been uploaded and processed
+        waitForElement('form', function(form) {
+            form.addEventListener('submit', function(e) {
+                if (!workbook) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    alert('Please upload and process your Client Data file before submitting.');
+                    return false;
+                }
+            }, true);
+        });
 
         // uploadTitle pre-styled in HTML
 
