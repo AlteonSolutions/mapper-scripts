@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '6.5.2026 21:55 EST';
+    var MAPPER_VERSION = '6.5.2026 22:02 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -681,51 +681,46 @@
         });
         if (errors.length > 0) return errors;
 
-        var badCID = [], badDate = [], badAmt = [];
-        for (var i = 0; i < giftJson.length; i++) {
-            var r = giftJson[i], n = i + 2;
-            var cid = r['Constituent ID'];
-            if (cid === undefined || cid === null || cid.toString().trim() === '') badCID.push(n);
-            if (!isExcelDateVal(r['Gift Date'])) badDate.push(n);
-            if (typeof r['Gift Amount'] !== 'number' || isNaN(r['Gift Amount'])) badAmt.push(n);
+        if (giftJson.length > 0) {
+            var validCID = 0, validDate = 0, validAmt = 0;
+            for (var i = 0; i < giftJson.length; i++) {
+                var r = giftJson[i];
+                var cid = r['Constituent ID'];
+                if (cid !== undefined && cid !== null && cid.toString().trim() !== '') validCID++;
+                if (isExcelDateVal(r['Gift Date'])) validDate++;
+                if (typeof r['Gift Amount'] === 'number' && !isNaN(r['Gift Amount'])) validAmt++;
+            }
+            if (validCID === 0)  errors.push('Gift Data — Constituent ID column appears to be entirely blank');
+            if (validDate === 0) errors.push('Gift Data — Gift Date column contains no valid dates');
+            if (validAmt === 0)  errors.push('Gift Data — Gift Amount column contains no valid numbers');
         }
-        var badConstCID = [], badConstType = [];
-        for (var j = 0; j < constJson.length; j++) {
-            var cr = constJson[j], cn = j + 2;
-            if (!cr['Constituent ID'] || cr['Constituent ID'].toString().trim() === '') badConstCID.push(cn);
-            if (!cr['Constituent Type'] || cr['Constituent Type'].toString().trim() === '') badConstType.push(cn);
+        if (constJson.length > 0) {
+            var validConstCID = 0, validConstType = 0;
+            for (var j = 0; j < constJson.length; j++) {
+                var cr = constJson[j];
+                if (cr['Constituent ID'] && cr['Constituent ID'].toString().trim() !== '') validConstCID++;
+                if (cr['Constituent Type'] && cr['Constituent Type'].toString().trim() !== '') validConstType++;
+            }
+            if (validConstCID === 0)  errors.push('Constituent Data — Constituent ID column appears to be entirely blank');
+            if (validConstType === 0) errors.push('Constituent Data — Constituent Type column appears to be entirely blank');
         }
-        function fmtRows(rows) {
-            var shown = rows.slice(0, 5), more = rows.length - shown.length;
-            return 'row' + (rows.length > 1 ? 's' : '') + ' ' + shown.join(', ') + (more > 0 ? ' (+' + more + ' more)' : '');
-        }
-        if (badCID.length)       errors.push('Gift Data — Constituent ID is blank in ' + fmtRows(badCID));
-        if (badDate.length)      errors.push('Gift Data — Gift Date is not a valid date in ' + fmtRows(badDate));
-        if (badAmt.length)       errors.push('Gift Data — Gift Amount is not a number in ' + fmtRows(badAmt));
-        if (badConstCID.length)  errors.push('Constituent Data — Constituent ID is blank in ' + fmtRows(badConstCID));
-        if (badConstType.length) errors.push('Constituent Data — Constituent Type is blank in ' + fmtRows(badConstType));
         return errors;
     }
 
     function showUploadValidationError(errors) {
         workbook = null;
-        var uploadBox = document.getElementById('uploadBox');
-        uploadBox.style.cursor = 'pointer';
-        uploadBox.innerHTML = uploadIconSvg;
+        var fi = document.getElementById('fileInput'); if (fi) fi.value = '';
         var dn = document.getElementById('uploadNote'); if (dn) dn.style.display = '';
         var dd = document.getElementById('download-container'); if (dd) dd.style.display = '';
-        var fi = document.getElementById('fileInput'); if (fi) fi.value = '';
-        var errDiv = document.getElementById('uploadErrorMsg');
-        if (!errDiv) {
-            errDiv = document.createElement('div');
-            errDiv.id = 'uploadErrorMsg';
-            uploadBox.parentNode.insertBefore(errDiv, uploadBox.nextSibling);
-        }
-        errDiv.style.cssText = 'margin-top:10px;padding:12px 16px;background:#fff5f5;border:1px solid #f87171;border-radius:8px;font-size:13px;color:#b91c1c;font-family:Roboto,sans-serif;line-height:1.6;';
-        var html = '<strong>Please fix the following issues and re-upload:</strong><ul style="margin:8px 0 0 0;padding-left:20px;">';
-        errors.forEach(function(e) { html += '<li style="margin-bottom:3px;">' + e + '</li>'; });
-        html += '</ul>';
-        errDiv.innerHTML = html;
+        var uploadBox = document.getElementById('uploadBox');
+        uploadBox.style.cursor = 'pointer';
+        uploadBox.style.border = '1px solid #f87171';
+        var html = '<div style="padding:14px 16px;text-align:left;">'
+            + '<div style="font-size:13px;font-weight:600;color:#b91c1c;margin-bottom:6px;">Please fix the following issues and re-upload:</div>'
+            + '<ul style="margin:0;padding-left:18px;font-size:13px;color:#b91c1c;line-height:1.7;">';
+        errors.forEach(function(e) { html += '<li>' + e + '</li>'; });
+        html += '</ul><div style="margin-top:10px;font-size:12px;color:#999;text-align:center;">Click to upload a new file</div></div>';
+        uploadBox.innerHTML = html;
     }
 
     function handleFileUpload(e) {
@@ -734,12 +729,9 @@
         var detected = detectIndustry();
         if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) { selectedIndustryType = lbl; setIndustryTypeField(lbl); } }
 
-        // Clear any previous validation error
-        var prevErr = document.getElementById('uploadErrorMsg');
-        if (prevErr) prevErr.innerHTML = '';
-
         // Show loading state
         var uploadBox = document.getElementById('uploadBox');
+        uploadBox.style.border = '1px solid #ACACACFF';
         uploadBox.style.cursor = 'default';
         uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px 0;">'
             + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid ' + themeColor + ';border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
