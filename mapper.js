@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '6.5.2026 22:02 EST';
+    var MAPPER_VERSION = '6.5.2026 22:10 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -711,15 +711,16 @@
         workbook = null;
         var fi = document.getElementById('fileInput'); if (fi) fi.value = '';
         var dn = document.getElementById('uploadNote'); if (dn) dn.style.display = '';
-        var dd = document.getElementById('download-container'); if (dd) dd.style.display = '';
+        var dd = document.getElementById('download-container'); if (dd) dd.style.display = 'flex';
         var uploadBox = document.getElementById('uploadBox');
         uploadBox.style.cursor = 'pointer';
         uploadBox.style.border = '1px solid #f87171';
-        var html = '<div style="padding:14px 16px;text-align:left;">'
-            + '<div style="font-size:13px;font-weight:600;color:#b91c1c;margin-bottom:6px;">Please fix the following issues and re-upload:</div>'
-            + '<ul style="margin:0;padding-left:18px;font-size:13px;color:#b91c1c;line-height:1.7;">';
+        var html = '<div style="display:flex;flex-direction:column;align-items:center;padding:10px 16px 14px;">'
+            + uploadIconSvg
+            + '<div style="margin-top:8px;font-size:13px;font-weight:600;color:#b91c1c;">Please fix the following issues and re-upload:</div>'
+            + '<ul style="margin:6px 0 0 0;padding-left:18px;font-size:13px;color:#b91c1c;line-height:1.7;text-align:left;">';
         errors.forEach(function(e) { html += '<li>' + e + '</li>'; });
-        html += '</ul><div style="margin-top:10px;font-size:12px;color:#999;text-align:center;">Click to upload a new file</div></div>';
+        html += '</ul></div>';
         uploadBox.innerHTML = html;
     }
 
@@ -853,7 +854,7 @@
                 uploadBox.style.cursor = 'pointer';
                 uploadBox.innerHTML = uploadIconSvg;
                 var dn = document.getElementById('uploadNote'); if (dn) dn.style.display = '';
-                var dd = document.getElementById('download-container'); if (dd) dd.style.display = '';
+                var dd = document.getElementById('download-container'); if (dd) dd.style.display = 'flex';
                 alert('Error reading file: ' + err.message);
             }
             }, 50);
