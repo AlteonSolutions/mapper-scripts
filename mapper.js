@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '6.3.2026 14:43 EST';
+    var MAPPER_VERSION = '6.5.2026 21:55 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -662,11 +662,81 @@
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
 
+    function isExcelDateVal(v) {
+        if (typeof v === 'number' && v > 0 && isFinite(v)) return true;
+        if (v instanceof Date) return !isNaN(v.getTime());
+        if (typeof v === 'string' && v.trim() !== '') return !isNaN(new Date(v).getTime());
+        return false;
+    }
+
+    function validateWorkbook(wb, giftJson, constJson) {
+        var errors = [];
+        var giftHeaders = (XLSX.utils.sheet_to_json(wb.Sheets['Gift Data'], { header: 1 })[0]) || [];
+        ['Constituent ID', 'Gift Date', 'Gift Amount'].forEach(function(col) {
+            if (giftHeaders.indexOf(col) === -1) errors.push('Gift Data sheet is missing required column: "' + col + '"');
+        });
+        var constHeaders = (XLSX.utils.sheet_to_json(wb.Sheets['Constituent Data'], { header: 1 })[0]) || [];
+        ['Constituent ID', 'Constituent Type'].forEach(function(col) {
+            if (constHeaders.indexOf(col) === -1) errors.push('Constituent Data sheet is missing required column: "' + col + '"');
+        });
+        if (errors.length > 0) return errors;
+
+        var badCID = [], badDate = [], badAmt = [];
+        for (var i = 0; i < giftJson.length; i++) {
+            var r = giftJson[i], n = i + 2;
+            var cid = r['Constituent ID'];
+            if (cid === undefined || cid === null || cid.toString().trim() === '') badCID.push(n);
+            if (!isExcelDateVal(r['Gift Date'])) badDate.push(n);
+            if (typeof r['Gift Amount'] !== 'number' || isNaN(r['Gift Amount'])) badAmt.push(n);
+        }
+        var badConstCID = [], badConstType = [];
+        for (var j = 0; j < constJson.length; j++) {
+            var cr = constJson[j], cn = j + 2;
+            if (!cr['Constituent ID'] || cr['Constituent ID'].toString().trim() === '') badConstCID.push(cn);
+            if (!cr['Constituent Type'] || cr['Constituent Type'].toString().trim() === '') badConstType.push(cn);
+        }
+        function fmtRows(rows) {
+            var shown = rows.slice(0, 5), more = rows.length - shown.length;
+            return 'row' + (rows.length > 1 ? 's' : '') + ' ' + shown.join(', ') + (more > 0 ? ' (+' + more + ' more)' : '');
+        }
+        if (badCID.length)       errors.push('Gift Data — Constituent ID is blank in ' + fmtRows(badCID));
+        if (badDate.length)      errors.push('Gift Data — Gift Date is not a valid date in ' + fmtRows(badDate));
+        if (badAmt.length)       errors.push('Gift Data — Gift Amount is not a number in ' + fmtRows(badAmt));
+        if (badConstCID.length)  errors.push('Constituent Data — Constituent ID is blank in ' + fmtRows(badConstCID));
+        if (badConstType.length) errors.push('Constituent Data — Constituent Type is blank in ' + fmtRows(badConstType));
+        return errors;
+    }
+
+    function showUploadValidationError(errors) {
+        workbook = null;
+        var uploadBox = document.getElementById('uploadBox');
+        uploadBox.style.cursor = 'pointer';
+        uploadBox.innerHTML = uploadIconSvg;
+        var dn = document.getElementById('uploadNote'); if (dn) dn.style.display = '';
+        var dd = document.getElementById('download-container'); if (dd) dd.style.display = '';
+        var fi = document.getElementById('fileInput'); if (fi) fi.value = '';
+        var errDiv = document.getElementById('uploadErrorMsg');
+        if (!errDiv) {
+            errDiv = document.createElement('div');
+            errDiv.id = 'uploadErrorMsg';
+            uploadBox.parentNode.insertBefore(errDiv, uploadBox.nextSibling);
+        }
+        errDiv.style.cssText = 'margin-top:10px;padding:12px 16px;background:#fff5f5;border:1px solid #f87171;border-radius:8px;font-size:13px;color:#b91c1c;font-family:Roboto,sans-serif;line-height:1.6;';
+        var html = '<strong>Please fix the following issues and re-upload:</strong><ul style="margin:8px 0 0 0;padding-left:20px;">';
+        errors.forEach(function(e) { html += '<li style="margin-bottom:3px;">' + e + '</li>'; });
+        html += '</ul>';
+        errDiv.innerHTML = html;
+    }
+
     function handleFileUpload(e) {
         var file = e.target.files[0];
         if (!file) return;
         var detected = detectIndustry();
         if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) { selectedIndustryType = lbl; setIndustryTypeField(lbl); } }
+
+        // Clear any previous validation error
+        var prevErr = document.getElementById('uploadErrorMsg');
+        if (prevErr) prevErr.innerHTML = '';
 
         // Show loading state
         var uploadBox = document.getElementById('uploadBox');
@@ -699,6 +769,10 @@
                 for (var i = 0; i < giftJson.length; i++) { if (giftJson[i]['Gift Appeal']) ua[giftJson[i]['Gift Appeal']] = true; }
                 giftAppeals = Object.keys(ua).sort();
                 var constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
+
+                var valErrors = validateWorkbook(workbook, giftJson, constJson);
+                if (valErrors.length > 0) { showUploadValidationError(valErrors); return; }
+
                 var uc = {};
                 for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
                 var allConstituentTypeCount = Object.keys(uc).length;
