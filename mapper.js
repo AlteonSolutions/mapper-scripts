@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '6.5.2026 22:55 EST';
+    var MAPPER_VERSION = '6.5.2026 22:56 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -704,8 +704,8 @@
             if (validConstCID === 0)  errors.push('Constituent Data — Constituent ID column appears to be entirely blank');
             if (validConstType === 0) errors.push('Constituent Data — Constituent Type column appears to be entirely blank');
         }
-        // 6-year minimum data range check (Alford and Databasey only)
-        if (!isSW && !isKellogg && giftJson.length > 0) {
+        // 6-year minimum data range check (Alford, Databasey, and Kellogg)
+        if (!isSW && giftJson.length > 0) {
             var minTs = Infinity, maxTs = -Infinity;
             for (var k = 0; k < giftJson.length; k++) {
                 var dv = giftJson[k]['Gift Date'], d = null;
