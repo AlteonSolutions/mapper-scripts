@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '6.5.2026 22:10 EST';
+    var MAPPER_VERSION = '6.5.2026 22:55 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -703,6 +703,21 @@
             }
             if (validConstCID === 0)  errors.push('Constituent Data — Constituent ID column appears to be entirely blank');
             if (validConstType === 0) errors.push('Constituent Data — Constituent Type column appears to be entirely blank');
+        }
+        // 6-year minimum data range check (Alford and Databasey only)
+        if (!isSW && !isKellogg && giftJson.length > 0) {
+            var minTs = Infinity, maxTs = -Infinity;
+            for (var k = 0; k < giftJson.length; k++) {
+                var dv = giftJson[k]['Gift Date'], d = null;
+                if (typeof dv === 'number' && dv > 0) d = new Date((dv - 25569) * 86400000);
+                else if (typeof dv === 'string' && dv.trim() !== '') { var pd = new Date(dv); if (!isNaN(pd.getTime())) d = pd; }
+                else if (dv instanceof Date && !isNaN(dv.getTime())) d = dv;
+                if (d) { var t = d.getTime(); if (t < minTs) minTs = t; if (t > maxTs) maxTs = t; }
+            }
+            if (minTs !== Infinity && (maxTs - minTs) < 6 * 365.25 * 24 * 60 * 60 * 1000) {
+                errors.push('Gift Data must contain at least 6 years of history — found data from '
+                    + new Date(minTs).getFullYear() + ' to ' + new Date(maxTs).getFullYear());
+            }
         }
         return errors;
     }
