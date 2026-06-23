@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '6.5.2026 22:56 EST';
+    var MAPPER_VERSION = '6.22.2026 23:24 EST';
     
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -446,7 +446,15 @@
         });
         waitForElement('#categoryInput', function(el) { el.addEventListener('keypress', function(e) { if (e.key === 'Enter') addCategory(); }); });
         waitForElement('#addCategoryBtn', function(el) { el.addEventListener('click', addCategory); });
-        waitForElement('#startMappingBtn', function(el) { el.addEventListener('click', startMapping); });
+        waitForElement('#startMappingBtn', function(el) {
+            el.addEventListener('click', startMapping);
+            // Move skip button into the same flex row as this button
+            var skipBtn = document.getElementById('skipSpecialEventBtn');
+            if (skipBtn && el.parentNode) {
+                el.parentNode.appendChild(skipBtn);
+                skipBtn.style.cssText = 'display:inline-block;padding:12px 32px;border-radius:8px;background:white;color:' + themeColor + ';border:1px solid ' + themeColor + ';font-size:15px;font-weight:400;cursor:pointer;font-family:Roboto,sans-serif;';
+            }
+        });
         waitForElement('#skipSpecialEventBtn', function(el) {
             el.addEventListener('click', function() {
                 document.getElementById('categorySetup').style.display = 'none';
