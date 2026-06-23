@@ -143,6 +143,14 @@
             color: #999; font-size: 13px; cursor: pointer; text-decoration: underline;
         }
         .skip-link:hover { color: #666; }
+        .skip-btn {
+            display: inline-block; padding: 12px 32px; border-radius: 8px;
+            background: white; color: var(--theme-color, #2c5f5d);
+            border: 1px solid var(--theme-color, #2c5f5d);
+            font-size: 15px; font-weight: 400; cursor: pointer;
+            font-family: Roboto, sans-serif;
+        }
+        .skip-btn:hover { opacity: 0.8; }
 
         /* ── Mapping Box (created by mapper.js) ──────────────────────────── */
         #mappingBox { margin-top: 16px; }
@@ -206,9 +214,9 @@
             </div>
             <div id="categoriesList" style="margin-bottom:16px;"></div>
             <div style="text-align:center;display:flex;gap:12px;justify-content:center;">
-                <button id="startMappingBtn" class="continue-btn">Start Mapping ➡</button>
+                <button id="startMappingBtn" class="continue-btn">Continue to Mapping ➡</button>
+                <button id="skipSpecialEventBtn" class="skip-btn">Skip Mapping</button>
             </div>
-            <span id="skipSpecialEventBtn" class="skip-link">Skip special event mapping</span>
         </div>
 
         <!-- Event mapping section -->
