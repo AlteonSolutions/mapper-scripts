@@ -722,7 +722,7 @@
                 else if (dv instanceof Date && !isNaN(dv.getTime())) d = dv;
                 if (d) { var t = d.getTime(); if (t < minTs) minTs = t; if (t > maxTs) maxTs = t; }
             }
-            if (minTs !== Infinity && (maxTs - minTs) < 6 * 365.25 * 24 * 60 * 60 * 1000) {
+            if (minTs !== Infinity && (new Date(maxTs).getFullYear() - new Date(minTs).getFullYear()) < 5) {
                 errors.push('Gift Data must contain at least 6 years of history — found data from '
                     + new Date(minTs).getFullYear() + ' to ' + new Date(maxTs).getFullYear());
             }
