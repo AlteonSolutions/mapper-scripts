@@ -53,6 +53,20 @@ function blk(a, b) {
   if (da && db) return Math.abs(da - db) < 86400000;
   return String(a).trim() === String(b).trim();
 }
+// Read the DJ year baked into this file's Gift Data "Donor Journey Donor" formula.
+// Older files hardcode a year like "2018"; newer files use the dynamic EndYear-5 named range.
+function detectDJYear(wb, giftHdr, endYear) {
+  const gs = wb.Sheets['Gift Data'];
+  if (!gs) return null;
+  const djCol = giftHdr.indexOf('Donor Journey Donor');
+  if (djCol < 0) return null;
+  const cell = gs[XLSX.utils.encode_cell({ r: 1, c: djCol })];
+  if (!cell || !cell.f) return null;
+  // Hardcoded year pattern: GiftData[Gift FY], "2018" or GiftData[Gift FY], 2018
+  const m = cell.f.match(/Gift FY\][^,]*,\s*['"]*(\d{4})['"]/);
+  if (m) return Number(m[1]);
+  return null; // dynamic (EndYear-5 named range) — let computeAnalytics derive it
+}
 function validate(file, fork) {
   const wb = XLSX.readFile(file, { cellDates: false });
   const G = readSheet(wb, 'Gift Data'), C = readSheet(wb, 'Constituent Data'), setup = setupLookup(wb);
@@ -64,13 +78,14 @@ function validate(file, fork) {
   const fyStartMonth = setup['Start Month'] || setup['Fiscal Year Start Month'];
   const threshold = Number(setup['Major Giving Threshold']);
   const donorJourney = fork !== 'sw';
-  const dj = (fork === 'sw') ? 2018 : null;
   // Use the file's OWN Setup End Year / Data Years so we validate the compute logic
   // against how THIS file was generated (deriving from today would drift for old files).
   const endYear = Number(setup['Analytics End Year']);
   const dataYears = Number(setup['Analytics Data Years']);
+  // Detect the DJ year actually used in this file's formula (may be hardcoded in older files).
+  const djYear = detectDJYear(wb, G.hdr, endYear);
   const out = computeAnalytics(gd.map(r => r.slice(0, 6)), cd.map(r => r.slice(0, 9)),
-    { fyStartMonth, threshold, donorJourney, donorJourneyYear: dj, endYear, dataYears });
+    { fyStartMonth, threshold, donorJourney, donorJourneyYear: djYear, endYear, dataYears });
 
   // map output columns by name and compare positionally to the file's columns
   const colIndex = (hdr, name) => hdr.indexOf(name);
