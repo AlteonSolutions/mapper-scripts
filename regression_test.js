@@ -99,6 +99,9 @@ function validate(file, fork) {
 function forkOf(file) {
   const b = path.basename(file).toLowerCase();
   if (b.includes('big life') || b.includes('antiquarian') || b.startsWith('sw')) return 'sw';
+  // Check if the file lives inside a folder literally named "SW" (brand folder convention)
+  const normalized = file.replace(/\\/g, '/');
+  if (/\/SW\//i.test(normalized)) return 'sw';
   // Check Setup sheet Return Email for schultzwilliams domain
   try {
     const wb2 = XLSX.readFile(file, { sheets: ['Setup'], cellDates: false });
