@@ -2,7 +2,7 @@
 <title>Upstream Compute — Local Test</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg: #F7F8FA;
@@ -561,10 +561,20 @@ function process() {
 
       var result = computeAnalytics(giftRows, consRows, {fyStartMonth:fy, threshold:thr, donorJourney: activeBrand!=='sw'});
 
+      // Convert Date objects → Excel serial numbers to avoid SheetJS per-cell style bloat
+      var EE = Date.UTC(1899, 11, 30);
+      function toSerial(v) { return (v instanceof Date && !isNaN(v)) ? (v.getTime() - EE) / 86400000 : v; }
+      var cleanGiftRows = result.gift.rows.map(function(r) {
+        var row = r.slice(); row[10] = toSerial(row[10]); return row; // col 10 = FGD
+      });
+      var cleanConsRows = result.constituent.rows.map(function(r) {
+        return r.map(function(v) { return toSerial(v); }); // FGD in col 3 may also be a Date
+      });
+
       // Build output workbook
       _outputWb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(_outputWb, XLSX.utils.aoa_to_sheet([result.gift.columns].concat(result.gift.rows)), 'Gift Data');
-      XLSX.utils.book_append_sheet(_outputWb, XLSX.utils.aoa_to_sheet([result.constituent.columns].concat(result.constituent.rows)), 'Constituent Data');
+      XLSX.utils.book_append_sheet(_outputWb, XLSX.utils.aoa_to_sheet([result.gift.columns].concat(cleanGiftRows)), 'Gift Data');
+      XLSX.utils.book_append_sheet(_outputWb, XLSX.utils.aoa_to_sheet([result.constituent.columns].concat(cleanConsRows)), 'Constituent Data');
 
       // Detect computed (new) columns
       var origGiftCols = new Set(gH.filter(Boolean).map(String));
