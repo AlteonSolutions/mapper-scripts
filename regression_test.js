@@ -67,6 +67,32 @@ function detectDJYear(wb, giftHdr, endYear) {
   if (m) return Number(m[1]);
   return null; // dynamic (EndYear-5 named range) — let computeAnalytics derive it
 }
+// Count how many retention years the CYD formula actually checks.
+// Returns 0 if the formula contains #REF! (broken = always blank).
+// Returns the LEFT() count for all-retention templates (SW).
+// Returns 5 as the default (Alford/Databasey last-5 template).
+function detectCYDRetentionYears(wb, consHdr) {
+  const cs = wb.Sheets['Constituent Data'];
+  if (!cs) return 5;
+  const cydIdx = consHdr.indexOf('Consecutive Year Donor');
+  if (cydIdx < 0) return 5;
+  const cell = cs[XLSX.utils.encode_cell({ r: 1, c: cydIdx })];
+  if (!cell || !cell.f) return 5;
+  if (cell.f.includes('#REF!')) return 0; // broken → blank for all rows
+  const lefts = (cell.f.match(/LEFT\s*\(/gi) || []).length;
+  return lefts > 0 ? lefts : 5;
+}
+// Returns true when the PGP formula uses a broken COUNTIFS pattern (column range
+// can never reach the target count), meaning Excel always outputs "".
+function isPGPBroken(wb, consHdr) {
+  const cs = wb.Sheets['Constituent Data'];
+  if (!cs) return false;
+  const pgpIdx = consHdr.indexOf('Planned Giving Prospect');
+  if (pgpIdx < 0) return false;
+  const cell = cs[XLSX.utils.encode_cell({ r: 1, c: pgpIdx })];
+  if (!cell || !cell.f) return false;
+  return /COUNTIFS\s*\(/i.test(cell.f);
+}
 function validate(file, fork) {
   const wb = XLSX.readFile(file, { cellDates: false });
   const G = readSheet(wb, 'Gift Data'), C = readSheet(wb, 'Constituent Data'), setup = setupLookup(wb);
@@ -84,16 +110,24 @@ function validate(file, fork) {
   const dataYears = Number(setup['Analytics Data Years']);
   // Detect the DJ year actually used in this file's formula (may be hardcoded in older files).
   const djYear = detectDJYear(wb, G.hdr, endYear);
+
+  // Detect formula versions for columns where Excel template variant affects output.
+  const cydRetentionYears = detectCYDRetentionYears(wb, C.hdr);
+  const pgpBroken = isPGPBroken(wb, C.hdr);
+  // Columns to skip in the diff because this file's Excel formula is known-broken/non-standard.
+  const consSkip = new Set(pgpBroken ? ['Planned Giving Prospect'] : []);
+
   const out = computeAnalytics(gd.map(r => r.slice(0, 6)), cd.map(r => r.slice(0, 9)),
-    { fyStartMonth, threshold, donorJourney, donorJourneyYear: djYear, endYear, dataYears });
+    { fyStartMonth, threshold, donorJourney, donorJourneyYear: djYear, endYear, dataYears, cydRetentionYears });
 
   // map output columns by name and compare positionally to the file's columns
   const colIndex = (hdr, name) => hdr.indexOf(name);
   const isExcelError = v => typeof v === 'string' && /^#(VALUE|REF|N\/A|DIV\/0|NAME|NULL|NUM)/.test(v.trim());
   const isBlank = v => v === null || v === '' || v === undefined;
   let total = 0, sanitized = 0; const bad = [];
-  function cmp(sheetName, fileHdr, fileRows, outObj) {
+  function cmp(sheetName, fileHdr, fileRows, outObj, skipCols) {
     for (const col of outObj.columns) {
+      if (skipCols && skipCols.has(col)) continue;
       const fi = colIndex(fileHdr, col), oi = outObj.columns.indexOf(col);
       if (fi < 0) continue; // column not present in this file (e.g. SW DJ)
       let m = 0;
@@ -108,7 +142,7 @@ function validate(file, fork) {
     }
   }
   cmp('Gift', G.hdr, gd, out.gift);
-  cmp('Cons', C.hdr, cd, out.constituent);
+  cmp('Cons', C.hdr, cd, out.constituent, consSkip);
   return { total, sanitized, bad, gifts: gd.length, cons: cd.length };
 }
 function forkOf(file) {

@@ -205,11 +205,13 @@ function computeAnalytics(giftRows, consRows, params) {
       else if (rr === 'Recovered') v = (cur === null) ? '' : round2(cur);
       ll[y] = v;
     }
-    // Consecutive Year Donor: Excel checks only the last 5 retention columns.
-    // When fewer than 5 retention years exist the Excel formula has a #REF! bug → output blank.
+    // Consecutive Year Donor: number of retention years checked depends on the template.
+    // Alford/Databasey: last 5 retention years. SW: all retention years.
+    // cydRetentionYears=0 means broken #REF! formula → always blank.
     const retYears = years.filter((y, i) => i > 0);
-    const last5ret = retYears.slice(-5);
-    const consecutive = (last5ret.length === 5 && last5ret.every(y => String(ret[y]).startsWith('Retained'))) ? 'Yes' : '';
+    const cydN = (params.cydRetentionYears != null) ? params.cydRetentionYears : 5;
+    const lastNret = (cydN > 0) ? retYears.slice(-cydN) : [];
+    const consecutive = (cydN > 0 && lastNret.length === cydN && lastNret.every(y => String(ret[y]).startsWith('Retained'))) ? 'Yes' : '';
     // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
     let donorJourney = '';
     if (doDJ) donorJourney = (givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
