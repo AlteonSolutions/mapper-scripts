@@ -108,13 +108,30 @@ function forkOf(file) {
   } catch (_) {}
   return 'databasey';
 }
+function isDateFolder(name) {
+  // Matches folders like "2026.6.10 11.32" or "2026-06-10 11.32"
+  return /^\d{4}[\.\-]\d{1,2}[\.\-]\d{1,2}/.test(name);
+}
 function findFiles(dir) {
   let results = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) results = results.concat(findFiles(full));
-    else if (/Analytics\.xlsm$/i.test(entry.name)) results.push(full);
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  // Collect any .xlsm files directly in this folder
+  for (const e of entries) {
+    if (!e.isDirectory() && /Analytics\.xlsm$/i.test(e.name)) results.push(path.join(dir, e.name));
   }
+  const subDirs = entries.filter(e => e.isDirectory());
+  const dateSubs = subDirs.filter(e => isDateFolder(e.name));
+  const otherSubs = subDirs.filter(e => !isDateFolder(e.name));
+  if (dateSubs.length > 0) {
+    // Only recurse into the most recent date-based run folder
+    const latest = dateSubs.sort((a, b) =>
+      fs.statSync(path.join(dir, b.name)).mtime - fs.statSync(path.join(dir, a.name)).mtime
+    )[0];
+    console.log('  [latest run] ' + path.join(dir, latest.name));
+    results = results.concat(findFiles(path.join(dir, latest.name)));
+  }
+  // Always recurse into non-date subfolders (client folders, brand folders, etc.)
+  for (const sub of otherSubs) results = results.concat(findFiles(path.join(dir, sub.name)));
   return results;
 }
 const args = process.argv.slice(2);
