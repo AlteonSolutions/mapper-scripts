@@ -2,7 +2,8 @@
 (function() {
     'use strict';
     var MAPPER_VERSION = '6.22.2026 23:24 EST';
-    
+    var UPSTREAM_COMPUTE = false; // set true to emit 12-col Gift + full Constituent via analytics_compute
+
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
         window.location.href.includes('app.gohighlevel.com/location/')) {
@@ -114,6 +115,163 @@
         'image-I9s-xC-hNO': 'healthcare', 'image-Ki-dn13age': 'humanservices',
         'image-7Zvkl8xveW': 'religion'
     };
+
+    // Inline browser-compatible port of analytics_compute.js (mirrors the Node module for regression_test.js)
+    var computeAnalytics = (function() {
+        var _EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30);
+        var _DAY_MS = 86400000;
+        function _excelSerialToDate(n) { return new Date(_EXCEL_EPOCH_MS + Math.round(n * _DAY_MS)); }
+        function _toDate(v) {
+            var d = null;
+            if (v === null || v === undefined || v === '') return null;
+            if (v instanceof Date) d = isNaN(v.getTime()) ? null : v;
+            else if (typeof v === 'number') d = _excelSerialToDate(v);
+            else if (typeof v === 'string') {
+                var s = v.trim(); if (s === '') return null;
+                if (!isNaN(Number(s))) d = _excelSerialToDate(Number(s));
+                else { var p = new Date(s); d = isNaN(p.getTime()) ? null : p; }
+            }
+            if (d && d.getUTCFullYear() < 1900) return null;
+            return d;
+        }
+        function _fyOf(date, fyStart) { var y = date.getUTCFullYear(), m = date.getUTCMonth() + 1; return (fyStart === 1) ? y : (m >= fyStart ? y + 1 : y); }
+        function _round2(x) { return Math.round((x + (x >= 0 ? 1e-9 : -1e-9)) * 100) / 100; }
+        function _normId(v) { if (v === null || v === undefined) return null; return String(typeof v === 'number' && Number.isInteger(v) ? v : v).trim(); }
+        var _TYPE_MAP = { 'Bequest': 'Bequests', 'Estate': 'Bequests', 'Individual': 'Individuals', 'Foundation': 'Foundations', 'Family Foundation': 'Foundations', 'Corporation': 'Corporations', 'Organization': 'Corporations', 'Government': '' };
+        var _MONTHS = { january:1, february:2, march:3, april:4, may:5, june:6, july:7, august:8, september:9, october:10, november:11, december:12, jan:1, feb:2, mar:3, apr:4, jun:6, jul:7, aug:8, sep:9, sept:9, oct:10, nov:11, dec:12 };
+        function _monthNum(v) {
+            if (typeof v === 'number' && v >= 1 && v <= 12) return v;
+            var s = String(v).trim().toLowerCase();
+            if (_MONTHS[s]) return _MONTHS[s];
+            var n = Number(s); if (n >= 1 && n <= 12) return n;
+            throw new Error('Unrecognized FY Start Month: ' + v);
+        }
+        function _deriveYearParams(giftRows, fyStartMonth, today) {
+            var fyStart = _monthNum(fyStartMonth), t = today || new Date(), fys = [];
+            for (var i = 0; i < giftRows.length; i++) { var d = _toDate(giftRows[i][1]); if (d) fys.push(_fyOf(d, fyStart)); }
+            if (!fys.length) throw new Error('deriveYearParams: no valid gift dates');
+            fys.sort(function(a, b) { return a - b; });
+            var minFY = fys[0], maxFY = fys[fys.length - 1];
+            var secondSmallest = fys.length > 1 ? fys[1] : fys[0];
+            var ty = t.getUTCFullYear(), tm = t.getUTCMonth() + 1;
+            var currentFY = (fyStart === 1 || tm < fyStart) ? ty : ty + 1;
+            var endYear = Math.min(maxFY, currentFY - 1);
+            var startRaw = (minFY === 1900) ? secondSmallest : minFY;
+            var startYear = Math.max(startRaw, endYear - 9);
+            var dataYears = Math.max(1, endYear - startYear + 1);
+            return { fyStartMonth: fyStart, endYear: endYear, dataYears: dataYears };
+        }
+        function _retention(prev, cur, year, fgdfy) {
+            var pb = prev === null, cb = cur === null;
+            if (pb && cb) return 'Non-Donor';
+            if (!pb && prev > 0 && cb) return 'Lost';
+            if (fgdfy === year) return 'New Donor';
+            if (pb && !cb && cur > 0 && fgdfy !== null && fgdfy < year) return 'Recovered';
+            if (!pb && !cb && prev === cur) return 'Retained';
+            var gt = (pb && !cb) ? true : (!pb && cb) ? false : (prev > cur);
+            return gt ? 'Retained - Decrease' : 'Retained - Increase';
+        }
+        function _computeAnalytics(giftRows, consRows, params) {
+            var fyStart = _monthNum(params.fyStartMonth);
+            var endYear = params.endYear, dataYears = params.dataYears;
+            if (endYear == null || dataYears == null) { var dp = _deriveYearParams(giftRows, fyStart, params.today); endYear = dp.endYear; dataYears = dp.dataYears; }
+            var threshold = params.threshold, doDJ = params.donorJourney !== false;
+            var djYear = (params.donorJourneyYear != null) ? params.donorJourneyYear : endYear - 5;
+            var years = []; for (var y0 = endYear - dataYears + 1; y0 <= endYear; y0++) years.push(y0);
+            var G = giftRows.map(function(r) {
+                var cid = _normId(r[0]), date = _toDate(r[1]);
+                var amt = (r[2] === '' || r[2] == null || isNaN(Number(r[2]))) ? 0 : Number(r[2]);
+                return { cid: cid, date: date, amt: amt, type: r[3], event: r[4], spot: r[5], fy: date ? _fyOf(date, fyStart) : null };
+            });
+            var tot = {}, minFyMap = {}, minDateMap = {}, matFull = {}, gpyKey = {};
+            for (var gi = 0; gi < G.length; gi++) {
+                var g = G[gi]; if (g.cid === null) continue;
+                tot[g.cid] = (tot[g.cid] || 0) + g.amt;
+                if (g.fy !== null) {
+                    if (!(g.cid in minFyMap) || g.fy < minFyMap[g.cid]) minFyMap[g.cid] = g.fy;
+                    if (!matFull[g.cid]) matFull[g.cid] = {};
+                    matFull[g.cid][g.fy] = (matFull[g.cid][g.fy] || 0) + g.amt;
+                    var gpk = g.cid + '|' + g.fy; gpyKey[gpk] = (gpyKey[gpk] || 0) + 1;
+                }
+                if (g.date) { var gt2 = g.date.getTime(); if (!(g.cid in minDateMap) || gt2 < minDateMap[g.cid]) minDateMap[g.cid] = gt2; }
+            }
+            var djSum = {};
+            if (doDJ) { for (var dji = 0; dji < G.length; dji++) { var dg = G[dji]; if (dg.cid !== null && dg.fy === djYear) djSum[dg.cid] = (djSum[dg.cid] || 0) + dg.amt; } }
+            function _givingFor(cid, year) {
+                var m = matFull[cid]; if (!m) return null;
+                var v = m[year]; if (v === undefined) return null;
+                v = _round2(v); return v === 0 ? null : v;
+            }
+            var consFgdMap = {}, consTypeMap = {}, consIdSet = {};
+            var C = consRows.map(function(r) {
+                var cid = _normId(r[0]), fgd = _toDate(r[3]);
+                if (!(cid in consIdSet)) { consFgdMap[cid] = fgd; consTypeMap[cid] = r[2]; consIdSet[cid] = true; }
+                return { row: r, cid: cid, fgd: fgd };
+            });
+            var consCols = ['Constituent ID', 'Constituent Name', 'Constituent Type', 'First Gift Date', 'Board Member?', 'Street Address', 'City', 'State', 'Zip Code', 'First Gift Date FY', 'Total Giving'];
+            for (var yi = 0; yi < years.length; yi++) { consCols.push(String(years[yi])); if (yi > 0) consCols.push(years[yi] + ' Retention', years[yi] + ' Lift/Loss'); }
+            consCols.push('Consecutive Year Donor', 'Donor Journey Donor', 'Renewals', 'Major Gift Prospect', 'Lapsed Major Donors', 'Mid-Level Giving Prospect', 'Planned Giving Prospect');
+            var consOut = C.map(function(c) {
+                var cid = c.cid, fgdfy;
+                if (c.fgd === null) fgdfy = (cid in minFyMap) ? minFyMap[cid] : null;
+                else { var fy_y = c.fgd.getUTCFullYear(), fy_m = c.fgd.getUTCMonth() + 1; fgdfy = (fyStart === 1) ? fy_y : (fy_m < fyStart ? fy_y : fy_y + 1); }
+                var totalGiving = _round2(tot[cid] || 0);
+                var giving = {}; for (var yi2 = 0; yi2 < years.length; yi2++) giving[years[yi2]] = _givingFor(cid, years[yi2]);
+                var ret = {}, ll = {};
+                for (var ri = 1; ri < years.length; ri++) {
+                    var ry = years[ri], rr = _retention(giving[years[ri-1]], giving[ry], ry, fgdfy); ret[ry] = rr;
+                    var llv = '';
+                    if (rr.indexOf('Retained -') === 0) llv = (giving[years[ri-1]] === null || giving[ry] === null) ? '' : _round2(giving[ry] - giving[years[ri-1]]);
+                    else if (rr === 'Lost') llv = (giving[years[ri-1]] === null) ? '' : _round2(-giving[years[ri-1]]);
+                    else if (rr === 'Recovered') llv = (giving[ry] === null) ? '' : _round2(giving[ry]);
+                    ll[ry] = llv;
+                }
+                var retYears = years.filter(function(y, i) { return i > 0; });
+                var last5 = retYears.slice(-5), cons = last5.length > 0;
+                for (var li = 0; li < last5.length; li++) if (String(ret[last5[li]]).indexOf('Retained') !== 0) cons = false;
+                var consecutive = cons ? 'Yes' : '';
+                var donorJourney = '';
+                if (doDJ) donorJourney = (_givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
+                var w4 = years.slice(-4), lastY = years[years.length - 1];
+                var block = [];
+                for (var bi = 0; bi < w4.length; bi++) block.push(giving[w4[bi]]);
+                for (var bli = 0; bli < w4.length - 1; bli++) { var blv = ll[w4[bli]]; if (blv !== '' && blv != null) block.push(blv); }
+                var cntMid = 0, cntMaj = 0;
+                for (var bci = 0; bci < block.length; bci++) { var bv = block[bci]; if (bv != null && bv !== '') { if (bv >= 500 && bv < threshold) cntMid++; if (bv >= threshold) cntMaj++; } }
+                var y9_10 = (w4.length >= 2) ? (giving[w4[w4.length-2]] !== null || giving[w4[w4.length-1]] !== null) : (giving[lastY] !== null);
+                var majorProspect = (cntMid >= 3 && y9_10) ? 'Yes' : '';
+                var lapsed = (giving[lastY] !== null && giving[lastY] < threshold && cntMaj > 0) ? 'Yes' : '';
+                var renewals = (giving[lastY] !== null && giving[lastY] >= threshold) ? 'Yes' : '';
+                var allnb4 = w4.length > 0, wmin = Infinity, wmax = -Infinity;
+                for (var wi = 0; wi < w4.length; wi++) { var wv = giving[w4[wi]]; if (wv === null) allnb4 = false; else { if (wv < wmin) wmin = wv; if (wv > wmax) wmax = wv; } }
+                var midlevel = (allnb4 && wmin >= 250 && wmax < 1000) ? 'Yes' : '';
+                var w5 = years.slice(-5), planned = (w5.length === 5);
+                for (var pi = 0; pi < w5.length; pi++) { var pv = giving[w5[pi]]; if (pv === null || !(pv > 0)) planned = false; }
+                var plannedGiving = planned ? 'Yes' : '';
+                var out = c.row.slice(0, 9);
+                out.push(fgdfy, totalGiving);
+                for (var oi = 0; oi < years.length; oi++) { out.push(giving[years[oi]] === null ? '' : giving[years[oi]]); if (oi > 0) out.push(ret[years[oi]], ll[years[oi]]); }
+                out.push(consecutive, donorJourney, renewals, majorProspect, lapsed, midlevel, plannedGiving);
+                return out;
+            });
+            var giftCols = ['Constituent ID', 'Gift Date', 'Gift Amount', 'Gift Type', 'Event', 'Spotlights', 'Gifts Per Year', 'Gift Month', 'Gift FY', 'Donor Journey Donor', 'FGD', 'National Breakdown'];
+            var giftOut = G.map(function(g, idx) {
+                var gpy = g.fy !== null ? gpyKey[g.cid + '|' + g.fy] : '';
+                var month = g.date ? g.date.getUTCMonth() + 1 : '';
+                var fy2 = g.fy === null ? '' : g.fy;
+                var dj2 = (doDJ && (djSum[g.cid] || 0) > 0) ? 'Yes' : '';
+                var fgd2;
+                if (g.cid in consIdSet) fgd2 = consFgdMap[g.cid];
+                else fgd2 = (g.cid in minDateMap) ? new Date(minDateMap[g.cid]) : null;
+                var t2 = consTypeMap[g.cid];
+                var nat = _TYPE_MAP.hasOwnProperty(t2) ? _TYPE_MAP[t2] : 'Individuals';
+                var raw = giftRows[idx];
+                return [_normId(raw[0]), raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy2, dj2, fgd2, nat];
+            });
+            return { gift: { columns: giftCols, rows: giftOut }, constituent: { columns: consCols, rows: consOut } };
+        }
+        return _computeAnalytics;
+    })();
 
     function detectIndustry() {
         console.log('=== Starting Industry Detection ===');
@@ -1315,7 +1473,43 @@
             newRow['First Gift Date'] = oldest;
             cd2.push(newRow);
         });
-        
+
+        // UPSTREAM_COMPUTE: derive analytics columns in the mapper (Standard Variant only)
+        var _ucGiftSheet = null, _ucConstSheet = null;
+        if (UPSTREAM_COMPUTE && !isSimpleFlow) {
+            try {
+                var _ucGiftRows = gd.map(function(r) {
+                    return [r['Constituent ID'], r['Gift Date'], r['Gift Amount'], r['Gift Type'], r['Event'] || '', r['Spotlights'] || ''];
+                });
+                var _ucGiftIds = {};
+                for (var _uci = 0; _uci < _ucGiftRows.length; _uci++) { var _ucGid = String(_ucGiftRows[_uci][0] || '').trim(); if (_ucGid) _ucGiftIds[_ucGid] = true; }
+                var _ucConsRows = cd2.filter(function(r) { return _ucGiftIds[String(r['Constituent ID'] || '').trim()]; }).map(function(r) {
+                    return [r['Constituent ID'], r['Constituent Name'] || r['Name'] || '', r['Constituent Type'] || '', r['First Gift Date'] || '', r['Board Member?'] || r['Board Member'] || '', r['Street Address'] || r['Street'] || '', r['City'] || '', r['State'] || '', r['Zip Code'] || r['Zip'] || ''];
+                });
+                // Read FY Start Month from GHL multiselect (name=EU5w6k8DZPkWhY1mYiGh)
+                var _ucFyEl = document.querySelector('[name="EU5w6k8DZPkWhY1mYiGh"]');
+                var _ucFyMonth = null;
+                if (_ucFyEl) {
+                    if (_ucFyEl.tagName === 'INPUT') { _ucFyMonth = _ucFyEl.value || null; }
+                    else { var _ucFySpan = _ucFyEl.querySelector('.multiselect__single'); if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim(); }
+                }
+                // Read Major Giving Threshold from GHL text input (name=f7xBqOQM0lEntVHM9FbQ)
+                var _ucThreshEl = document.querySelector('[name="f7xBqOQM0lEntVHM9FbQ"]');
+                var _ucThreshold = _ucThreshEl ? parseFloat(_ucThreshEl.value) : NaN;
+                if (isNaN(_ucThreshold) || _ucThreshold <= 0) _ucThreshold = 10000;
+                if (_ucFyMonth) {
+                    var _ucResult = computeAnalytics(_ucGiftRows, _ucConsRows, { fyStartMonth: _ucFyMonth, threshold: _ucThreshold, donorJourney: !isSW });
+                    _ucGiftSheet = XLSX.utils.aoa_to_sheet([_ucResult.gift.columns].concat(_ucResult.gift.rows));
+                    _ucConstSheet = XLSX.utils.aoa_to_sheet([_ucResult.constituent.columns].concat(_ucResult.constituent.rows));
+                    console.log('UPSTREAM_COMPUTE: gift rows=' + _ucResult.gift.rows.length + ' const rows=' + _ucResult.constituent.rows.length);
+                } else {
+                    console.warn('UPSTREAM_COMPUTE: FY Start Month not found in form, using standard output');
+                }
+            } catch(_ucErr) {
+                console.error('UPSTREAM_COMPUTE error, falling back to standard output:', _ucErr);
+            }
+        }
+
         // Build gift data headers
         var giftHeaders = [];
         if (isSimpleFlow) {
@@ -1331,8 +1525,8 @@
         }
 
         var wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cd2, {header: origConstHeaders}), 'Constituent Data');
+        XLSX.utils.book_append_sheet(wb, _ucGiftSheet || XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
+        XLSX.utils.book_append_sheet(wb, _ucConstSheet || XLSX.utils.json_to_sheet(cd2, {header: origConstHeaders}), 'Constituent Data');
         for (var q = 0; q < workbook.SheetNames.length; q++) {
             var sn = workbook.SheetNames[q];
             if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') {
