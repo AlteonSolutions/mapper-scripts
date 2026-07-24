@@ -205,12 +205,10 @@ function computeAnalytics(giftRows, consRows, params) {
       else if (rr === 'Recovered') v = (cur === null) ? '' : round2(cur);
       ll[y] = v;
     }
-    // Consecutive Year Donor: every year AFTER the donor's FGD year must start with "Retained".
-    // Years before FGD (Non-Donor) and the FGD year itself (New Donor) are excluded from the check.
+    // Consecutive Year Donor: ALL retention years must be "Retained*"
     const retYears = years.filter((y, i) => i > 0);
-    const eligRetYears = retYears.filter(y => fgdfy === null || y > fgdfy);
-    let cons = eligRetYears.length > 0;
-    for (const y of eligRetYears) if (!String(ret[y]).startsWith('Retained')) cons = false;
+    let cons = retYears.length > 0;
+    for (const y of retYears) if (!String(ret[y]).startsWith('Retained')) cons = false;
     const consecutive = cons ? 'Yes' : '';
     // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
     let donorJourney = '';
@@ -257,14 +255,11 @@ function computeAnalytics(giftRows, consRows, params) {
     const month = g.date ? g.date.getUTCMonth() + 1 : '';
     const fy = g.fy === null ? '' : g.fy;
     const dj = (doDJ && (djSum.get(g.cid) || 0) > 0) ? 'Yes' : '';
-    // FGD: use constituent's First Gift Date; fall back to min gift date if blank or not in table.
+    // FGD: constituent's First Gift Date (blank stays blank); fall back to min gift
+    // date ONLY when the ID isn't in the constituent table.
     let fgd;
-    if (consIds.has(g.cid)) {
-      fgd = consFgd.get(g.cid);
-      if (fgd === null && minDate.has(g.cid)) fgd = new Date(minDate.get(g.cid));
-    } else {
-      fgd = minDate.has(g.cid) ? new Date(minDate.get(g.cid)) : null;
-    }
+    if (consIds.has(g.cid)) fgd = consFgd.get(g.cid);           // Date or null(blank)
+    else fgd = minDate.has(g.cid) ? new Date(minDate.get(g.cid)) : null;
     const t = consType.get(g.cid);
     let nat = TYPE_MAP.hasOwnProperty(t) ? TYPE_MAP[t] : 'Individuals';
     const raw = giftRows[idx];
