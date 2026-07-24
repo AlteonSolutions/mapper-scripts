@@ -108,9 +108,18 @@ function forkOf(file) {
   } catch (_) {}
   return 'databasey';
 }
+function findFiles(dir) {
+  let results = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) results = results.concat(findFiles(full));
+    else if (/Analytics\.xlsm$/i.test(entry.name)) results.push(full);
+  }
+  return results;
+}
 const args = process.argv.slice(2);
 let files = [];
-if (args[0] === '--dir') files = fs.readdirSync(args[1]).filter(f => /Analytics\.xlsm$/i.test(f)).map(f => path.join(args[1], f));
+if (args[0] === '--dir') files = findFiles(args[1]);
 else files = [args[0]];
 const fork = args[1] && args[0] !== '--dir' ? args[1] : null;
 let fail = 0;
