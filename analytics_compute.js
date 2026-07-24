@@ -205,11 +205,10 @@ function computeAnalytics(giftRows, consRows, params) {
       else if (rr === 'Recovered') v = (cur === null) ? '' : round2(cur);
       ll[y] = v;
     }
-    // Consecutive Year Donor: most recent up-to-5 surviving retention cols all "Retained*"
+    // Consecutive Year Donor: ALL retention years must be "Retained*" (no Lost/New Donor/Non-Donor in any year)
     const retYears = years.filter((y, i) => i > 0);
-    const last5 = retYears.slice(-5);
-    let cons = last5.length > 0;
-    for (const y of last5) if (!String(ret[y]).startsWith('Retained')) cons = false;
+    let cons = retYears.length > 0;
+    for (const y of retYears) if (!String(ret[y]).startsWith('Retained')) cons = false;
     const consecutive = cons ? 'Yes' : '';
     // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
     let donorJourney = '';

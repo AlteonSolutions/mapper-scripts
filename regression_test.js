@@ -99,6 +99,13 @@ function validate(file, fork) {
 function forkOf(file) {
   const b = path.basename(file).toLowerCase();
   if (b.includes('big life') || b.includes('antiquarian') || b.startsWith('sw')) return 'sw';
+  // Check Setup sheet Return Email for schultzwilliams domain
+  try {
+    const wb2 = XLSX.readFile(file, { sheets: ['Setup'], cellDates: false });
+    const setup = setupLookup(wb2);
+    const email = String(setup['Return Email'] || '').toLowerCase();
+    if (email.includes('schultzwilliams')) return 'sw';
+  } catch (_) {}
   return 'databasey';
 }
 const args = process.argv.slice(2);

@@ -227,8 +227,8 @@
                     ll[ry] = llv;
                 }
                 var retYears = years.filter(function(y, i) { return i > 0; });
-                var last5 = retYears.slice(-5), cons = last5.length > 0;
-                for (var li = 0; li < last5.length; li++) if (String(ret[last5[li]]).indexOf('Retained') !== 0) cons = false;
+                var cons = retYears.length > 0;
+                for (var li = 0; li < retYears.length; li++) if (String(ret[retYears[li]]).indexOf('Retained') !== 0) cons = false;
                 var consecutive = cons ? 'Yes' : '';
                 var donorJourney = '';
                 if (doDJ) donorJourney = (_givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
