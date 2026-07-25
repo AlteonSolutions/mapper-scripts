@@ -67,10 +67,11 @@ function detectDJYear(wb, giftHdr, endYear) {
   if (m) return Number(m[1]);
   return null; // dynamic (EndYear-5 named range) — let computeAnalytics derive it
 }
-// Count how many retention years the CYD formula actually checks.
-// Returns 0 if the formula contains #REF! (broken = always blank).
-// Returns the LEFT() count for all-retention templates (SW).
-// Returns 5 as the default (Alford/Databasey last-5 template).
+// Detect the CYD formula variant and return a cydRetentionYears value:
+//   0   = broken #REF! formula → always blank
+//  -1   = SW dynamic MAP/SEQUENCE formula → check ALL retention years
+//   N   = AND(LEFT...) formula with N explicit LEFT() calls (Alford/DB: 5)
+//   5   = default fallback when no formula is detected
 function detectCYDRetentionYears(wb, consHdr) {
   const cs = wb.Sheets['Constituent Data'];
   if (!cs) return 5;
@@ -79,8 +80,20 @@ function detectCYDRetentionYears(wb, consHdr) {
   const cell = cs[XLSX.utils.encode_cell({ r: 1, c: cydIdx })];
   if (!cell || !cell.f) return 5;
   if (cell.f.includes('#REF!')) return 0; // broken → blank for all rows
+  // SW uses MAP(SEQUENCE(...),LAMBDA(...)) to check every retention year dynamically
+  if (/MAP\s*\(/i.test(cell.f) || /SEQUENCE\s*\(/i.test(cell.f)) return -1;
   const lefts = (cell.f.match(/LEFT\s*\(/gi) || []).length;
   return lefts > 0 ? lefts : 5;
+}
+// Returns true when the Constituent Data "Donor Journey Donor" column has no formula
+// (SW template leaves it blank — the column exists but is not populated).
+function isDJConsBlank(wb, consHdr) {
+  const cs = wb.Sheets['Constituent Data'];
+  if (!cs) return false;
+  const djIdx = consHdr.indexOf('Donor Journey Donor');
+  if (djIdx < 0) return false;
+  const cell = cs[XLSX.utils.encode_cell({ r: 1, c: djIdx })];
+  return !cell || !cell.f;
 }
 // Returns true when the PGP formula uses a broken COUNTIFS pattern (column range
 // can never reach the target count), meaning Excel always outputs "".
@@ -114,8 +127,12 @@ function validate(file, fork) {
   // Detect formula versions for columns where Excel template variant affects output.
   const cydRetentionYears = detectCYDRetentionYears(wb, C.hdr);
   const pgpBroken = isPGPBroken(wb, C.hdr);
+  const djConsBlank = isDJConsBlank(wb, C.hdr);
   // Columns to skip in the diff because this file's Excel formula is known-broken/non-standard.
-  const consSkip = new Set(pgpBroken ? ['Planned Giving Prospect'] : []);
+  const consSkip = new Set([
+    ...(pgpBroken ? ['Planned Giving Prospect'] : []),
+    ...(djConsBlank ? ['Donor Journey Donor'] : []),
+  ]);
 
   const out = computeAnalytics(gd.map(r => r.slice(0, 6)), cd.map(r => r.slice(0, 9)),
     { fyStartMonth, threshold, donorJourney, donorJourneyYear: djYear, endYear, dataYears, cydRetentionYears });

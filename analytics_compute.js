@@ -206,12 +206,17 @@ function computeAnalytics(giftRows, consRows, params) {
       ll[y] = v;
     }
     // Consecutive Year Donor: number of retention years checked depends on the template.
-    // Alford/Databasey: last 5 retention years. SW: all retention years.
-    // cydRetentionYears=0 means broken #REF! formula → always blank.
+    //   cydRetentionYears=0   → broken #REF! formula, always blank
+    //   cydRetentionYears=-1  → SW dynamic formula, check ALL retention years
+    //   cydRetentionYears=N   → Alford/DB AND formula, check last N retention years (default 5)
     const retYears = years.filter((y, i) => i > 0);
     const cydN = (params.cydRetentionYears != null) ? params.cydRetentionYears : 5;
-    const lastNret = (cydN > 0) ? retYears.slice(-cydN) : [];
-    const consecutive = (cydN > 0 && lastNret.length === cydN && lastNret.every(y => String(ret[y]).startsWith('Retained'))) ? 'Yes' : '';
+    let consecutive = '';
+    if (cydN !== 0) {
+      const checkYears = (cydN < 0) ? retYears : retYears.slice(-cydN);
+      if (checkYears.length > 0 && (cydN < 0 || checkYears.length === cydN) &&
+          checkYears.every(y => String(ret[y]).startsWith('Retained'))) consecutive = 'Yes';
+    }
     // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
     let donorJourney = '';
     if (doDJ) donorJourney = (givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
