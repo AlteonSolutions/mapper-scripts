@@ -164,12 +164,15 @@ function isDateFolder(name) {
   // Matches folders like "2026.6.10 11.32" or "2026-06-10 11.32"
   return /^\d{4}[\.\-]\d{1,2}[\.\-]\d{1,2}/.test(name);
 }
-function findFiles(dir) {
+function findFiles(dir, since) {
   let results = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   // Collect any .xlsm files directly in this folder
   for (const e of entries) {
-    if (!e.isDirectory() && /Analytics\.xlsm$/i.test(e.name)) results.push(path.join(dir, e.name));
+    if (!e.isDirectory() && /Analytics\.xlsm$/i.test(e.name)) {
+      const fp = path.join(dir, e.name);
+      if (!since || fs.statSync(fp).mtime >= since) results.push(fp);
+    }
   }
   const subDirs = entries.filter(e => e.isDirectory());
   const dateSubs = subDirs.filter(e => isDateFolder(e.name));
@@ -180,15 +183,21 @@ function findFiles(dir) {
       fs.statSync(path.join(dir, b.name)).mtime - fs.statSync(path.join(dir, a.name)).mtime
     )[0];
     console.log('  [latest run] ' + path.join(dir, latest.name));
-    results = results.concat(findFiles(path.join(dir, latest.name)));
+    results = results.concat(findFiles(path.join(dir, latest.name), since));
   }
   // Always recurse into non-date subfolders (client folders, brand folders, etc.)
-  for (const sub of otherSubs) results = results.concat(findFiles(path.join(dir, sub.name)));
+  for (const sub of otherSubs) results = results.concat(findFiles(path.join(dir, sub.name), since));
   return results;
 }
 const args = process.argv.slice(2);
+// Parse flags: --days N limits to files modified within the last N days (default: no limit)
+let daysArg = null;
+const daysIdx = args.indexOf('--days');
+if (daysIdx >= 0 && args[daysIdx + 1]) { daysArg = Number(args[daysIdx + 1]); args.splice(daysIdx, 2); }
+const since = daysArg ? new Date(Date.now() - daysArg * 86400000) : null;
+if (since) console.log(`[filter] only files modified on or after ${since.toDateString()} (--days ${daysArg})`);
 let files = [];
-if (args[0] === '--dir') files = findFiles(args[1]);
+if (args[0] === '--dir') files = findFiles(args[1], since);
 else files = [args[0]];
 const fork = args[1] && args[0] !== '--dir' ? args[1] : null;
 let fail = 0;
