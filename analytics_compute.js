@@ -56,7 +56,8 @@ function round2(x) { return Math.round((x + (x >= 0 ? 1e-9 : -1e-9)) * 100) / 10
 function normId(v) {
   if (v === null || v === undefined) return null;
   if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(v);
-  return String(v).trim();
+  // Lowercase to match Excel's case-insensitive SUMIF/VLOOKUP behavior.
+  return String(v).trim().toLowerCase();
 }
 const TYPE_MAP = { 'Bequest': 'Bequests', 'Estate': 'Bequests', 'Individual': 'Individuals',
   'Foundation': 'Foundations', 'Family Foundation': 'Foundations',
