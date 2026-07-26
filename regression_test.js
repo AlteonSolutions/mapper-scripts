@@ -85,16 +85,6 @@ function detectCYDRetentionYears(wb, consHdr) {
   const lefts = (cell.f.match(/LEFT\s*\(/gi) || []).length;
   return lefts > 0 ? lefts : 5;
 }
-// Returns true when the Constituent Data "Donor Journey Donor" column has no formula
-// (SW template leaves it blank — the column exists but is not populated).
-function isDJConsBlank(wb, consHdr) {
-  const cs = wb.Sheets['Constituent Data'];
-  if (!cs) return false;
-  const djIdx = consHdr.indexOf('Donor Journey Donor');
-  if (djIdx < 0) return false;
-  const cell = cs[XLSX.utils.encode_cell({ r: 1, c: djIdx })];
-  return !cell || !cell.f;
-}
 // Returns true when the PGP formula uses a broken COUNTIFS pattern (column range
 // can never reach the target count), meaning Excel always outputs "".
 function isPGPBroken(wb, consHdr) {
@@ -127,12 +117,8 @@ function validate(file, fork) {
   // Detect formula versions for columns where Excel template variant affects output.
   const cydRetentionYears = detectCYDRetentionYears(wb, C.hdr);
   const pgpBroken = isPGPBroken(wb, C.hdr);
-  const djConsBlank = isDJConsBlank(wb, C.hdr);
-  // Columns to skip in the diff because this file's Excel formula is known-broken/non-standard.
-  const consSkip = new Set([
-    ...(pgpBroken ? ['Planned Giving Prospect'] : []),
-    ...(djConsBlank ? ['Donor Journey Donor'] : []),
-  ]);
+  // Skip columns where this file's Excel formula is known-broken.
+  const consSkip = new Set(pgpBroken ? ['Planned Giving Prospect'] : []);
 
   const out = computeAnalytics(gd.map(r => r.slice(0, 6)), cd.map(r => r.slice(0, 9)),
     { fyStartMonth, threshold, donorJourney, donorJourneyYear: djYear, endYear, dataYears, cydRetentionYears });
