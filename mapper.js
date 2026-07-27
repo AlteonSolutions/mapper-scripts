@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '6.22.2026 23:24 EST';
+    var MAPPER_VERSION = '7.27.2026 (upstream compute)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
 
     if (window.location.href.includes('page-builder') || 
