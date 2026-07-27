@@ -136,7 +136,7 @@
         }
         function _fyOf(date, fyStart) { var y = date.getUTCFullYear(), m = date.getUTCMonth() + 1; return (fyStart === 1) ? y : (m >= fyStart ? y + 1 : y); }
         function _round2(x) { return Math.round((x + (x >= 0 ? 1e-9 : -1e-9)) * 100) / 100; }
-        function _normId(v) { if (v === null || v === undefined) return null; return String(typeof v === 'number' && Number.isInteger(v) ? v : v).trim(); }
+        function _normId(v) { if (v === null || v === undefined) return null; if (typeof v === 'number') return String(v); return String(v).trim().toLowerCase(); }
         var _TYPE_MAP = { 'Bequest': 'Bequests', 'Estate': 'Bequests', 'Individual': 'Individuals', 'Foundation': 'Foundations', 'Family Foundation': 'Foundations', 'Corporation': 'Corporations', 'Organization': 'Corporations', 'Government': '' };
         var _MONTHS = { january:1, february:2, march:3, april:4, may:5, june:6, july:7, august:8, september:9, october:10, november:11, december:12, jan:1, feb:2, mar:3, apr:4, jun:6, jul:7, aug:8, sep:9, sept:9, oct:10, nov:11, dec:12 };
         function _monthNum(v) {
@@ -226,10 +226,8 @@
                     else if (rr === 'Recovered') llv = (giving[ry] === null) ? '' : _round2(giving[ry]);
                     ll[ry] = llv;
                 }
-                var retYears = years.filter(function(y, i) { return i > 0; });
-                var cons = retYears.length > 0;
-                for (var li = 0; li < retYears.length; li++) if (String(ret[retYears[li]]).indexOf('Retained') !== 0) cons = false;
-                var consecutive = cons ? 'Yes' : '';
+                var w5 = years.slice(-5);
+                var consecutive = (w5.length === 5 && w5.every(function(y) { return giving[y] !== null; })) ? 'Yes' : '';
                 var donorJourney = '';
                 if (doDJ) donorJourney = (_givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
                 var w4 = years.slice(-4), lastY = years[years.length - 1];
@@ -245,7 +243,7 @@
                 var allnb4 = w4.length > 0, wmin = Infinity, wmax = -Infinity;
                 for (var wi = 0; wi < w4.length; wi++) { var wv = giving[w4[wi]]; if (wv === null) allnb4 = false; else { if (wv < wmin) wmin = wv; if (wv > wmax) wmax = wv; } }
                 var midlevel = (allnb4 && wmin >= 250 && wmax < 1000) ? 'Yes' : '';
-                var w5 = years.slice(-5), planned = (w5.length === 5);
+                var planned = (w5.length === 5);
                 for (var pi = 0; pi < w5.length; pi++) { var pv = giving[w5[pi]]; if (pv === null || !(pv > 0)) planned = false; }
                 var plannedGiving = planned ? 'Yes' : '';
                 var out = c.row.slice(0, 9);
@@ -266,7 +264,7 @@
                 var t2 = consTypeMap[g.cid];
                 var nat = _TYPE_MAP.hasOwnProperty(t2) ? _TYPE_MAP[t2] : 'Individuals';
                 var raw = giftRows[idx];
-                return [_normId(raw[0]), raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy2, dj2, fgd2, nat];
+                return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy2, dj2, fgd2, nat];
             });
             return { gift: { columns: giftCols, rows: giftOut }, constituent: { columns: consCols, rows: consOut } };
         }
