@@ -4,7 +4,7 @@
     var MAPPER_VERSION = '7.27.2026d (upstream compute)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
-    var PA_TRIGGER_URL = '';
+    var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
 
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
