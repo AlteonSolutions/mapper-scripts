@@ -2,7 +2,7 @@
 (function() {
     'use strict';
     var MAPPER_VERSION = '6.22.2026 23:24 EST';
-    var UPSTREAM_COMPUTE = false; // set true to emit 12-col Gift + full Constituent via analytics_compute
+    var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
 
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
