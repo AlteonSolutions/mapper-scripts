@@ -1,8 +1,10 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '7.27.2026c (upstream compute)';
+    var MAPPER_VERSION = '7.27.2026d (upstream compute)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
+    // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
+    var PA_TRIGGER_URL = '';
 
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -726,41 +728,124 @@
                 allDoneCard.id = 'allDoneCard';
                 allDoneCard.className = 'completion-card';
                 allDoneCard.style.display = 'none';
-                allDoneCard.innerHTML = '<div style="font-size:1.4rem;font-weight:700;color:#111827;margin-bottom:14px;">🎉 All Done!</div>'
-                    + '<p>You\'ve successfully mapped all data.</p>'
-                    + '<p style="margin-bottom:0;">Your data is ready to submit.</p>';
+                var _months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                var _monthOpts = _months.map(function(m){ return '<option value="' + m + '">' + m + '</option>'; }).join('');
+                var _inp = 'width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.9rem;box-sizing:border-box;outline:none;';
+                var _lbl = 'display:block;font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:4px;';
+                var _req = '<span style="color:#ef4444;">*</span>';
+                allDoneCard.innerHTML = ''
+                    + '<div style="font-size:1.3rem;font-weight:700;color:#111827;margin-bottom:6px;">🎉 All Done! Fill in the details below to submit.</div>'
+                    + '<div style="display:grid;gap:12px;margin-top:16px;">'
+                    +   '<div>'
+                    +     '<label style="' + _lbl + '">Client / Organization Name ' + _req + '</label>'
+                    +     '<input id="mapper-client-name" type="text" placeholder="e.g. Smith Animal Shelter" style="' + _inp + '">'
+                    +   '</div>'
+                    +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+                    +     '<div>'
+                    +       '<label style="' + _lbl + '">Contact Name ' + _req + '</label>'
+                    +       '<input id="mapper-contact-name" type="text" placeholder="Jane Smith" style="' + _inp + '">'
+                    +     '</div>'
+                    +     '<div>'
+                    +       '<label style="' + _lbl + '">Email ' + _req + '</label>'
+                    +       '<input id="mapper-email" type="email" placeholder="jane@example.org" style="' + _inp + '">'
+                    +     '</div>'
+                    +   '</div>'
+                    +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+                    +     '<div>'
+                    +       '<label style="' + _lbl + '">Fiscal Year Start Month ' + _req + '</label>'
+                    +       '<select id="mapper-fy-start-month" style="' + _inp + 'background:#fff;cursor:pointer;">'
+                    +         '<option value="">Select month...</option>' + _monthOpts
+                    +       '</select>'
+                    +     '</div>'
+                    +     '<div>'
+                    +       '<label style="' + _lbl + '">Major Giving Threshold ' + _req + '</label>'
+                    +       '<input id="mapper-major-giving-threshold" type="number" value="10000" min="1" placeholder="10000" style="' + _inp + '">'
+                    +     '</div>'
+                    +   '</div>'
+                    +   '<div>'
+                    +     '<label style="' + _lbl + '">Number of Board Members</label>'
+                    +     '<input id="mapper-board-members" type="number" min="0" placeholder="Optional" style="' + _inp + 'width:auto;min-width:160px;">'
+                    +   '</div>'
+                    + '</div>';
                 giftTypeSec.appendChild(allDoneCard);
             }
         });
 
         waitForElement('#customSubmitBtn', function(btn) {
             btn.addEventListener('click', function() {
-                // Show spinner on submit button
-                var originalText = btn.textContent;
+                // Validate submission fields
+                var clientName  = (document.getElementById('mapper-client-name')             || {}).value || '';
+                var contactName = (document.getElementById('mapper-contact-name')            || {}).value || '';
+                var email       = (document.getElementById('mapper-email')                   || {}).value || '';
+                var fyMonth     = (document.getElementById('mapper-fy-start-month')          || {}).value || '';
+                var threshRaw   = (document.getElementById('mapper-major-giving-threshold')  || {}).value || '';
+                var threshold   = parseFloat(threshRaw);
+                var boardMembers = (document.getElementById('mapper-board-members')          || {}).value || '';
+
+                if (!clientName.trim())  { alert('Please enter the Client / Organization Name.'); return; }
+                if (!contactName.trim()) { alert('Please enter a Contact Name.'); return; }
+                if (!email.trim() || email.indexOf('@') < 0) { alert('Please enter a valid email address.'); return; }
+                if (!fyMonth)            { alert('Please select the Fiscal Year Start Month.'); return; }
+                if (isNaN(threshold) || threshold <= 0) { alert('Please enter a valid Major Giving Threshold.'); return; }
+                if (!PA_TRIGGER_URL)     { alert('Submission endpoint not configured. Please contact support.'); return; }
+
+                var originalHTML = btn.innerHTML;
                 btn.disabled = true;
-                btn.innerHTML = '<div style="display:inline-flex;align-items:center;gap:10px;"><div style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #ffffff;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div><span>Submitting...</span></div>';
-                // Inject spinner keyframes if not already present
                 if (!document.getElementById('mapper-spinner-style')) {
                     var spinStyle = document.createElement('style');
                     spinStyle.id = 'mapper-spinner-style';
                     spinStyle.textContent = '@keyframes mapperSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
                     document.head.appendChild(spinStyle);
                 }
-                console.log('Submit clicked');
+                btn.innerHTML = '<div style="display:inline-flex;align-items:center;gap:10px;"><div style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #ffffff;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div><span>Uploading...</span></div>';
+
                 setTimeout(function() {
-                    var attached = window.attachToGHLForm();
-                    if (!attached) {
+                    var blob = generateExcelBlob();
+                    if (!blob) { btn.disabled = false; btn.innerHTML = originalHTML; return; }
+
+                    var formSource   = isSW ? 'SW' : (isKellogg ? 'Databasey' : (isDatabasey ? 'Databasey' : 'Alford'));
+                    var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
+
+                    var reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = function() {
+                        var base64 = reader.result.split(',')[1];
+                        var payload = {
+                            company_name:              clientName.trim(),
+                            full_name:                 contactName.trim(),
+                            email:                     email.trim(),
+                            'Fiscal Year Start Month': fyMonth,
+                            'Major Giving Threshold':  threshold,
+                            '# of Board Members':      boardMembers || '',
+                            'Industry Type':           selectedIndustryType || '',
+                            form_source:               formSource,
+                            analysis_type:             analysisType,
+                            file_content:              base64
+                        };
+                        fetch(PA_TRIGGER_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        })
+                        .then(function(res) {
+                            if (res.ok || res.status === 202) {
+                                window.location.href = 'https://getdatabasey.com/submitted';
+                            } else {
+                                throw new Error('Server returned ' + res.status);
+                            }
+                        })
+                        .catch(function(err) {
+                            console.error('PA submit error:', err);
+                            btn.disabled = false;
+                            btn.innerHTML = originalHTML;
+                            alert('Submission failed — please try again or contact support.\n\nError: ' + err.message);
+                        });
+                    };
+                    reader.onerror = function() {
                         btn.disabled = false;
-                        btn.textContent = originalText;
-                        return;
-                    }
-                    console.log('File attached');
-                    if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
-                    setTimeout(function() {
-                        var ghlBtn = document.querySelector('button[type="submit"]');
-                        if (ghlBtn) { console.log('Clicking GHL submit'); ghlBtn.click(); }
-                        else { var form = document.querySelector('form'); if (form) form.submit(); else { btn.disabled = false; btn.textContent = originalText; alert('Could not submit. Contact support.'); } }
-                    }, 200);
+                        btn.innerHTML = originalHTML;
+                        alert('Failed to prepare file for upload. Please try again.');
+                    };
                 }, 50);
             });
         });
@@ -1485,26 +1570,34 @@
                 var _ucConsRows = cd2.filter(function(r) { return _ucGiftIds[String(r['Constituent ID'] || '').trim()]; }).map(function(r) {
                     return [r['Constituent ID'], r['Constituent Name'] || r['Name'] || '', r['Constituent Type'] || '', r['First Gift Date'] || '', r['Board Member?'] || r['Board Member'] || '', r['Street Address'] || r['Street'] || '', r['City'] || '', r['State'] || '', r['Zip Code'] || r['Zip'] || ''];
                 });
-                // Read FY Start Month from GHL multiselect (name=EU5w6k8DZPkWhY1mYiGh)
-                var _ucFyEl = document.querySelector('[name="EU5w6k8DZPkWhY1mYiGh"]');
+                // Read FY Start Month — mapper's own select takes priority, fall back to GHL multiselect
                 var _ucFyMonth = null;
-                if (_ucFyEl) {
-                    if (_ucFyEl.classList && _ucFyEl.classList.contains('multiselect__input')) {
-                        // GHL renders the multiselect search box — traverse up to find the selected value
-                        var _ucFyCont = _ucFyEl.closest('.multiselect') || _ucFyEl.parentElement;
-                        var _ucFySpan = _ucFyCont ? _ucFyCont.querySelector('.multiselect__single') : null;
-                        if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim();
-                    } else if (_ucFyEl.tagName === 'INPUT' || _ucFyEl.tagName === 'SELECT') {
-                        _ucFyMonth = _ucFyEl.value || null;
-                    } else {
-                        var _ucFySpan = _ucFyEl.querySelector('.multiselect__single');
-                        if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim();
+                var _ucMapperFySel = document.getElementById('mapper-fy-start-month');
+                if (_ucMapperFySel && _ucMapperFySel.value) {
+                    _ucFyMonth = _ucMapperFySel.value;
+                } else {
+                    var _ucFyEl = document.querySelector('[name="EU5w6k8DZPkWhY1mYiGh"]');
+                    if (_ucFyEl) {
+                        if (_ucFyEl.classList && _ucFyEl.classList.contains('multiselect__input')) {
+                            var _ucFyCont = _ucFyEl.closest('.multiselect') || _ucFyEl.parentElement;
+                            var _ucFySpan = _ucFyCont ? _ucFyCont.querySelector('.multiselect__single') : null;
+                            if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim();
+                        } else if (_ucFyEl.tagName === 'INPUT' || _ucFyEl.tagName === 'SELECT') {
+                            _ucFyMonth = _ucFyEl.value || null;
+                        } else {
+                            var _ucFySpan2 = _ucFyEl.querySelector('.multiselect__single');
+                            if (_ucFySpan2 && _ucFySpan2.textContent.trim()) _ucFyMonth = _ucFySpan2.textContent.trim();
+                        }
                     }
                 }
-                // Read Major Giving Threshold from GHL text input (name=f7xBqOQM0lEntVHM9FbQ)
-                var _ucThreshEl = document.querySelector('[name="f7xBqOQM0lEntVHM9FbQ"]');
-                var _ucThreshold = _ucThreshEl ? parseFloat(_ucThreshEl.value) : NaN;
-                if (isNaN(_ucThreshold) || _ucThreshold <= 0) _ucThreshold = 10000;
+                // Read Major Giving Threshold — mapper's own input takes priority, fall back to GHL input
+                var _ucMapperThreshEl = document.getElementById('mapper-major-giving-threshold');
+                var _ucThreshold = _ucMapperThreshEl ? parseFloat(_ucMapperThreshEl.value) : NaN;
+                if (isNaN(_ucThreshold) || _ucThreshold <= 0) {
+                    var _ucThreshEl = document.querySelector('[name="f7xBqOQM0lEntVHM9FbQ"]');
+                    _ucThreshold = _ucThreshEl ? parseFloat(_ucThreshEl.value) : NaN;
+                    if (isNaN(_ucThreshold) || _ucThreshold <= 0) _ucThreshold = 10000;
+                }
                 if (_ucFyMonth) {
                     var _ucResult = computeAnalytics(_ucGiftRows, _ucConsRows, { fyStartMonth: _ucFyMonth, threshold: _ucThreshold, donorJourney: !isSW });
                     _ucGiftSheet = XLSX.utils.aoa_to_sheet([_ucResult.gift.columns].concat(_ucResult.gift.rows));
@@ -1615,14 +1708,8 @@
         return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
 
-    window.attachToGHLForm = function() {
-        var blob = generateExcelBlob();
-        if (!blob) { alert('Please complete all ' + (isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
-        var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
-        if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
-        else { alert('Could not attach file. Please contact support.'); return false; }
-    };
+    // Stub kept for backward compatibility — direct PA submit mode no longer uses GHL file input.
+    window.attachToGHLForm = function() { return true; };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
