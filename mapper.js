@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '7.27.2026 (upstream compute)';
+    var MAPPER_VERSION = '7.27.2026b (upstream compute)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
 
     if (window.location.href.includes('page-builder') || 
@@ -261,10 +261,11 @@
                 var fgd2;
                 if (g.cid in consIdSet) fgd2 = consFgdMap[g.cid];
                 else fgd2 = (g.cid in minDateMap) ? new Date(minDateMap[g.cid]) : null;
+                var fgd2Serial = fgd2 ? Math.round((fgd2.getTime() - _EXCEL_EPOCH_MS) / _DAY_MS) : null;
                 var t2 = consTypeMap[g.cid];
                 var nat = _TYPE_MAP.hasOwnProperty(t2) ? _TYPE_MAP[t2] : 'Individuals';
                 var raw = giftRows[idx];
-                return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy2, dj2, fgd2, nat];
+                return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy2, dj2, fgd2Serial, nat];
             });
             return { gift: { columns: giftCols, rows: giftOut }, constituent: { columns: consCols, rows: consOut } };
         }
@@ -1508,6 +1509,18 @@
                     var _ucResult = computeAnalytics(_ucGiftRows, _ucConsRows, { fyStartMonth: _ucFyMonth, threshold: _ucThreshold, donorJourney: !isSW });
                     _ucGiftSheet = XLSX.utils.aoa_to_sheet([_ucResult.gift.columns].concat(_ucResult.gift.rows));
                     _ucConstSheet = XLSX.utils.aoa_to_sheet([_ucResult.constituent.columns].concat(_ucResult.constituent.rows));
+                    // FGD is output as an integer Excel serial to avoid SheetJS timezone fractional offset.
+                    // Apply a date number format so Excel renders it as a date, not a plain integer.
+                    var _ucFgdCI = _ucResult.gift.columns.indexOf('FGD');
+                    if (_ucFgdCI >= 0) {
+                        var _ucGiftRange = XLSX.utils.decode_range(_ucGiftSheet['!ref']);
+                        for (var _ucFgdR = 1; _ucFgdR <= _ucGiftRange.e.r; _ucFgdR++) {
+                            var _ucFgdAddr = XLSX.utils.encode_cell({r: _ucFgdR, c: _ucFgdCI});
+                            if (_ucGiftSheet[_ucFgdAddr] && _ucGiftSheet[_ucFgdAddr].v != null) {
+                                _ucGiftSheet[_ucFgdAddr].z = 'm/d/yyyy';
+                            }
+                        }
+                    }
                     console.log('UPSTREAM_COMPUTE: gift rows=' + _ucResult.gift.rows.length + ' const rows=' + _ucResult.constituent.rows.length);
                 } else {
                     console.warn('UPSTREAM_COMPUTE: FY Start Month not found in form, using standard output');

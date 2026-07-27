@@ -257,11 +257,14 @@ function computeAnalytics(giftRows, consRows, params) {
     let fgd;
     if (consIds.has(g.cid)) fgd = consFgd.get(g.cid);           // Date or null(blank)
     else fgd = minDate.has(g.cid) ? new Date(minDate.get(g.cid)) : null;
+    // Output integer Excel serial (not a Date object) so SheetJS writes a clean date serial
+    // without applying a UTC→local timezone offset that would produce fractional values.
+    const fgdSerial = fgd ? Math.round((fgd.getTime() - EXCEL_EPOCH_MS) / DAY_MS) : null;
     const t = consType.get(g.cid);
     let nat = TYPE_MAP.hasOwnProperty(t) ? TYPE_MAP[t] : 'Individuals';
     const raw = giftRows[idx];
     // raw[0] is the original Constituent ID — pass through as-is (normId only used internally for matching).
-    return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy, dj, fgd, nat];
+    return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy, dj, fgdSerial, nat];
   });
 
   return { gift: { columns: giftCols, rows: giftOut }, constituent: { columns: consCols, rows: consOut } };
