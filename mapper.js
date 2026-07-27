@@ -1490,8 +1490,17 @@
                 var _ucFyEl = document.querySelector('[name="EU5w6k8DZPkWhY1mYiGh"]');
                 var _ucFyMonth = null;
                 if (_ucFyEl) {
-                    if (_ucFyEl.tagName === 'INPUT') { _ucFyMonth = _ucFyEl.value || null; }
-                    else { var _ucFySpan = _ucFyEl.querySelector('.multiselect__single'); if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim(); }
+                    if (_ucFyEl.classList && _ucFyEl.classList.contains('multiselect__input')) {
+                        // GHL renders the multiselect search box — traverse up to find the selected value
+                        var _ucFyCont = _ucFyEl.closest('.multiselect') || _ucFyEl.parentElement;
+                        var _ucFySpan = _ucFyCont ? _ucFyCont.querySelector('.multiselect__single') : null;
+                        if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim();
+                    } else if (_ucFyEl.tagName === 'INPUT' || _ucFyEl.tagName === 'SELECT') {
+                        _ucFyMonth = _ucFyEl.value || null;
+                    } else {
+                        var _ucFySpan = _ucFyEl.querySelector('.multiselect__single');
+                        if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim();
+                    }
                 }
                 // Read Major Giving Threshold from GHL text input (name=f7xBqOQM0lEntVHM9FbQ)
                 var _ucThreshEl = document.querySelector('[name="f7xBqOQM0lEntVHM9FbQ"]');
