@@ -206,13 +206,12 @@ function computeAnalytics(giftRows, consRows, params) {
       else if (rr === 'Recovered') v = (cur === null) ? '' : round2(cur);
       ll[y] = v;
     }
-    // Consecutive Year Donor: gave > $0 in each of the last 5 data years (same logic as PGP).
-    const consecutive = (w5.length === 5 && w5.every(y => giving[y] !== null)) ? 'Yes' : '';
     // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
     let donorJourney = '';
     if (doDJ) donorJourney = (givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
     // window helpers
     const w4 = years.slice(-4);
+    const w5 = years.slice(-5);
     const last = years[years.length - 1];
     // block for [Year7]:[Year10] COUNTIFS = w4 giving + lift/loss of w4 except last year
     const block = [];
@@ -229,8 +228,8 @@ function computeAnalytics(giftRows, consRows, params) {
     let allnb4 = w4.length > 0, wmin = Infinity, wmax = -Infinity;
     for (const y of w4) { const v = giving[y]; if (v === null) allnb4 = false; else { if (v < wmin) wmin = v; if (v > wmax) wmax = v; } }
     const midlevel = (allnb4 && wmin >= 250 && wmax < 1000) ? 'Yes' : '';
-    // Planned Giving: last 5 data years all nonblank & > 0
-    const w5 = years.slice(-5);
+    // Consecutive Year Donor / Planned Giving: gave > $0 in each of the last 5 data years.
+    const consecutive = (w5.length === 5 && w5.every(y => giving[y] !== null)) ? 'Yes' : '';
     let planned = w5.length === 5;
     for (const y of w5) { const v = giving[y]; if (v === null || !(v > 0)) planned = false; }
     const plannedGiving = planned ? 'Yes' : '';
