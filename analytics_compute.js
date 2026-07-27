@@ -271,7 +271,8 @@ function computeAnalytics(giftRows, consRows, params) {
     const t = consType.get(g.cid);
     let nat = TYPE_MAP.hasOwnProperty(t) ? TYPE_MAP[t] : 'Individuals';
     const raw = giftRows[idx];
-    return [normId(raw[0]), raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy, dj, fgd, nat];
+    // raw[0] is the original Constituent ID — pass through as-is (normId only used internally for matching).
+    return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy, dj, fgd, nat];
   });
 
   return { gift: { columns: giftCols, rows: giftOut }, constituent: { columns: consCols, rows: consOut } };
