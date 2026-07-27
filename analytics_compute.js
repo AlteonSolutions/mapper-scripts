@@ -206,18 +206,8 @@ function computeAnalytics(giftRows, consRows, params) {
       else if (rr === 'Recovered') v = (cur === null) ? '' : round2(cur);
       ll[y] = v;
     }
-    // Consecutive Year Donor: donor must be Retained in every year of the data range.
-    //   cydRetentionYears omitted or -1 → check ALL retention years (canonical)
-    //   cydRetentionYears=0   → broken #REF! formula in old file, always blank
-    //   cydRetentionYears=N   → old Alford/DB template checked only last N years
-    const retYears = years.filter((y, i) => i > 0);
-    const cydN = (params.cydRetentionYears != null) ? params.cydRetentionYears : -1;
-    let consecutive = '';
-    if (cydN !== 0) {
-      const checkYears = (cydN < 0) ? retYears : retYears.slice(-cydN);
-      if (checkYears.length > 0 && (cydN < 0 || checkYears.length === cydN) &&
-          checkYears.every(y => String(ret[y]).startsWith('Retained'))) consecutive = 'Yes';
-    }
+    // Consecutive Year Donor: gave > $0 in each of the last 5 data years (same logic as PGP).
+    const consecutive = (w5.length === 5 && w5.every(y => giving[y] !== null)) ? 'Yes' : '';
     // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
     let donorJourney = '';
     if (doDJ) donorJourney = (givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';

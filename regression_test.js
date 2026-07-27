@@ -67,24 +67,6 @@ function detectDJYear(wb, giftHdr, endYear) {
   if (m) return Number(m[1]);
   return null; // dynamic (EndYear-5 named range) — let computeAnalytics derive it
 }
-// Detect the CYD formula variant and return a cydRetentionYears value:
-//   0   = broken #REF! formula → always blank
-//  -1   = SW dynamic MAP/SEQUENCE formula → check ALL retention years
-//   N   = AND(LEFT...) formula with N explicit LEFT() calls (Alford/DB: 5)
-//   5   = default fallback when no formula is detected
-function detectCYDRetentionYears(wb, consHdr) {
-  const cs = wb.Sheets['Constituent Data'];
-  if (!cs) return 5;
-  const cydIdx = consHdr.indexOf('Consecutive Year Donor');
-  if (cydIdx < 0) return 5;
-  const cell = cs[XLSX.utils.encode_cell({ r: 1, c: cydIdx })];
-  if (!cell || !cell.f) return 5;
-  if (cell.f.includes('#REF!')) return 0; // broken → blank for all rows
-  // SW uses MAP(SEQUENCE(...),LAMBDA(...)) to check every retention year dynamically
-  if (/MAP\s*\(/i.test(cell.f) || /SEQUENCE\s*\(/i.test(cell.f)) return -1;
-  const lefts = (cell.f.match(/LEFT\s*\(/gi) || []).length;
-  return lefts > 0 ? lefts : 5;
-}
 // Returns true when the PGP formula uses a broken COUNTIFS pattern (column range
 // can never reach the target count), meaning Excel always outputs "".
 function isPGPBroken(wb, consHdr) {
@@ -114,14 +96,12 @@ function validate(file, fork) {
   // Detect the DJ year actually used in this file's formula (may be hardcoded in older files).
   const djYear = detectDJYear(wb, G.hdr, endYear);
 
-  // Detect formula versions for columns where Excel template variant affects output.
-  const cydRetentionYears = detectCYDRetentionYears(wb, C.hdr);
-  const pgpBroken = isPGPBroken(wb, C.hdr);
   // Skip columns where this file's Excel formula is known-broken.
+  const pgpBroken = isPGPBroken(wb, C.hdr);
   const consSkip = new Set(pgpBroken ? ['Planned Giving Prospect'] : []);
 
   const out = computeAnalytics(gd.map(r => r.slice(0, 6)), cd.map(r => r.slice(0, 9)),
-    { fyStartMonth, threshold, donorJourney, donorJourneyYear: djYear, endYear, dataYears, cydRetentionYears });
+    { fyStartMonth, threshold, donorJourney, donorJourneyYear: djYear, endYear, dataYears });
 
   // map output columns by name and compare positionally to the file's columns
   const colIndex = (hdr, name) => hdr.indexOf(name);
