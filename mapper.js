@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '7.27.2026b (upstream compute)';
+    var MAPPER_VERSION = '7.27.2026c (upstream compute)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
 
     if (window.location.href.includes('page-builder') || 
@@ -1612,7 +1612,7 @@
             }
         }
 
-        return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
 
     window.attachToGHLForm = function() {
