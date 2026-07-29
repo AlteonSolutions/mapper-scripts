@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapper.js — Local Upload Test</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Roboto, sans-serif; background: #f4f4f4; color: #333; }
+
+        /* ── Test Controls Bar ───────────────────────────────────────────── */
+        #test-controls {
+            background: #1a1a1a; color: #ccc; padding: 10px 20px;
+            font-size: 12px; font-family: monospace;
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        #test-controls strong { color: #fff; }
+        #test-controls a {
+            color: #7ec8e3; text-decoration: none; padding: 3px 10px;
+            border: 1px solid #444; border-radius: 4px;
+        }
+        #test-controls a:hover { background: #333; }
+        #test-controls a.active { background: #2a4a5a; border-color: #7ec8e3; color: #fff; }
+        #current-mode { color: #aaa; margin-left: auto; }
+        #branch-badge {
+            background: #2d4a2d; color: #7ec87e; border: 1px solid #4a7a4a;
+            padding: 3px 10px; border-radius: 4px; font-weight: bold;
+        }
+
+        /* ── Page Layout ─────────────────────────────────────────────────── */
+        #page-wrap { max-width: 620px; margin: 30px auto; padding: 0 16px 60px; }
+
+        /* ── Upload Box ──────────────────────────────────────────────────── */
+        #uploadBox {
+            border: 2px dashed #ccc; border-radius: 8px; padding: 30px 20px;
+            text-align: center; cursor: pointer; background: #fafafa;
+            transition: border-color 0.2s;
+        }
+        #uploadBox:hover { border-color: #999; }
+
+        /* ── Mapping Card ────────────────────────────────────────────────── */
+        .mapping-card { padding: 10px 0; }
+        .appeal-label { font-size: 12px; color: #999; text-align: center; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .appeal-name { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 20px; color: #222; }
+
+        /* ── Category Buttons ────────────────────────────────────────────── */
+        .category-buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: nowrap; }
+        .category-buttons.allow-wrap { flex-wrap: wrap; }
+        .category-btn {
+            padding: 10px 18px; border-radius: 8px; border: 2px solid var(--theme-color, #2c5f5d);
+            background: white; color: var(--theme-color, #2c5f5d);
+            font-size: 14px; font-weight: 600; cursor: pointer; font-family: Roboto, sans-serif;
+            transition: background 0.15s, color 0.15s;
+        }
+        .category-btn:hover { opacity: 0.85; }
+        .non-event-btn { border-color: #999; color: #666; }
+        .non-event-btn:hover { background: #f5f5f5; }
+
+        /* ── Navigation Buttons ──────────────────────────────────────────── */
+        .navigation-buttons { display: flex; justify-content: space-between; margin-top: 10px; }
+        .nav-btn {
+            padding: 8px 20px; border-radius: 6px; border: 1px solid #ddd;
+            background: #f5f5f5; color: #555; font-size: 13px; font-weight: 600;
+            cursor: pointer; font-family: Roboto, sans-serif;
+        }
+        .nav-btn:disabled { opacity: 0.4; cursor: default; }
+        .nav-btn:not(:disabled):hover { background: #e8e8e8; }
+
+        /* ── Progress Bar ────────────────────────────────────────────────── */
+        .progress-container { margin-bottom: 20px; }
+        .progress-bar-track { background: #eee; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+        .progress-bar-fill { height: 100%; border-radius: 99px; background: var(--theme-color, #2c5f5d); transition: width 0.3s; width: 0%; }
+        .progress-bar-labels { display: flex; justify-content: space-between; font-size: 12px; color: #999; }
+
+        /* ── Step Tracker ────────────────────────────────────────────────── */
+        #stepProgress { margin-bottom: 20px; }
+        #stepTracker {
+            display: flex; align-items: center; justify-content: center;
+            position: relative; padding: 10px 0;
+        }
+        #stepTracker::before {
+            content: '';
+            position: absolute; top: 50%; left: var(--tracker-offset, 16.67%);
+            right: var(--tracker-offset, 16.67%);
+            height: 2px; background: #ddd; z-index: 0;
+            transform: translateY(-50%);
+        }
+        .step-item { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; flex: 1; }
+        .step-connector { flex: 1; height: 2px; background: #ddd; z-index: 0; }
+        .step-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            border: 2px solid #ddd; background: white; color: #bbb;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; transition: all 0.3s;
+        }
+        .step-circle.active { border-color: var(--theme-color, #2c5f5d); background: var(--theme-color, #2c5f5d); color: white; }
+        .step-circle.completed { border-color: var(--theme-color, #2c5f5d); background: var(--theme-color, #2c5f5d); color: white; }
+        .step-label { font-size: 11px; color: #999; margin-top: 6px; text-align: center; max-width: 90px; line-height: 1.3; }
+        .step-item.active .step-label { color: var(--theme-color, #2c5f5d); font-weight: 600; }
+        .step-item.completed .step-label { color: #aaa; }
+
+        /* ── Category Tags (event setup) ─────────────────────────────────── */
+        .category-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #f0f0f0; border-radius: 20px; padding: 4px 12px;
+            font-size: 13px; margin: 4px;
+        }
+        .category-tag button { background: none; border: none; cursor: pointer; color: #999; font-size: 16px; line-height: 1; padding: 0; }
+
+        /* ── Section Headings ────────────────────────────────────────────── */
+        h2 { font-size: 18px; font-weight: 700; text-align: center; margin: 0 0 16px; color: #222; }
+
+        /* ── Completion Cards ────────────────────────────────────────────── */
+        .completion-card { text-align: center; padding: 20px 0; }
+        .completion-card p { color: #555; margin-bottom: 20px; }
+        .continue-btn {
+            display: inline-block; padding: 12px 32px; border-radius: 8px;
+            background: var(--theme-color, #2c5f5d); color: white;
+            border: none; font-size: 15px; font-weight: 600; cursor: pointer;
+            font-family: Roboto, sans-serif;
+        }
+        .continue-btn:hover { opacity: 0.9; }
+
+        /* ── Category Setup ──────────────────────────────────────────────── */
+        .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .input-row input {
+            flex: 1; padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px;
+            font-size: 14px; font-family: Roboto, sans-serif;
+        }
+        .input-row button, .action-btn {
+            padding: 9px 18px; border-radius: 6px; border: none;
+            background: var(--theme-color, #2c5f5d); color: white;
+            font-size: 14px; font-weight: 600; cursor: pointer; font-family: Roboto, sans-serif;
+            white-space: nowrap;
+        }
+        .action-btn:hover { opacity: 0.9; }
+        .skip-link { display: block; text-align: center; margin-top: 12px; color: #999; font-size: 13px; cursor: pointer; text-decoration: underline; }
+        .skip-link:hover { color: #666; }
+        .skip-btn {
+            display: inline-block; padding: 12px 32px; border-radius: 8px;
+            background: white; color: var(--theme-color, #2c5f5d);
+            border: 1px solid var(--theme-color, #2c5f5d);
+            font-size: 15px; font-weight: 400; cursor: pointer;
+            font-family: Roboto, sans-serif;
+        }
+        .skip-btn:hover { opacity: 0.8; }
+
+        /* ── Mapping Box ─────────────────────────────────────────────────── */
+        #mappingBox { margin-top: 16px; }
+        #mappingBoxLabel { font-size: 14px; font-weight: 500; color: #2c3345; margin-bottom: 10px; }
+
+        /* ── Custom Submit Button ────────────────────────────────────────── */
+        #customSubmitBtn {
+            display: block; width: 100%; padding: 14px;
+            background: var(--theme-color, #2c5f5d); color: white;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+            cursor: pointer; font-family: Roboto, sans-serif; margin-top: 20px;
+        }
+        #customSubmitBtn:hover { opacity: 0.9; }
+
+        /* ── Theme vars ──────────────────────────────────────────────────── */
+        :root { --theme-color: #2c5f5d; --theme-color-hover: #3d7672; }
+    </style>
+</head>
+<body>
+
+<!-- ── Test Controls ──────────────────────────────────────────────────────── -->
+<div id="test-controls">
+    <span id="branch-badge">LOCAL FILES</span>
+    <strong>Variant:</strong>
+    <a href="test-upload-local.html">Alford</a>
+    <a href="test-upload-local.html?brand=databasey">Databasey</a>
+    <a href="test-upload-local.html?brand=sw">SW Analytics</a>
+    <a href="test-upload-local.html?brand=sw&variant=staffing">SW Staffing</a>
+    <a href="test-upload-local.html?brand=sw&variant=developmentassessment">SW Dev Assessment</a>
+    <a href="test-upload-local.html?brand=sw&variant=campaigncounsel">SW Campaign Counsel</a>
+    <span id="current-mode"></span>
+</div>
+
+<!-- ── Page ───────────────────────────────────────────────────────────────── -->
+<div id="page-wrap">
+
+    <div id="mapper-container" style="visibility:hidden;">
+
+        <!-- Upload area -->
+        <div id="uploadBox" style="border:2px dashed #ccc;border-radius:8px;padding:30px 20px;text-align:center;cursor:pointer;background:#fafafa;">
+            <svg width="30" height="30" viewBox="0 0 16 16" fill="#aaa" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 10px;">
+                <path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8z"/>
+                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"/>
+                <path fill-rule="evenodd" d="M5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"/>
+            </svg>
+            <div style="font-size:14px;color:#666;">Click to upload your Client Data file</div>
+            <div style="font-size:12px;color:#aaa;margin-top:4px;">.xlsx files only</div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;">
+        <div id="fileInfo"></div>
+        <div id="uploadNote" style="font-size:12px;color:#999;text-align:center;margin-top:8px;">
+            Note: the Client Data file <strong>must</strong> use the designated template.
+        </div>
+
+        <!-- Event category setup -->
+        <div id="categorySetup" style="display:none;padding:10px 0;">
+            <h2>Define Special Events</h2>
+            <p style="text-align:center;color:#666;font-size:14px;margin-bottom:16px;">Enter up to 3 special events to map your gift appeals against.</p>
+            <div class="input-row">
+                <input type="text" id="categoryInput" placeholder="Enter event name (e.g., Gala, Golf Tournament, Annual Auction)">
+                <button id="addCategoryBtn" class="action-btn">Add</button>
+            </div>
+            <div id="categoriesList" style="margin-bottom:16px;"></div>
+            <div style="text-align:center;display:flex;gap:12px;justify-content:center;">
+                <button id="startMappingBtn" class="continue-btn">Continue to Mapping ➡</button>
+                <button id="skipSpecialEventBtn" class="skip-btn">Skip Mapping</button>
+            </div>
+        </div>
+
+        <!-- Event mapping section -->
+        <div id="mappingSection" style="display:none;">
+            <h2>Special Event Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="progressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="progressText">0 of 0 appeals mapped</span>
+                    <span id="progressBarText"></span>
+                </div>
+            </div>
+            <div id="mappingContainer"></div>
+            <div id="completionCard" class="completion-card" style="display:none;">
+                <p id="completionNextStep"></p>
+                <button id="completionNextButton" class="continue-btn"></button>
+            </div>
+        </div>
+
+        <!-- Spotlight mapping section -->
+        <div id="spotlightMappingSection" style="display:none;">
+            <h2 id="spotlightMappingTitle">Spotlight Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="spotlightProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="spotlightProgressText">0 of 0 mapped</span>
+                    <span id="spotlightProgressBarText"></span>
+                </div>
+            </div>
+            <div id="spotlightMappingContainer"></div>
+            <div id="spotlightCompletionCard" class="completion-card" style="display:none;">
+                <p id="spotlightCompletionText"></p>
+                <button id="startConstituentMappingBtn" class="continue-btn">Continue to Constituent Mapping ➡</button>
+            </div>
+            <div id="spotlightSkipWrapper" style="display:none;">
+                <span id="skipSpotlightBtn" class="skip-link">Skip spotlight mapping</span>
+            </div>
+        </div>
+
+        <!-- Constituent mapping section -->
+        <div id="constituentMappingSection" style="display:none;">
+            <h2>Constituent Type Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="constituentProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="constituentProgressText">0 of 0 constituent types mapped</span>
+                    <span id="constituentProgressBarText"></span>
+                </div>
+            </div>
+            <div id="constituentMappingContainer"></div>
+            <div id="constituentCompletionCard" class="completion-card" style="display:none;">
+                <p>You have successfully mapped all Constituent Types.</p>
+                <button id="startGiftTypeMappingBtn" class="continue-btn">Continue to Gift Type Mapping ➡</button>
+            </div>
+        </div>
+
+        <!-- Gift type mapping section -->
+        <div id="giftTypeMappingSection" style="display:none;">
+            <h2>Gift Type Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="giftTypeProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="giftTypeProgressText">0 of 0 gift types mapped</span>
+                    <span id="giftTypeProgressBarText"></span>
+                </div>
+            </div>
+            <div id="giftTypeMappingContainer"></div>
+            <div id="giftTypeCompletionCard" class="completion-card" style="display:none;">
+                <p>You have successfully mapped all Gift Types.</p>
+            </div>
+        </div>
+
+        <!-- Step progress tracker -->
+        <div id="stepProgress" style="display:none;">
+            <div id="stepTracker"></div>
+        </div>
+
+        <!-- Submit button (revealed by mapper.js when all steps complete) -->
+        <div>
+            <button id="customSubmitBtn" type="button">Submit</button>
+        </div>
+
+    </div><!-- end #mapper-container -->
+
+</div><!-- end #page-wrap -->
+
+<style>
+    #insp { position: fixed; top: 0; right: 0; width: 470px; height: 100vh; overflow-y: auto;
+            background: #14171a; color: #d5dae0; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace;
+            border-left: 2px solid #2b3138; padding: 14px 16px 40px; z-index: 99999; display: none; }
+    #insp.open { display: block; }
+    #insp h3 { margin: 0 0 10px; font-size: 13px; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+    #insp h4 { margin: 18px 0 6px; font-size: 12px; color: #8fb4d0; text-transform: uppercase; letter-spacing: .04em; }
+    #insp table { width: 100%; border-collapse: collapse; }
+    #insp td { padding: 2px 6px 2px 0; vertical-align: top; word-break: break-all; }
+    #insp td.k { color: #7f8b98; white-space: nowrap; width: 1%; }
+    #insp .ok   { color: #6fcf6f; }
+    #insp .bad  { color: #ff7b72; font-weight: bold; }
+    #insp .warn { color: #e3c76f; }
+    #insp .n    { color: #79c0ff; }
+    #insp button { background: #22303c; color: #9fd0f0; border: 1px solid #35505f;
+                   border-radius: 4px; padding: 5px 12px; font: inherit; cursor: pointer; margin: 2px 4px 2px 0; }
+    #insp button:hover { background: #2c3e4d; }
+    #insp-toggle { position: fixed; top: 8px; right: 8px; z-index: 100000; background: #14171a;
+                   color: #9fd0f0; border: 1px solid #35505f; border-radius: 4px;
+                   padding: 6px 12px; font: 12px ui-monospace, monospace; cursor: pointer; }
+    #insp-live { color: #e3c76f; }
+    #insp hr { border: 0; border-top: 1px solid #2b3138; margin: 14px 0; }
+</style>
+<button id="insp-toggle">Inspector</button>
+<div id="insp">
+    <h3>Submit Inspector</h3>
+    <label id="insp-live"><input type="checkbox" id="insp-live-cb"> Send to Power Automate for real</label>
+    <div id="insp-body"><p style="color:#7f8b98">Nothing captured yet. Complete the flow and press Submit.</p></div>
+</div>
+
+<script src="node_modules/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+/* Local test harness — intercepts the Power Automate submit so nothing is sent
+   unless you explicitly opt in, then inspects the workbook mapper.js produced. */
+(function () {
+    'use strict';
+
+    var REQUIRED = [
+        'Gift Data', 'Constituent Data',
+        'All Donors', 'Major Donors',
+        'All Prospects', 'Renewals', 'Major Gift Prospects', 'Lapsed Major Donors',
+        'Mid-Level Giving Prospects', 'Planned Giving Prospects',
+        'Decreased Giving Donors', 'Consecutive Giving Donors'
+    ];
+    var TEMPLATE_ONLY = { 'Gift Data': 1, 'Constituent Data': 1 };
+    var CSV_ONLY = { 'All Donors': 1, 'Major Donors': 1 };
+
+    var panel, body, liveCb, computeLog = [];
+
+    document.addEventListener('DOMContentLoaded', function () {
+        panel = document.getElementById('insp');
+        body = document.getElementById('insp-body');
+        liveCb = document.getElementById('insp-live-cb');
+        document.getElementById('insp-toggle').addEventListener('click', function () {
+            panel.classList.toggle('open');
+        });
+    });
+
+    // Surface UPSTREAM_COMPUTE console output — a silent fallback here means the
+    // prospect sheets never got built.
+    ['log', 'warn', 'error'].forEach(function (lvl) {
+        var orig = console[lvl].bind(console);
+        console[lvl] = function () {
+            var s = Array.prototype.map.call(arguments, function (a) {
+                return (a && a.message) ? a.message : String(a);
+            }).join(' ');
+            if (s.indexOf('UPSTREAM_COMPUTE') !== -1) computeLog.push({ lvl: lvl, msg: s });
+            return orig.apply(null, arguments);
+        };
+    });
+
+    // Swallow only mapper's own post-submit failure alert while intercepting.
+    var swallow = false;
+    var origAlert = window.alert.bind(window);
+    window.alert = function (m) {
+        if (swallow && String(m).indexOf('Submission failed') === 0) { swallow = false; return; }
+        return origAlert(m);
+    };
+
+    var origFetch = window.fetch.bind(window);
+    window.fetch = function (url, opts) {
+        var u = String(url && url.url ? url.url : url);
+        var isSubmit = opts && opts.method === 'POST' && /powerplatform\.com/.test(u);
+        if (!isSubmit) return origFetch(url, opts);
+
+        var payload;
+        try { payload = JSON.parse(opts.body); } catch (e) { payload = null; }
+        try { render(payload); } catch (e) { showError(e); }
+
+        if (liveCb && liveCb.checked) return origFetch(url, opts);
+        swallow = true;
+        return Promise.resolve(new Response('{"intercepted":true}', { status: 503 }));
+    };
+
+    function esc(s) {
+        return String(s).replace(/[&<>]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+        });
+    }
+    function showError(e) {
+        panel.classList.add('open');
+        body.innerHTML = '<p class="bad">Inspector failed: ' + esc(e.message) + '</p>';
+    }
+    function norm(v) {
+        if (v === null || v === undefined) return null;
+        return String(v).trim().toLowerCase();
+    }
+    function rowsOf(ws) {
+        if (!ws || !ws['!ref']) return 0;
+        return Math.max(0, XLSX.utils.decode_range(ws['!ref']).e.r); // minus header
+    }
+
+    function render(payload) {
+        panel.classList.add('open');
+        if (!payload || !payload.file_content) {
+            body.innerHTML = '<p class="bad">No file_content in payload.</p>';
+            return;
+        }
+
+        var bin = atob(payload.file_content);
+        var buf = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        var wb = XLSX.read(buf, { type: 'array' });
+
+        var html = [];
+
+        html.push('<h4>Payload</h4><table>');
+        ['company_name', 'full_name', 'email', 'Fiscal Year Start Month',
+         'Major Giving Threshold', '# of Board Members', 'Industry Type',
+         'form_source', 'analysis_type'].forEach(function (k) {
+            html.push('<tr><td class="k">' + esc(k) + '</td><td>' + esc(payload[k] === '' ? '(empty)' : payload[k]) + '</td></tr>');
+        });
+        html.push('<tr><td class="k">file size</td><td class="n">' +
+            (buf.length / 1024).toFixed(1) + ' KB</td></tr></table>');
+
+        // ---- sheet inventory ----
+        html.push('<h4>Sheets (' + wb.SheetNames.length + ')</h4><table>');
+        var missing = [];
+        REQUIRED.forEach(function (name) {
+            var ws = wb.Sheets[name];
+            var dest = TEMPLATE_ONLY[name] ? 'template' : CSV_ONLY[name] ? 'csv' : 'prospecting';
+            if (!ws) {
+                missing.push(name);
+                html.push('<tr><td class="k bad">MISSING</td><td class="bad">' + esc(name) + '</td></tr>');
+            } else {
+                html.push('<tr><td class="k ok">' + rowsOf(ws) + '</td><td>' + esc(name) +
+                    ' <span style="color:#5a646e">&rarr; ' + dest + '</span></td></tr>');
+            }
+        });
+        var extra = wb.SheetNames.filter(function (n) { return REQUIRED.indexOf(n) === -1; });
+        extra.forEach(function (n) {
+            html.push('<tr><td class="k">' + rowsOf(wb.Sheets[n]) + '</td><td style="color:#7f8b98">' +
+                esc(n) + ' <span style="color:#5a646e">&rarr; passthrough</span></td></tr>');
+        });
+        html.push('</table>');
+
+        // ---- checks ----
+        html.push('<hr><h4>Checks</h4><table>');
+        function check(ok, label, detail) {
+            html.push('<tr><td class="k ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'PASS' : 'FAIL') +
+                '</td><td>' + esc(label) + (detail ? ' <span style="color:#7f8b98">' + esc(detail) + '</span>' : '') + '</td></tr>');
+        }
+        function warn(label, detail) {
+            html.push('<tr><td class="k warn">WARN</td><td>' + esc(label) +
+                (detail ? ' <span style="color:#7f8b98">' + esc(detail) + '</span>' : '') + '</td></tr>');
+        }
+
+        check(missing.length === 0, 'All 12 required sheets present',
+              missing.length ? 'missing: ' + missing.join(', ') : '');
+
+        var gift = wb.Sheets['Gift Data'], cons = wb.Sheets['Constituent Data'];
+        if (gift && cons) {
+            var gRows = XLSX.utils.sheet_to_json(gift, { header: 1 });
+            var cRows = XLSX.utils.sheet_to_json(cons, { header: 1 });
+
+            // DeleteExtraConstituents port: every constituent must appear in Gift Data col A
+            var giftIds = {};
+            for (var r = 1; r < gRows.length; r++) {
+                var gid = norm(gRows[r][0]);
+                if (gid !== null) giftIds[gid] = 1;
+            }
+            var orphans = 0, firstOrphan = '';
+            for (var c = 1; c < cRows.length; c++) {
+                var cid = norm(cRows[c][0]);
+                if (cid === null || !giftIds[cid]) {
+                    orphans++;
+                    if (!firstOrphan) firstOrphan = String(cRows[c][0]) + ' / ' + String(cRows[c][1]);
+                }
+            }
+            check(orphans === 0, 'No constituents absent from Gift Data',
+                  orphans ? orphans + ' orphan(s), e.g. ' + firstOrphan : '(DeleteExtraConstituents port)');
+
+            // 10-year cap
+            var yrCols = (cRows[0] || []).filter(function (h) { return /^[0-9]{4}$/.test(String(h)); });
+            check(yrCols.length > 0 && yrCols.length <= 10, 'Year columns within 10-year cap',
+                  yrCols.length + ' -> ' + yrCols.join(','));
+
+            // header row present on every derived sheet
+            var noHeader = REQUIRED.filter(function (n) {
+                var ws = wb.Sheets[n];
+                return ws && !(XLSX.utils.sheet_to_json(ws, { header: 1 })[0] || []).length;
+            });
+            check(noHeader.length === 0, 'Every sheet has a header row',
+                  noHeader.length ? noHeader.join(', ') : '');
+
+            // derived sheets must be subsets of Constituent Data
+            var consIds = {};
+            for (var k = 1; k < cRows.length; k++) { var n2 = norm(cRows[k][0]); if (n2 !== null) consIds[n2] = 1; }
+            var leaked = [];
+            ['All Donors', 'Major Donors', 'All Prospects', 'Renewals', 'Major Gift Prospects',
+             'Lapsed Major Donors', 'Mid-Level Giving Prospects', 'Planned Giving Prospects',
+             'Decreased Giving Donors', 'Consecutive Giving Donors'].forEach(function (n3) {
+                var ws = wb.Sheets[n3]; if (!ws) return;
+                var rr = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                for (var q = 1; q < rr.length; q++) {
+                    var id = norm(rr[q][0]);
+                    if (id !== null && !consIds[id]) { leaked.push(n3); return; }
+                }
+            });
+            check(leaked.length === 0, 'Derived sheets inherit the constituent filter',
+                  leaked.length ? 'unfiltered: ' + leaked.join(', ') : '');
+
+            if (rowsOf(cons) === 0) warn('Constituent Data is empty');
+        }
+
+        if (computeLog.length) {
+            html.push('</table><h4>Upstream compute log</h4><table>');
+            computeLog.forEach(function (l) {
+                html.push('<tr><td class="k ' + (l.lvl === 'log' ? 'ok' : 'bad') + '">' + l.lvl +
+                    '</td><td>' + esc(l.msg) + '</td></tr>');
+            });
+        } else {
+            warn('No UPSTREAM_COMPUTE console output', 'upstream compute may not have run');
+        }
+        html.push('</table>');
+
+        // ---- download ----
+        var fname = (payload.company_name || 'Client') + ' Data File.xlsx';
+        html.push('<hr><button id="insp-dl">Download ' + esc(fname) + '</button>');
+        html.push('<button id="insp-json">Copy payload JSON (no file)</button>');
+        body.innerHTML = html.join('');
+
+        document.getElementById('insp-dl').addEventListener('click', function () {
+            var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fname;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        });
+        document.getElementById('insp-json').addEventListener('click', function () {
+            var p = {}; for (var k in payload) if (k !== 'file_content') p[k] = payload[k];
+            navigator.clipboard.writeText(JSON.stringify(p, null, 2));
+        });
+    }
+})();
+
+</script>
+<script src="mapper.js"></script>
+<script>
+    // Highlight active variant link
+    var params = new URLSearchParams(window.location.search);
+    var brand = params.get('brand'), variant = params.get('variant');
+    document.querySelectorAll('#test-controls a').forEach(function(a) {
+        var lp = new URLSearchParams(a.href.split('?')[1] || '');
+        if (lp.get('brand') === brand && lp.get('variant') === variant) a.classList.add('active');
+    });
+    var modeLabel = variant === 'staffing' ? 'SW Staffing' : variant === 'developmentassessment' ? 'SW Dev Assessment' : variant === 'campaigncounsel' ? 'SW Campaign Counsel' : brand === 'sw' ? 'SW Analytics' : brand === 'databasey' ? 'Databasey' : 'Alford';
+    document.getElementById('current-mode').textContent = '▸ ' + modeLabel;
+</script>
+</body>
+</html>
