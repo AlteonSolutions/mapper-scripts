@@ -1614,10 +1614,12 @@
                             }
                         }
                     }
-                    // Build prospect / donor sheets from upstream compute result
+                    // Build donor/prospect sheets from upstream compute result
+                    // Analytics sheets go to template; prospecting sheets go directly to Prospecting.xlsx
                     _ucProspectSheets = {
                         'All Donors':                XLSX.utils.aoa_to_sheet([_ucResult.allDonors.columns].concat(_ucResult.allDonors.rows)),
                         'Major Donors':              XLSX.utils.aoa_to_sheet([_ucResult.majorDonors.columns].concat(_ucResult.majorDonors.rows)),
+                        'All Prospects':             XLSX.utils.aoa_to_sheet([_ucResult.allProspects.columns].concat(_ucResult.allProspects.rows)),
                         'Renewals':                  XLSX.utils.aoa_to_sheet([_ucResult.renewals.columns].concat(_ucResult.renewals.rows)),
                         'Major Gift Prospects':      XLSX.utils.aoa_to_sheet([_ucResult.majorGiftProspects.columns].concat(_ucResult.majorGiftProspects.rows)),
                         'Lapsed Major Donors':       XLSX.utils.aoa_to_sheet([_ucResult.lapsedMajorDonors.columns].concat(_ucResult.lapsedMajorDonors.rows)),
@@ -1653,9 +1655,9 @@
         XLSX.utils.book_append_sheet(wb, _ucGiftSheet || XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
         XLSX.utils.book_append_sheet(wb, _ucConstSheet || XLSX.utils.json_to_sheet(cd2, {header: origConstHeaders}), 'Constituent Data');
         // Append pre-computed prospect/donor sheets (replaces FILTER-formula versions in template)
-        var _ucProspectSheetNames = ['All Donors', 'Major Donors', 'Renewals', 'Major Gift Prospects',
-            'Lapsed Major Donors', 'Mid-Level Giving Prospects', 'Planned Giving Prospects',
-            'Decreased Giving Donors', 'Consecutive Giving Donors'];
+        var _ucProspectSheetNames = ['All Donors', 'Major Donors', 'All Prospects', 'Renewals',
+            'Major Gift Prospects', 'Lapsed Major Donors', 'Mid-Level Giving Prospects',
+            'Planned Giving Prospects', 'Decreased Giving Donors', 'Consecutive Giving Donors'];
         if (_ucProspectSheets) {
             for (var _psi = 0; _psi < _ucProspectSheetNames.length; _psi++) {
                 var _psn = _ucProspectSheetNames[_psi];

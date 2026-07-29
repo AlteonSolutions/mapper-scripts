@@ -327,18 +327,33 @@ function computeAnalytics(giftRows, consRows, params) {
       return [r[0], r[1]].concat(_c5k.map(function(k) { return r[_gIdx(k)] !== '' ? r[_gIdx(k)] : ''; }));
     });
 
+  // All Prospects: constituents with at least one prospect flag = "Yes"
+  var allProspectsCols = ['Constituent ID', 'Constituent Name',
+    'Renewals', 'Major Gift Prospect', 'Lapsed Major Donors',
+    'Mid-Level Giving Prospect', 'Planned Giving Prospect'];
+  var allProspectsRows = consOut
+    .filter(function(r) {
+      return r[_F_REN] === 'Yes' || r[_F_MGP] === 'Yes' || r[_F_LMD] === 'Yes' ||
+             r[_F_MID] === 'Yes' || r[_F_PLN] === 'Yes';
+    })
+    .map(function(r) {
+      return [r[0], r[1], r[_F_REN] || '', r[_F_MGP] || '', r[_F_LMD] || '',
+              r[_F_MID] || '', r[_F_PLN] || ''];
+    });
+
   return {
-    gift:                    { columns: giftCols,       rows: giftOut },
-    constituent:             { columns: consCols,        rows: consOut },
-    allDonors:               { columns: allDonorsCols,   rows: allDonorsRows },
-    majorDonors:             { columns: allDonorsCols,   rows: majorDonorsRows },
-    renewals:                { columns: _idNameCols,     rows: _flagRows(_F_REN) },
-    majorGiftProspects:      { columns: _idNameCols,     rows: _flagRows(_F_MGP) },
-    lapsedMajorDonors:       { columns: _idNameCols,     rows: _flagRows(_F_LMD) },
-    midLevelProspects:       { columns: _idNameCols,     rows: _flagRows(_F_MID) },
-    plannedGivingProspects:  { columns: _idNameCols,     rows: _flagRows(_F_PLN) },
-    decreasedGivingDonors:   { columns: decreasedCols,   rows: decreasedRows },
-    consecutiveGivingDonors: { columns: consecCols,      rows: consecRows },
+    gift:                    { columns: giftCols,          rows: giftOut },
+    constituent:             { columns: consCols,           rows: consOut },
+    allDonors:               { columns: allDonorsCols,      rows: allDonorsRows },
+    majorDonors:             { columns: allDonorsCols,      rows: majorDonorsRows },
+    allProspects:            { columns: allProspectsCols,   rows: allProspectsRows },
+    renewals:                { columns: _idNameCols,        rows: _flagRows(_F_REN) },
+    majorGiftProspects:      { columns: _idNameCols,        rows: _flagRows(_F_MGP) },
+    lapsedMajorDonors:       { columns: _idNameCols,        rows: _flagRows(_F_LMD) },
+    midLevelProspects:       { columns: _idNameCols,        rows: _flagRows(_F_MID) },
+    plannedGivingProspects:  { columns: _idNameCols,        rows: _flagRows(_F_PLN) },
+    decreasedGivingDonors:   { columns: decreasedCols,      rows: decreasedRows },
+    consecutiveGivingDonors: { columns: consecCols,         rows: consecRows },
   };
 }
 
