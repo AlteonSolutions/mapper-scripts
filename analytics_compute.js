@@ -267,7 +267,79 @@ function computeAnalytics(giftRows, consRows, params) {
     return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy, dj, fgdSerial, nat];
   });
 
-  return { gift: { columns: giftCols, rows: giftOut }, constituent: { columns: consCols, rows: consOut } };
+  // ---- Donor / Prospect sheet outputs ----
+  // Column index helpers into a consOut row (0-based):
+  //   years[0] giving  → 11
+  //   years[k] giving  → 3k+9  (k >= 1)
+  //   years[k] ret     → 3k+10 (k >= 1)
+  //   flag cols base   → 3n+9  (n = years.length)
+  //     +0 Consecutive Year Donor, +1 DJ, +2 Renewals, +3 Major Gift Prospect,
+  //     +4 Lapsed Major Donors, +5 Mid-Level, +6 Planned Giving
+  var _n = years.length;
+  var _gIdx = function(k) { return k === 0 ? 11 : 3 * k + 9; };
+  var _rIdx = function(k) { return 3 * k + 10; };
+  var _fBase = 3 * _n + 9;
+  var _F_CON = _fBase, _F_REN = _fBase + 2, _F_MGP = _fBase + 3,
+      _F_LMD = _fBase + 4, _F_MID = _fBase + 5, _F_PLN = _fBase + 6;
+  var _lK = _n - 1;
+  var _endGIdx = _gIdx(_lK);
+  var _endRIdx = _lK >= 1 ? _rIdx(_lK) : null;
+  var _prevGIdx = _lK >= 1 ? _gIdx(_lK - 1) : null;
+
+  var _idNameCols = ['Constituent ID', 'Constituent Name'];
+  function _flagRows(fi) {
+    return consOut.filter(function(r) { return r[fi] === 'Yes'; })
+      .map(function(r) { return [r[0], r[1]]; });
+  }
+
+  // All Donors: gave in EndYear
+  var allDonorsCols = ['Constituent ID', 'Constituent Name', 'Street Address', 'City', 'State', 'Zip Code', 'Giving'];
+  var allDonorsRows = consOut
+    .filter(function(r) { return r[_endGIdx] !== '' && r[_endGIdx] !== null; })
+    .map(function(r) { return [r[0], r[1], r[5], r[6], r[7], r[8], r[_endGIdx]]; });
+
+  // Major Donors: gave > threshold in EndYear
+  var majorDonorsRows = consOut
+    .filter(function(r) { return r[_endGIdx] !== '' && r[_endGIdx] !== null && r[_endGIdx] > threshold; })
+    .map(function(r) { return [r[0], r[1], r[5], r[6], r[7], r[8], r[_endGIdx]]; });
+
+  // Decreased Giving Donors
+  var decreasedCols = ['Constituent ID', 'Constituent Name',
+    String(endYear - 1) + ' Giving', String(endYear) + ' Giving', 'Loss'];
+  var decreasedRows = (_endRIdx !== null && _prevGIdx !== null)
+    ? consOut.filter(function(r) { return r[_endRIdx] === 'Retained - Decrease'; })
+        .map(function(r) {
+          var prev = r[_prevGIdx] !== '' ? r[_prevGIdx] : null;
+          var cur  = r[_endGIdx]  !== '' ? r[_endGIdx]  : null;
+          var loss = (prev !== null && cur !== null) ? round2(cur - prev) : '';
+          return [r[0], r[1], prev !== null ? prev : '', cur !== null ? cur : '', loss];
+        })
+    : [];
+
+  // Consecutive Giving Donors: last up-to-5 years of giving
+  var _c5k = [];
+  for (var _k = Math.max(0, _lK - 4); _k <= _lK; _k++) _c5k.push(_k);
+  var consecCols = ['Constituent ID', 'Constituent Name'].concat(
+    _c5k.map(function(k) { return String(years[k]) + ' Giving'; }));
+  var consecRows = consOut
+    .filter(function(r) { return r[_F_CON] === 'Yes'; })
+    .map(function(r) {
+      return [r[0], r[1]].concat(_c5k.map(function(k) { return r[_gIdx(k)] !== '' ? r[_gIdx(k)] : ''; }));
+    });
+
+  return {
+    gift:                    { columns: giftCols,       rows: giftOut },
+    constituent:             { columns: consCols,        rows: consOut },
+    allDonors:               { columns: allDonorsCols,   rows: allDonorsRows },
+    majorDonors:             { columns: allDonorsCols,   rows: majorDonorsRows },
+    renewals:                { columns: _idNameCols,     rows: _flagRows(_F_REN) },
+    majorGiftProspects:      { columns: _idNameCols,     rows: _flagRows(_F_MGP) },
+    lapsedMajorDonors:       { columns: _idNameCols,     rows: _flagRows(_F_LMD) },
+    midLevelProspects:       { columns: _idNameCols,     rows: _flagRows(_F_MID) },
+    plannedGivingProspects:  { columns: _idNameCols,     rows: _flagRows(_F_PLN) },
+    decreasedGivingDonors:   { columns: decreasedCols,   rows: decreasedRows },
+    consecutiveGivingDonors: { columns: consecCols,      rows: consecRows },
+  };
 }
 
 module.exports = { computeAnalytics, deriveYearParams };

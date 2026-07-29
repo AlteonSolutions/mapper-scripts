@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '7.27.2026d (upstream compute)';
+    var MAPPER_VERSION = '7.29.2026a (upstream compute + prospect sheets)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1559,7 +1559,7 @@
         });
 
         // UPSTREAM_COMPUTE: derive analytics columns in the mapper (Standard Variant only)
-        var _ucGiftSheet = null, _ucConstSheet = null;
+        var _ucGiftSheet = null, _ucConstSheet = null, _ucProspectSheets = null;
         if (UPSTREAM_COMPUTE && !isSimpleFlow) {
             try {
                 var _ucGiftRows = gd.map(function(r) {
@@ -1614,6 +1614,18 @@
                             }
                         }
                     }
+                    // Build prospect / donor sheets from upstream compute result
+                    _ucProspectSheets = {
+                        'All Donors':                XLSX.utils.aoa_to_sheet([_ucResult.allDonors.columns].concat(_ucResult.allDonors.rows)),
+                        'Major Donors':              XLSX.utils.aoa_to_sheet([_ucResult.majorDonors.columns].concat(_ucResult.majorDonors.rows)),
+                        'Renewals':                  XLSX.utils.aoa_to_sheet([_ucResult.renewals.columns].concat(_ucResult.renewals.rows)),
+                        'Major Gift Prospects':      XLSX.utils.aoa_to_sheet([_ucResult.majorGiftProspects.columns].concat(_ucResult.majorGiftProspects.rows)),
+                        'Lapsed Major Donors':       XLSX.utils.aoa_to_sheet([_ucResult.lapsedMajorDonors.columns].concat(_ucResult.lapsedMajorDonors.rows)),
+                        'Mid-Level Giving Prospects':XLSX.utils.aoa_to_sheet([_ucResult.midLevelProspects.columns].concat(_ucResult.midLevelProspects.rows)),
+                        'Planned Giving Prospects':  XLSX.utils.aoa_to_sheet([_ucResult.plannedGivingProspects.columns].concat(_ucResult.plannedGivingProspects.rows)),
+                        'Decreased Giving Donors':   XLSX.utils.aoa_to_sheet([_ucResult.decreasedGivingDonors.columns].concat(_ucResult.decreasedGivingDonors.rows)),
+                        'Consecutive Giving Donors': XLSX.utils.aoa_to_sheet([_ucResult.consecutiveGivingDonors.columns].concat(_ucResult.consecutiveGivingDonors.rows)),
+                    };
                     console.log('UPSTREAM_COMPUTE: gift rows=' + _ucResult.gift.rows.length + ' const rows=' + _ucResult.constituent.rows.length);
                 } else {
                     console.warn('UPSTREAM_COMPUTE: FY Start Month not found in form, using standard output');
@@ -1640,9 +1652,20 @@
         var wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, _ucGiftSheet || XLSX.utils.json_to_sheet(gd, {header: giftHeaders}), 'Gift Data');
         XLSX.utils.book_append_sheet(wb, _ucConstSheet || XLSX.utils.json_to_sheet(cd2, {header: origConstHeaders}), 'Constituent Data');
+        // Append pre-computed prospect/donor sheets (replaces FILTER-formula versions in template)
+        var _ucProspectSheetNames = ['All Donors', 'Major Donors', 'Renewals', 'Major Gift Prospects',
+            'Lapsed Major Donors', 'Mid-Level Giving Prospects', 'Planned Giving Prospects',
+            'Decreased Giving Donors', 'Consecutive Giving Donors'];
+        if (_ucProspectSheets) {
+            for (var _psi = 0; _psi < _ucProspectSheetNames.length; _psi++) {
+                var _psn = _ucProspectSheetNames[_psi];
+                if (_ucProspectSheets[_psn]) XLSX.utils.book_append_sheet(wb, _ucProspectSheets[_psn], _psn);
+            }
+        }
         for (var q = 0; q < workbook.SheetNames.length; q++) {
             var sn = workbook.SheetNames[q];
-            if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions') {
+            var _isProspectSheet = _ucProspectSheets && _ucProspectSheetNames.indexOf(sn) !== -1;
+            if (sn !== 'Gift Data' && sn !== 'Constituent Data' && sn !== 'Instructions' && !_isProspectSheet) {
                 try {
                     var srcSheet = workbook.Sheets[sn];
                     // For CC Campaign Data, evaluate tier formulas from direct inputs
