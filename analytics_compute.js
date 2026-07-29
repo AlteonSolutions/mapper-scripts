@@ -183,7 +183,15 @@ function computeAnalytics(giftRows, consRows, params) {
   consCols.push('Consecutive Year Donor', 'Donor Journey Donor', 'Renewals', 'Major Gift Prospect',
     'Lapsed Major Donors', 'Mid-Level Giving Prospect', 'Planned Giving Prospect');
 
-  const consOut = C.map(c => {
+  // Drop constituents absent from Gift Data. Ports the DeleteExtraConstituents
+  // macro's =COUNTIF('Gift Data'!$A:$A,A2)=0 -> delete rule. That macro ran on the
+  // data file *after* this script produced it, so the gift-side aggregates above
+  // are deliberately built pre-filter; only the constituent output is pruned.
+  // Every derived sheet below reads consOut, so each inherits the filter.
+  const giftCids = new Set();
+  for (const g of G) if (g.cid !== null) giftCids.add(g.cid);
+
+  const consOut = C.filter(c => giftCids.has(c.cid)).map(c => {
     const cid = c.cid;
     // First Gift Date FY
     let fgdfy;
