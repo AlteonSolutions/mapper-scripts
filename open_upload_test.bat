@@ -31,7 +31,7 @@ if exist "%~dp0mapper-scripts\.git" (
     goto :have_repo
 )
 
-echo [1/5] No clone found. Cloning into "%~dp0mapper-scripts" ...
+echo [1/3] No clone found. Cloning into "%~dp0mapper-scripts" ...
 echo       (a GitHub sign-in window may appear - this is a private repo)
 echo.
 git clone --branch %BRANCH% "%REPO_URL%" "%~dp0mapper-scripts"
@@ -47,43 +47,30 @@ set "REPO_DIR=%CD%"
 echo  Folder: %CD%
 echo.
 
-echo [1/5] Fetching %BRANCH% ...
+echo [1/3] Fetching %BRANCH% ...
 git fetch origin %BRANCH%
 if errorlevel 1 goto :fetch_failed
 
 echo.
-echo [2/5] Switching to %BRANCH% ...
+echo [2/3] Switching to %BRANCH% ...
 git checkout %BRANCH%
 if errorlevel 1 goto :checkout_failed
 
 echo.
-echo [3/5] Pulling latest ...
+echo [3/3] Pulling latest ...
 git pull --ff-only origin %BRANCH%
 if errorlevel 1 goto :not_ff
 
 :updated
 cd /d "%REPO_DIR%"
 
-echo.
-echo [4/5] Checking dependencies ...
-if exist "node_modules\xlsx\dist\xlsx.full.min.js" goto :deps_ok
-where npm >nul 2>&1
-if errorlevel 1 goto :no_npm
-echo       Installing xlsx ...
-call npm install --silent
-goto :deps_ok
+REM No npm step: package.json is gitignored, so a fresh clone has nothing to
+REM install from. The page pulls xlsx from the CDN and mapper.js from disk.
 
-:no_npm
-echo [WARN] npm not found and node_modules is missing.
-echo        The page needs xlsx. Either install Node.js and re-run, or edit
-echo        %PAGE% and point the xlsx script tag back at the cdnjs URL.
-goto :deps_ok
-
-:deps_ok
 if not exist "%PAGE%" goto :no_page
 
 echo.
-echo [5/5] Launching %PAGE% ...
+echo [done] Launching %PAGE% ...
 start "" "%REPO_DIR%\%PAGE%"
 
 echo.

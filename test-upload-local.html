@@ -327,7 +327,17 @@
     <div id="insp-body"><p style="color:#7f8b98">Nothing captured yet. Complete the flow and press Submit.</p></div>
 </div>
 
-<script src="node_modules/xlsx/dist/xlsx.full.min.js"></script>
+<!-- xlsx: CDN first (same build the live page loads, and package.json is
+     gitignored so a fresh clone has no node_modules to install from), then a
+     local node_modules copy for anyone who does have one / is offline.
+     Only mapper.js is deliberately local -- that is the point of this harness. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+    if (typeof XLSX === 'undefined') {
+        // document.write during parse inserts this synchronously, ahead of mapper.js
+        document.write('<scr' + 'ipt src="node_modules/xlsx/dist/xlsx.full.min.js"><\/scr' + 'ipt>');
+    }
+</script>
 <script>
 /* Local test harness — intercepts the Power Automate submit so nothing is sent
    unless you explicitly opt in, then inspects the workbook mapper.js produced. */
@@ -556,6 +566,18 @@
 
 </script>
 <script src="mapper.js"></script>
+<script>
+    if (typeof XLSX === 'undefined') {
+        document.addEventListener('DOMContentLoaded', function () {
+            var b = document.createElement('div');
+            b.style.cssText = 'background:#7a1f1f;color:#fff;padding:14px 20px;font:13px/1.5 ui-monospace,monospace;position:relative;z-index:100001';
+            b.textContent = 'XLSX failed to load, so nothing on this page will work. ' +
+                'The CDN (cdnjs.cloudflare.com) was unreachable and there is no local ' +
+                'node_modules copy. Check your connection or corporate proxy, then reload.';
+            document.body.insertBefore(b, document.body.firstChild);
+        });
+    }
+</script>
 <script>
     // Highlight active variant link
     var params = new URLSearchParams(window.location.search);
