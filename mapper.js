@@ -459,6 +459,25 @@
         }
     }
 
+    // Finds a page-provided file input for the organization logo by locating a
+    // <label> whose text mentions "Logo" and reading the nearest file input's
+    // currently-selected file. Mirrors setIndustryTypeField's DOM-search
+    // pattern above, since both rely on a field the surrounding page provides
+    // rather than one mapper.js creates itself.
+    function getLogoFile() {
+        var labels = document.querySelectorAll('label');
+        for (var i = 0; i < labels.length; i++) {
+            if (labels[i].textContent.indexOf('Logo') !== -1) {
+                var container = labels[i].closest('div');
+                var input = container ? container.querySelector('input[type="file"]') : null;
+                if (input && input.files && input.files[0]) return input.files[0];
+            }
+        }
+        var fallback = document.querySelector('input[type="file"][name*="logo"]')
+                     || document.querySelector('input[type="file"][name*="Logo"]');
+        return (fallback && fallback.files && fallback.files[0]) ? fallback.files[0] : null;
+    }
+
     window.addEventListener('message', function(event) {
         var data = event.data;
         if (data && data.type === 'setIndustryType' && data.value) {
@@ -899,47 +918,66 @@
 
                     var formSource   = isSW ? 'SW' : (isKellogg ? 'Databasey' : (isDatabasey ? 'Databasey' : 'Alford'));
                     var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
+                    var logoFile = getLogoFile();
 
-                    var reader = new FileReader();
-                    reader.readAsDataURL(blob);
-                    reader.onloadend = function() {
-                        var base64 = reader.result.split(',')[1];
-                        var payload = {
-                            company_name:              clientName.trim(),
-                            full_name:                 contactName.trim(),
-                            email:                     email.trim(),
-                            'Fiscal Year Start Month': fyMonth,
-                            'Major Giving Threshold':  threshold,
-                            '# of Board Members':      boardMembers || '',
-                            'Industry Type':           selectedIndustryType || '',
-                            form_source:               formSource,
-                            analysis_type:             analysisType,
-                            file_content:              base64
+                    function submitPayload(logoBase64, logoFilename) {
+                        var reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onloadend = function() {
+                            var base64 = reader.result.split(',')[1];
+                            var payload = {
+                                company_name:              clientName.trim(),
+                                full_name:                 contactName.trim(),
+                                email:                     email.trim(),
+                                'Fiscal Year Start Month': fyMonth,
+                                'Major Giving Threshold':  threshold,
+                                '# of Board Members':      boardMembers || '',
+                                'Industry Type':           selectedIndustryType || '',
+                                form_source:               formSource,
+                                analysis_type:             analysisType,
+                                file_content:              base64,
+                                logo_content:              logoBase64 || '',
+                                logo_filename:             logoFilename || ''
+                            };
+                            fetch(PA_TRIGGER_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            })
+                            .then(function(res) {
+                                if (res.ok || res.status === 202) {
+                                    window.location.href = 'https://getdatabasey.com/submitted';
+                                } else {
+                                    throw new Error('Server returned ' + res.status);
+                                }
+                            })
+                            .catch(function(err) {
+                                console.error('PA submit error:', err);
+                                btn.disabled = false;
+                                btn.innerHTML = originalHTML;
+                                alert('Submission failed — please try again or contact support.\n\nError: ' + err.message);
+                            });
                         };
-                        fetch(PA_TRIGGER_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        })
-                        .then(function(res) {
-                            if (res.ok || res.status === 202) {
-                                window.location.href = 'https://getdatabasey.com/submitted';
-                            } else {
-                                throw new Error('Server returned ' + res.status);
-                            }
-                        })
-                        .catch(function(err) {
-                            console.error('PA submit error:', err);
+                        reader.onerror = function() {
                             btn.disabled = false;
                             btn.innerHTML = originalHTML;
-                            alert('Submission failed — please try again or contact support.\n\nError: ' + err.message);
-                        });
-                    };
-                    reader.onerror = function() {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML;
-                        alert('Failed to prepare file for upload. Please try again.');
-                    };
+                            alert('Failed to prepare file for upload. Please try again.');
+                        };
+                    }
+
+                    if (logoFile) {
+                        var logoReader = new FileReader();
+                        logoReader.readAsDataURL(logoFile);
+                        logoReader.onloadend = function() {
+                            submitPayload(logoReader.result.split(',')[1], logoFile.name);
+                        };
+                        logoReader.onerror = function() {
+                            console.warn('Logo file failed to read — submitting without it.');
+                            submitPayload('', '');
+                        };
+                    } else {
+                        submitPayload('', '');
+                    }
                 }, 50);
             });
         });

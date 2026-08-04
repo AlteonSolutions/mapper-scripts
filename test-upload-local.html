@@ -160,6 +160,39 @@
 
         /* ── Theme vars ──────────────────────────────────────────────────── */
         :root { --theme-color: #2c5f5d; --theme-color-hover: #3d7672; }
+
+        /* ── Client & Contact Info (mirrors the live GHL page layout) ──────── */
+        .demo-form-section { margin-bottom: 28px; }
+        .demo-form-section h3 { font-size: 15px; font-weight: 700; text-align: left; color: #222; margin: 0 0 14px; }
+        .demo-field { margin-bottom: 14px; }
+        .demo-field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+        .demo-required { color: #ef4444; }
+        .demo-field input, .demo-field select {
+            width: 100%; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
+            font-size: 14px; font-family: Roboto, sans-serif; box-sizing: border-box; outline: none;
+            background: #fff; color: #333;
+        }
+        .demo-field input:focus, .demo-field select:focus { border-color: var(--theme-color, #2c5f5d); }
+        .demo-field input::placeholder { color: #aaa; }
+        .demo-field-icon { position: relative; }
+        .demo-field-icon input { padding-left: 32px; }
+        .demo-field-icon .demo-icon-glyph { position: absolute; left: 12px; top: 38px; color: #999; font-size: 14px; pointer-events: none; }
+        .demo-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 480px) { .demo-grid-2 { grid-template-columns: 1fr; } }
+
+        .demo-upload-box {
+            border: 2px dashed #ccc; border-radius: 8px; padding: 28px 20px;
+            text-align: center; cursor: pointer; background: #fafafa;
+            transition: border-color 0.2s;
+        }
+        .demo-upload-box:hover { border-color: #999; }
+        .demo-upload-box svg { display: block; margin: 0 auto 10px; }
+        .demo-upload-hint { font-size: 12px; color: #aaa; margin-top: 4px; }
+        .demo-file-chip {
+            display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
+            background: #f0f0f0; border-radius: 20px; padding: 6px 14px; font-size: 13px; color: #333;
+        }
+        .demo-file-chip button { background: none; border: none; cursor: pointer; color: #999; font-size: 15px; line-height: 1; padding: 0; }
     </style>
 </head>
 <body>
@@ -179,6 +212,78 @@
 
 <!-- ── Page ───────────────────────────────────────────────────────────────── -->
 <div id="page-wrap">
+
+    <!-- ── Client & Contact Info ────────────────────────────────────────────
+         Mirrors the live GHL page layout: these fields drive the actual
+         submission. They are synced into mapper.js's own late-appearing
+         "All Done" card fields (mapper-client-name etc.) right before that
+         card's Submit button is read — see the sync script near the bottom
+         of this file. mapper.js itself is not modified for this; it still
+         creates and reads its own fields exactly as it does in production,
+         they just arrive pre-filled from here. -->
+    <div class="demo-form-section">
+        <h3>Internal Contact Information</h3>
+        <div class="demo-grid-2">
+            <div class="demo-field">
+                <label>First Name <span class="demo-required">*</span></label>
+                <input type="text" id="demo-first-name" placeholder="Enter First Name">
+            </div>
+            <div class="demo-field">
+                <label>Last Name <span class="demo-required">*</span></label>
+                <input type="text" id="demo-last-name" placeholder="Enter Last Name">
+            </div>
+        </div>
+        <div class="demo-field demo-field-icon">
+            <label>Email <span class="demo-required">*</span></label>
+            <span class="demo-icon-glyph">&#9993;</span>
+            <input type="email" id="demo-email" placeholder="Enter Email">
+        </div>
+    </div>
+
+    <div class="demo-form-section">
+        <h3>Client Information</h3>
+        <div class="demo-field">
+            <label>Client Name <span class="demo-required">*</span></label>
+            <input type="text" id="demo-client-name" placeholder="Enter Client Name">
+        </div>
+        <div class="demo-grid-2">
+            <div class="demo-field">
+                <label># of Board Members <span class="demo-required">*</span></label>
+                <input type="number" id="demo-board-members" min="0" placeholder="Enter # of Board Members">
+            </div>
+            <div class="demo-field">
+                <label>Fiscal Year Start Month <span class="demo-required">*</span></label>
+                <select id="demo-fy-month">
+                    <option value="">Select Fiscal Year Start Month</option>
+                </select>
+            </div>
+        </div>
+        <div class="demo-field demo-field-icon">
+            <label>Major Giving Threshold <span class="demo-required">*</span></label>
+            <span class="demo-icon-glyph">$</span>
+            <input type="number" id="demo-threshold" min="1" placeholder="Enter Major Giving Threshold">
+        </div>
+    </div>
+
+    <!-- Organization Logo File — a real upload. mapper.js's getLogoFile() finds
+         it by searching for a label containing "Logo" and reading the nearest
+         file input, then base64-encodes it into the PA payload as
+         logo_content / logo_filename. Field names chosen to mirror the
+         existing file_content pattern — confirm they match what the PA flow
+         actually expects to receive before relying on this in production. -->
+    <div class="demo-form-section">
+        <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">Organization Logo File</label>
+        <div class="demo-upload-box" id="logoUploadBox">
+            <svg width="26" height="26" viewBox="0 0 16 16" fill="#aaa" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8z"/>
+                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"/>
+                <path fill-rule="evenodd" d="M5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"/>
+            </svg>
+            <div id="logoUploadLabel" style="font-size:13px;color:#666;">Click to upload your logo</div>
+            <div class="demo-upload-hint">PNG, JPEG or JPG</div>
+        </div>
+        <input type="file" id="demo-logo-input" accept=".png,.jpg,.jpeg" style="display:none;">
+    </div>
 
     <div id="mapper-container" style="visibility:hidden;">
 
@@ -564,6 +669,57 @@
     }
 })();
 
+</script>
+
+<script>
+    // Demo-page wiring: populate the FY month select, forward clicks on the
+    // logo box to its hidden file input, and copy the upfront fields into
+    // mapper.js's own late-appearing fields right before it reads them.
+    // Registered before mapper.js's <script> tag so this click listener on
+    // #customSubmitBtn (which already exists in the static markup above)
+    // attaches first and runs before mapper.js's own listener on every click.
+    (function () {
+        'use strict';
+
+        var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        var fyMonthSel = document.getElementById('demo-fy-month');
+        MONTHS.forEach(function (m) {
+            var opt = document.createElement('option');
+            opt.value = m; opt.textContent = m;
+            fyMonthSel.appendChild(opt);
+        });
+
+        var logoBox = document.getElementById('logoUploadBox');
+        var logoInput = document.getElementById('demo-logo-input');
+        var logoLabel = document.getElementById('logoUploadLabel');
+        logoBox.addEventListener('click', function () { logoInput.click(); });
+        logoInput.addEventListener('change', function () {
+            var f = logoInput.files && logoInput.files[0];
+            logoLabel.textContent = f ? ('Selected: ' + f.name) : 'Click to upload your logo';
+        });
+
+        function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+        document.getElementById('customSubmitBtn').addEventListener('click', function () {
+            var mc = document.getElementById('mapper-client-name');
+            var mn = document.getElementById('mapper-contact-name');
+            var me = document.getElementById('mapper-email');
+            var mf = document.getElementById('mapper-fy-start-month');
+            var mt = document.getElementById('mapper-major-giving-threshold');
+            var mb = document.getElementById('mapper-board-members');
+            // These only exist once mapper.js's "All Done" card has been built
+            // (after mapping finishes), which is always true by the time a
+            // user can actually click the Submit button - it stays hidden
+            // until then.
+            if (mc) mc.value = val('demo-client-name');
+            if (mn) mn.value = (val('demo-first-name') + ' ' + val('demo-last-name')).trim();
+            if (me) me.value = val('demo-email');
+            if (mf) mf.value = val('demo-fy-month');
+            if (mt) mt.value = val('demo-threshold');
+            if (mb) mb.value = val('demo-board-members');
+        });
+    })();
 </script>
 <script src="mapper.js"></script>
 <script>
