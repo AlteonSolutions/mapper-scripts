@@ -193,6 +193,41 @@
             background: #f0f0f0; border-radius: 20px; padding: 6px 14px; font-size: 13px; color: #333;
         }
         .demo-file-chip button { background: none; border: none; cursor: pointer; color: #999; font-size: 15px; line-height: 1; padding: 0; }
+
+        /* ── Sector Selection (ported from sector-selection.js, no iframe) ──
+             Original ran on the outer GHL page with mapper.js in an iframe,
+             communicating industry choice via ?industry= on the iframe src
+             and scroll position via postMessage. Merged into one page here:
+             same icon config, brand assets, and collapse animation, but
+             selection sets window.selectedIndustryKey directly (one of
+             detectIndustry()'s existing fallbacks in mapper.js, unmodified)
+             and reveals the rest of the page in place instead of reloading
+             an iframe. */
+        #sector-heading { font-size: 20px; font-weight: 700; text-align: center; color: #222; margin: 8px 0 24px; }
+        .category-container { display: flex; flex-direction: column; gap: 18px; align-items: center; margin-bottom: 8px; }
+        .category-row { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .category-btn-icon {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            width: 92px; padding: 10px 6px; border: none; background: none; cursor: pointer;
+            font-family: Roboto, sans-serif; transition: transform 0.2s ease;
+        }
+        .category-btn-icon:hover { transform: translateY(-4px); }
+        .category-btn-icon.selected { transform: none; }
+        .category-icon {
+            width: 64px; height: 64px; border-radius: 50%; background: #fff;
+            border: 2px solid var(--theme-color, #2c5f5d); display: flex; align-items: center;
+            justify-content: center; padding: 14px; box-sizing: border-box;
+        }
+        .category-icon img { width: 100%; height: 100%; object-fit: contain; }
+        .category-label { font-size: 12px; font-weight: 600; color: #444; text-align: center; line-height: 1.3; }
+
+        #post-sector-content {
+            display: none; opacity: 0; transform: translateY(12px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        #post-sector-content.show { display: block; opacity: 1; transform: translateY(0); }
+        #sector-selection-wrap { transition: opacity 0.4s ease; }
+        #sector-selection-wrap.done { opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -212,6 +247,19 @@
 
 <!-- ── Page ───────────────────────────────────────────────────────────────── -->
 <div id="page-wrap">
+
+    <!-- ── Sector Selection (shown first) ─────────────────────────────────── -->
+    <div id="sector-selection-wrap">
+        <div id="sector-heading">What sector best describes your organization?</div>
+        <div class="category-container">
+            <div class="category-row" id="row1"></div>
+            <div class="category-row" id="row2"></div>
+        </div>
+        <!-- #template-download-wrap inserted here by the script below, matching sector-selection.js -->
+    </div>
+
+    <!-- ── Everything below stays hidden until a sector is picked ──────────── -->
+    <div id="post-sector-content">
 
     <!-- ── Client & Contact Info ────────────────────────────────────────────
          Mirrors the live GHL page layout: these fields drive the actual
@@ -399,6 +447,8 @@
         </div>
 
     </div><!-- end #mapper-container -->
+
+    </div><!-- end #post-sector-content -->
 
 </div><!-- end #page-wrap -->
 
@@ -669,6 +719,193 @@
     }
 })();
 
+</script>
+
+<script>
+    // Sector selection - ported from sector-selection.js. That file ran on
+    // the outer GHL page with mapper.js loaded in a separate iframe, passing
+    // the chosen industry via ?industry= on the iframe's src (a full iframe
+    // reload) and syncing scroll position across frames via postMessage.
+    // Merged into one page here: same brand icon config and the same
+    // collapse-to-center / fade-out animation, but selection sets
+    // window.selectedIndustryKey directly instead of reloading anything -
+    // that's already one of the fallbacks detectIndustry() in mapper.js
+    // checks (unmodified), so no page reload and no iframe are needed for
+    // the choice to reach mapper.js's spotlight config and Industry Type
+    // field. All iframe/postMessage scroll-sync code from the original is
+    // dropped as inapplicable to a single-document layout.
+    (function () {
+        'use strict';
+
+        var brands = {
+            alford: { icons: {
+                arts_culture:       'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a89511711212fc4e39.svg',
+                environmental:      'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8480ea4de5ac8772a.svg',
+                education:          'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a85e933b4a1f6909d9.svg',
+                family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69948e0fd614c9b315f2d7d1.svg',
+                healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8951171bc3cfc4e3a.svg',
+                human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8d119a5a3fe4cc554.svg',
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8fa89c784f91527c0.svg'
+            }},
+            sw: { icons: {
+                arts_culture:       'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931b3d5f8724c61fde2.svg',
+                environmental:      'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962932f02fa40f576301c2.svg',
+                education:          'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931d614c91a00646632.svg',
+                family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931905d476dbdbf20b2.svg',
+                healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/699629313fd420c9de4da557.svg',
+                human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931f02fa478206301b5.svg',
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931419632499471805b.svg'
+            }},
+            kellogg: { icons: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db0f58810f313b39b17.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68f58810f313b3af1f.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e688c6ee94929b7a342.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e6860904d91054158b3.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68fedd58e234bc1d1c.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e687b799e67777fc875.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db1054f002268c9ecf1.svg'
+            }},
+            databasey: { icons: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539a.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882987b799e6777801fba.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+            }}
+        };
+
+        var industries = [
+            { key: 'arts_culture',      mapperKey: 'arts',                label: 'Arts & Culture',       row: 1 },
+            { key: 'environmental',     mapperKey: 'environmental',       label: 'Environmental',        row: 1 },
+            { key: 'education',         mapperKey: 'education',           label: 'Education',            row: 1 },
+            { key: 'family_foundation', mapperKey: 'communityfoundation', label: 'Community Foundation', row: 1 },
+            { key: 'healthcare',        mapperKey: 'healthcare',          label: 'Healthcare',           row: 2 },
+            { key: 'human_services',    mapperKey: 'humanservices',       label: 'Human Services',       row: 2 },
+            { key: 'religion',          mapperKey: 'religion',            label: 'Religion',             row: 2 }
+        ];
+
+        var ssParams = new URLSearchParams(window.location.search);
+        var ssIsSW = ssParams.get('brand') === 'sw';
+        var ssIsKellogg = ssParams.get('brand') === 'kellogg';
+        var ssIsDatabasey = ssParams.get('brand') === 'databasey';
+        var ssIsStaffing = ssParams.get('variant') === 'staffing';
+        var ssIsDevAssessment = ssParams.get('variant') === 'developmentassessment';
+        var ssIsCampaignCounsel = ssParams.get('variant') === 'campaigncounsel';
+        var ssBrand = ssIsSW ? brands.sw : ssIsKellogg ? brands.kellogg : ssIsDatabasey ? brands.databasey : brands.alford;
+
+        industries.forEach(function (ind) {
+            var row = document.getElementById('row' + ind.row);
+            if (!row) return;
+            var btn = document.createElement('button');
+            btn.className = 'category-btn-icon';
+            btn.type = 'button';
+            btn.onclick = function () { selectIndustry(btn, ind.mapperKey, ind.label); };
+            btn.innerHTML = '<div class="category-icon"><img src="' + ssBrand.icons[ind.key] + '" alt="' + ind.label + '"></div>'
+                          + '<div class="category-label">' + ind.label + '</div>';
+            row.appendChild(btn);
+        });
+
+        var templateUrl = ssIsStaffing
+            ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f41949cad250291f4bf0cb.xlsx'
+            : ssIsDevAssessment
+            ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f4d41f23e63d676c8653d7.xlsx'
+            : ssIsCampaignCounsel
+            ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f50560daa24d98950cd696.xlsx'
+            : 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
+        var dlWrap = document.createElement('div');
+        dlWrap.id = 'template-download-wrap';
+        dlWrap.style.cssText = 'text-align:center;margin-top:14px;';
+        var dlLink = document.createElement('a');
+        dlLink.href = templateUrl;
+        dlLink.download = 'Data Upload Template.xlsx';
+        dlLink.textContent = 'Download Data Template';
+        dlLink.style.cssText = 'display:inline-block;font-family:Roboto,sans-serif;font-size:14px;color:var(--theme-color,#2c5f5d);border:1px solid var(--theme-color,#2c5f5d);border-radius:8px;padding:9px 28px;text-decoration:none;cursor:pointer;background:#fff;transition:transform 0.3s ease;';
+        dlLink.onmouseover = function () { this.style.transform = 'translateY(-3px)'; };
+        dlLink.onmouseout  = function () { this.style.transform = 'translateY(0)'; };
+        dlLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            fetch(templateUrl).then(function (r) { return r.blob(); }).then(function (blob) {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'Data Upload Template.xlsx';
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(a.href);
+            }).catch(function () { window.open(templateUrl, '_blank'); });
+        });
+        dlWrap.appendChild(dlLink);
+        document.getElementById('sector-selection-wrap').appendChild(dlWrap);
+
+        window.selectIndustry = function (clickedBtn, mapperKey, industryLabel) {
+            var dlw = document.getElementById('template-download-wrap');
+            if (dlw) dlw.style.display = 'none';
+            var cc = document.querySelector('.category-container');
+            var allBtns = cc ? cc.querySelectorAll('.category-btn-icon') : [];
+
+            if (clickedBtn && cc) {
+                var ccRect = cc.getBoundingClientRect();
+                var clickedRect = clickedBtn.getBoundingClientRect();
+                var endX = (ccRect.width / 2) - (clickedRect.width / 2);
+                var endY = 10;
+
+                var snapshots = [];
+                allBtns.forEach(function (btn) {
+                    var r = btn.getBoundingClientRect();
+                    snapshots.push({ btn: btn, left: r.left - ccRect.left, top: r.top - ccRect.top, width: r.width, height: r.height });
+                });
+
+                cc.style.position = 'relative';
+                cc.style.height = ccRect.height + 'px';
+                cc.style.overflow = 'visible';
+
+                snapshots.forEach(function (s) {
+                    s.btn.style.position = 'absolute';
+                    s.btn.style.left = s.left + 'px';
+                    s.btn.style.top = s.top + 'px';
+                    s.btn.style.width = s.width + 'px';
+                    s.btn.style.height = s.height + 'px';
+                    s.btn.style.margin = '0';
+                });
+
+                clickedBtn.classList.add('selected');
+
+                allBtns.forEach(function (btn) {
+                    if (btn !== clickedBtn) {
+                        btn.style.transition = 'opacity 0.6s ease';
+                        btn.style.opacity = '0';
+                        btn.style.pointerEvents = 'none';
+                    }
+                });
+
+                setTimeout(function () {
+                    clickedBtn.style.transition = 'left 1.2s cubic-bezier(0.4,0,0.2,1), top 1.2s cubic-bezier(0.4,0,0.2,1)';
+                    clickedBtn.style.left = endX + 'px';
+                    clickedBtn.style.top = endY + 'px';
+                }, 700);
+
+                setTimeout(function () {
+                    // window.selectedIndustryKey is one of the fallbacks
+                    // detectIndustry() in mapper.js already checks - setting
+                    // it here is all that's needed for the choice to reach
+                    // mapper.js's spotlight config and Industry Type field
+                    // once the user uploads their file.
+                    window.selectedIndustryKey = mapperKey;
+
+                    document.getElementById('sector-selection-wrap').classList.add('done');
+                    var psc = document.getElementById('post-sector-content');
+                    psc.classList.add('show');
+                    setTimeout(function () {
+                        psc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }, 1900);
+            } else {
+                window.selectedIndustryKey = mapperKey;
+                document.getElementById('sector-selection-wrap').classList.add('done');
+                document.getElementById('post-sector-content').classList.add('show');
+            }
+        };
+    })();
 </script>
 
 <script>
