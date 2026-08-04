@@ -1663,20 +1663,30 @@
         var origGiftHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data'], {header: 1})[0] || [];
         var origConstHeaders = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], {header: 1})[0] || [];
 
-                // Auto-add constituent records for any Constituent IDs in Gift Data missing from Constituent Data
+                // Auto-add constituent records for any Constituent IDs in Gift Data missing from Constituent Data.
+        // IDs are normalized (leading zeros stripped when purely numeric) before comparing, since Excel
+        // frequently stores the same ID as a number in one sheet and a zero-padded string in the other
+        // (e.g. 53036 vs "053036") — without this, an existing constituent with a real name/address gets
+        // a second, blank placeholder row appended for them because the raw string comparison misses.
+        var normId = function(v) {
+            var s = (v == null ? '' : v).toString().trim();
+            return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s;
+        };
         var cdIdSet = {};
-        for (var ci = 0; ci < cd2.length; ci++) cdIdSet[(cd2[ci]['Constituent ID'] || '').toString().trim()] = true;
+        for (var ci = 0; ci < cd2.length; ci++) cdIdSet[normId(cd2[ci]['Constituent ID'])] = true;
         var missingCids = {};
         for (var mi = 0; mi < gd.length; mi++) {
-            var mcid = (gd[mi]['Constituent ID'] || '').toString().trim();
-            if (mcid && !cdIdSet[mcid]) {
-                if (!missingCids[mcid]) missingCids[mcid] = [];
+            var mcidRaw = (gd[mi]['Constituent ID'] || '').toString().trim();
+            var mcidKey = normId(mcidRaw);
+            if (mcidKey && !cdIdSet[mcidKey]) {
+                if (!missingCids[mcidKey]) missingCids[mcidKey] = { display: mcidRaw, dates: [] };
                 var gdate = gd[mi]['Gift Date'];
-                if (gdate !== undefined && gdate !== '') missingCids[mcid].push(gdate);
+                if (gdate !== undefined && gdate !== '') missingCids[mcidKey].dates.push(gdate);
             }
         }
-        Object.keys(missingCids).forEach(function(cid) {
-            var dates = missingCids[cid];
+        Object.keys(missingCids).forEach(function(key) {
+            var entry = missingCids[key];
+            var dates = entry.dates;
             var oldest = dates.length > 0 ? dates.reduce(function(a, b) {
                 var ta = typeof a === 'number' ? (a - 25569) * 86400000 : new Date(a).getTime();
                 var tb = typeof b === 'number' ? (b - 25569) * 86400000 : new Date(b).getTime();
@@ -1684,7 +1694,7 @@
             }) : '';
             var newRow = {};
             for (var h = 0; h < origConstHeaders.length; h++) newRow[origConstHeaders[h]] = '';
-            newRow['Constituent ID'] = cid;
+            newRow['Constituent ID'] = entry.display;
             newRow['Constituent Type'] = 'Individual';
             newRow['First Gift Date'] = oldest;
             cd2.push(newRow);
