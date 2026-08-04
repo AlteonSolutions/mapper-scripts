@@ -983,23 +983,48 @@
 
         function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
 
-        document.getElementById('customSubmitBtn').addEventListener('click', function () {
+        function syncMapperFields() {
             var mc = document.getElementById('mapper-client-name');
             var mn = document.getElementById('mapper-contact-name');
             var me = document.getElementById('mapper-email');
             var mf = document.getElementById('mapper-fy-start-month');
             var mt = document.getElementById('mapper-major-giving-threshold');
             var mb = document.getElementById('mapper-board-members');
-            // These only exist once mapper.js's "All Done" card has been built
-            // (after mapping finishes), which is always true by the time a
-            // user can actually click the Submit button - it stays hidden
-            // until then.
             if (mc) mc.value = val('demo-client-name');
             if (mn) mn.value = (val('demo-first-name') + ' ' + val('demo-last-name')).trim();
             if (me) me.value = val('demo-email');
             if (mf) mf.value = val('demo-fy-month');
             if (mt) mt.value = val('demo-threshold');
             if (mb) mb.value = val('demo-board-members');
+        }
+
+        // mapper.js builds #allDoneCard (mapper.js ~line 841) unconditionally
+        // at init, well before mapping is actually done - it just sits
+        // display:none until showAllDoneCard() (mapper.js ~line 1492) flips it
+        // to visible once every mapping step is complete. Checking for mere
+        // existence rather than visibility fires this the instant the page
+        // loads, capturing the top fields while they're still blank. Poll for
+        // offsetParent !== null (real visibility) instead, so this only fires
+        // once mapping has genuinely finished and the top fields hold whatever
+        // the user actually typed. Sync it then, hide just the field grid -
+        // keeping the heading and Submit button - so the user isn't asked to
+        // fill in the same details twice. The click-time sync below stays as
+        // a defensive re-sync in case a top field gets edited after this runs.
+        (function watchForAllDoneCard() {
+            var interval = setInterval(function () {
+                var card = document.getElementById('allDoneCard');
+                if (!card || card.offsetParent === null) return;
+                clearInterval(interval);
+                syncMapperFields();
+                var heading = card.children[0];
+                var fieldGrid = card.children[1];
+                if (heading) heading.textContent = '🎉 All Done! Ready to submit.';
+                if (fieldGrid) fieldGrid.style.display = 'none';
+            }, 200);
+        })();
+
+        document.getElementById('customSubmitBtn').addEventListener('click', function () {
+            syncMapperFields();
         });
     })();
 </script>

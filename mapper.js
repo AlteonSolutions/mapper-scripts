@@ -1222,7 +1222,7 @@
                 // Update upload box to show file info like GHL style
                 var uploadBox = document.getElementById('uploadBox');
                 uploadBox.innerHTML = uploadIconSvg
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 0 0 0;border-top:1px solid #eee;margin-top:8px;">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 14px 10px;border-top:1px solid #eee;margin-top:8px;box-sizing:border-box;">'
                     + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
                     + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
                     + '</div>';
