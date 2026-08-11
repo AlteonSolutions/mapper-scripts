@@ -88,6 +88,29 @@
                 human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
                 religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
             }
+        },
+        // Same form/flow as Databasey — HF just gets its own accent color (#56153C) applied via
+        // iconFilter below, reusing Databasey's icon/header artwork rather than new assets.
+        hf: {
+            formId: '5GIq2FyRJrWJv32C9avI',
+            icons: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539a.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882987b799e6777801fba.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+            },
+            headers: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539a.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882987b799e6777801fba.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+            }
         }
     };
 
@@ -111,10 +134,12 @@
     var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
-    // Databasey is now the default/fallback brand; Alford requires an explicit URL match.
-    var brand = isSW ? brands.sw : isKellogg ? brands.kellogg : isAlford ? brands.alford : brands.databasey;
-    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isAlford ? '#2c5f5d' : '#4F788D';
-    var iconFilter = '';
+    // Databasey is now the default/fallback brand; Alford and HF require an explicit URL match.
+    var brand = isSW ? brands.sw : isKellogg ? brands.kellogg : isHF ? brands.hf : isAlford ? brands.alford : brands.databasey;
+    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
+    // HF reuses Databasey's icon/header artwork, recolored to #56153C via CSS filter (computed for a
+    // black/dark-neutral source image — spot-check in-browser and nudge if the source SVGs aren't black).
+    var iconFilter = isHF ? 'invert(19%) sepia(93%) saturate(927%) hue-rotate(285deg) brightness(63%) contrast(102%)' : '';
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
     function init() {
