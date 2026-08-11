@@ -106,11 +106,14 @@
     var isSW = window.location.href.includes('getdatabasey.com/sw');
     var isDatabasey = window.location.href.includes('getdatabasey.com/analytics');
     var isKellogg = window.location.href.includes('heyfundraiser.com/kellogg') || window.location.href.includes('getdatabasey.com/kellogg');
+    var isHF = window.location.href.includes('getdatabasey.com/heyfundraiser');
+    var isAlford = window.location.href.includes('getdatabasey.com/alfordanalytics');
     var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
-    var brand = isSW ? brands.sw : isKellogg ? brands.kellogg : isDatabasey ? brands.databasey : brands.alford;
-    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isDatabasey ? '#4F788D' : '#2c5f5d';
+    // Databasey is now the default/fallback brand; Alford requires an explicit URL match.
+    var brand = isSW ? brands.sw : isKellogg ? brands.kellogg : isAlford ? brands.alford : brands.databasey;
+    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isAlford ? '#2c5f5d' : '#4F788D';
     var iconFilter = '';
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
