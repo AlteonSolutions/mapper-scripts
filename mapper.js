@@ -18,23 +18,25 @@
     // Theme/variant detection based on URL params passed from outer page
     var _urlParams = new URLSearchParams(window.location.search);
     var isSW = _urlParams.get('brand') === 'sw';
-    var isDatabasey = _urlParams.get('brand') === 'databasey';
+    var isDatabasey = _urlParams.get('brand') === 'databasey'; // also the default brand when no/unmatched ?brand= is present
     var isKellogg = _urlParams.get('brand') === 'kellogg';
+    var isHF = _urlParams.get('brand') === 'hf';
+    var isAlford = _urlParams.get('brand') === 'alford';
     var isStaffing = _urlParams.get('variant') === 'staffing';
     var isDevelopmentAssessment = _urlParams.get('variant') === 'developmentassessment';
     var isCampaignCounsel = _urlParams.get('variant') === 'campaigncounsel';
     var isSimpleFlow = isStaffing || isDevelopmentAssessment || isCampaignCounsel;
-    var themeColor = isSW ? '#00386c' : isDatabasey ? '#4F788D' : isKellogg ? '#4F2683' : '#2c5f5d';
-    var themeColorHover = isSW ? '#004f99' : isDatabasey ? '#5d8fa5' : isKellogg ? '#6535a8' : '#3d7672';
-    var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isDatabasey ? 'rgba(79, 120, 141, 0.1)' : isKellogg ? 'rgba(79, 38, 131, 0.1)' : 'rgba(44, 95, 93, 0.1)';
-    var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isDatabasey ? 'rgba(79, 120, 141, 0.3)' : isKellogg ? 'rgba(79, 38, 131, 0.3)' : 'rgba(44, 95, 93, 0.3)';
-    console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isDatabasey ? 'Databasey (#4F788D)' : isKellogg ? 'Kellogg (#4F2683)' : 'Default (#2c5f5d)');
+    // Databasey is the default/fallback brand; Alford now requires an explicit ?brand=alford match.
+    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
+    var themeColorHover = isSW ? '#004f99' : isKellogg ? '#6535a8' : isHF ? '#79385F' : isAlford ? '#3d7672' : '#5d8fa5';
+    var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isKellogg ? 'rgba(79, 38, 131, 0.1)' : isHF ? 'rgba(86, 21, 60, 0.1)' : isAlford ? 'rgba(44, 95, 93, 0.1)' : 'rgba(79, 120, 141, 0.1)';
+    var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isKellogg ? 'rgba(79, 38, 131, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
+    console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isKellogg ? 'Kellogg (#4F2683)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
 
-    // Apply theme to CSS variables so static CSS in HTML also picks up the color
-    if (isSW || isDatabasey || isKellogg) {
-        document.documentElement.style.setProperty('--theme-color', themeColor);
-        document.documentElement.style.setProperty('--theme-color-hover', themeColorHover);
-    }
+    // Apply theme to CSS variables so static CSS in HTML also picks up the color.
+    // Always applied now — Databasey is a real (default) brand too, not just "no theme".
+    document.documentElement.style.setProperty('--theme-color', themeColor);
+    document.documentElement.style.setProperty('--theme-color-hover', themeColorHover);
     
     var workbook = null;
     var uploadIconSvg = '<svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:46px;height:46px;display:block;margin:0 auto;"><rect x="3" y="3" width="40" height="40" rx="20" fill="#F2F4F7"></rect><rect x="3" y="3" width="40" height="40" rx="20" stroke="#F9FAFB" stroke-width="6"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M20.9167 16.3334C17.9252 16.3334 15.5 18.7585 15.5 21.7501C15.5 23.2425 16.1025 24.5926 17.0795 25.5732C17.4043 25.8992 17.4034 26.4268 17.0773 26.7517C16.7513 27.0765 16.2237 27.0756 15.8988 26.7495C14.6233 25.4693 13.8334 23.7012 13.8334 21.7501C13.8334 17.8381 17.0047 14.6667 20.9167 14.6667C23.454 14.6667 25.6787 16.0013 26.9288 18.003C29.8376 18.0973 32.1667 20.485 32.1667 23.4167C32.1667 25.0991 31.3987 26.6028 30.1974 27.595C29.8425 27.8881 29.3172 27.838 29.0242 27.4831C28.7311 27.1282 28.7812 26.603 29.1361 26.3099C29.9705 25.6208 30.5 24.581 30.5 23.4167C30.5 21.3457 28.8211 19.6667 26.75 19.6667C26.2803 19.6667 25.8332 19.422 25.5872 19.0046C24.6441 17.4042 22.905 16.3334 20.9167 16.3334ZM22.4108 22.4108C22.7362 22.0854 23.2639 22.0854 23.5893 22.4108L26.9226 25.7442C27.2481 26.0696 27.2481 26.5972 26.9226 26.9227C26.5972 27.2481 26.0696 27.2481 25.7441 26.9227L23.8334 25.0119V30.5001C23.8334 30.9603 23.4603 31.3334 23 31.3334C22.5398 31.3334 22.1667 30.9603 22.1667 30.5001V25.0119L20.256 26.9227C19.9305 27.2481 19.4029 27.2481 19.0775 26.9227C18.752 26.5972 18.752 26.0696 19.0775 25.7442L22.4108 22.4108Z" fill="#2c3345FF"></path></svg>';
@@ -916,7 +918,8 @@
                     var blob = generateExcelBlob();
                     if (!blob) { btn.disabled = false; btn.innerHTML = originalHTML; return; }
 
-                    var formSource   = isSW ? 'SW' : (isKellogg ? 'Databasey' : (isDatabasey ? 'Databasey' : 'Alford'));
+                    // Kellogg and HF run through the same downstream pipeline/macro template as Databasey — only Alford and SW are distinct.
+                    var formSource   = isSW ? 'SW' : (isAlford ? 'Alford' : 'Databasey');
                     var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
                     var logoFile = getLogoFile();
 
