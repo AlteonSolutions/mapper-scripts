@@ -930,12 +930,14 @@
                     // Debug/test helper (?debugSendOriginal=1 only): POST the raw pre-mapper upload as
                     // its own PA submission, flagged debug_save_only so the flow just saves it to the
                     // client's OneDrive folder and skips macro/Desktop Flow processing entirely.
+                    // company_name is left unchanged (not suffixed) so it resolves to the SAME client
+                    // folder as the real submission — distinguish the saved file by name, not by folder.
                     function postDebugOriginalFile(cb) {
                         var r = new FileReader();
                         r.readAsDataURL(uploadedOriginalFile);
                         r.onloadend = function() {
                             var payload = {
-                                company_name:              clientName.trim() + ' (ORIGINAL FILE TEST)',
+                                company_name:              clientName.trim(),
                                 full_name:                 contactName.trim(),
                                 email:                     email.trim(),
                                 'Fiscal Year Start Month': fyMonth,
