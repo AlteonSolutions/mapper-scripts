@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One-off: Submit Pre-Processed File to PA</title>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Roboto, Arial, sans-serif; background: #f4f4f4; color: #222; }
+    #banner {
+        background: #7a1f1f; color: #fff; padding: 10px 20px; font-size: 13px;
+        font-weight: 600; text-align: center;
+    }
+    #wrap { max-width: 480px; margin: 30px auto; padding: 0 16px 60px; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { font-size: 13px; color: #666; margin: 0 0 24px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; margin-top: 14px; }
+    input, select {
+        width: 100%; padding: 9px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
+        font-size: 14px; font-family: inherit; box-sizing: border-box;
+    }
+    input[type="file"] { padding: 6px; }
+    .req { color: #ef4444; }
+    #submitBtn {
+        display: block; width: 100%; padding: 13px; margin-top: 22px;
+        background: #7a1f1f; color: #fff; border: none; border-radius: 8px;
+        font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    #submitBtn:disabled { opacity: 0.5; cursor: default; }
+    #status { margin-top: 14px; font-size: 13px; white-space: pre-wrap; }
+    #status.ok { color: #15803d; }
+    #status.err { color: #b91c1c; }
+</style>
+</head>
+<body>
+
+<div id="banner">⚠ ONE-OFF TEST TOOL — sends the file as-is, no mapping/processing applied. Delete when done.</div>
+
+<div id="wrap">
+    <h1>Submit Pre-Processed File to Power Automate</h1>
+    <p class="sub">Skips mapper.js entirely. Uploads the file below verbatim as <code>file_content</code>.</p>
+
+    <label>Processed File <span class="req">*</span></label>
+    <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls">
+
+    <label>Client / Organization Name <span class="req">*</span></label>
+    <input type="text" id="clientName" placeholder="e.g. Smith Animal Shelter">
+
+    <label>Contact Name <span class="req">*</span></label>
+    <input type="text" id="contactName" placeholder="Jane Smith">
+
+    <label>Email <span class="req">*</span></label>
+    <input type="email" id="email" placeholder="jane@example.org">
+
+    <label>Fiscal Year Start Month <span class="req">*</span></label>
+    <select id="fyMonth">
+        <option value="">Select month...</option>
+        <option>January</option><option>February</option><option>March</option><option>April</option>
+        <option>May</option><option>June</option><option>July</option><option>August</option>
+        <option>September</option><option>October</option><option>November</option><option>December</option>
+    </select>
+
+    <label>Major Giving Threshold <span class="req">*</span></label>
+    <input type="number" id="threshold" value="10000" min="1">
+
+    <label># of Board Members</label>
+    <input type="number" id="boardMembers" min="0" placeholder="Optional">
+
+    <label>Industry Type</label>
+    <input type="text" id="industryType" placeholder="e.g. Healthcare (optional)">
+
+    <label>Form Source <span class="req">*</span></label>
+    <select id="formSource">
+        <option value="Databasey">Databasey</option>
+        <option value="Alford">Alford</option>
+        <option value="SW">SW</option>
+    </select>
+
+    <label>Analysis Type <span class="req">*</span></label>
+    <select id="analysisType">
+        <option value="Analytics">Analytics</option>
+        <option value="Interim Staffing">Interim Staffing</option>
+        <option value="Development Assessment">Development Assessment</option>
+        <option value="Campaign Counsel">Campaign Counsel</option>
+    </select>
+
+    <label>Logo (optional)</label>
+    <input type="file" id="logoInput" accept="image/*">
+
+    <button id="submitBtn" type="button">Submit to Power Automate</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    // Same trigger URL as mapper.js's direct-PA-submit path — duplicated here since this is a
+    // standalone, throwaway tool independent of mapper.js.
+    var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
+
+    function readAsBase64(file) {
+        return new Promise(function(resolve, reject) {
+            var r = new FileReader();
+            r.onloadend = function() { resolve(r.result.split(',')[1]); };
+            r.onerror = function() { reject(new Error('Failed to read ' + file.name)); };
+            r.readAsDataURL(file);
+        });
+    }
+
+    var btn = document.getElementById('submitBtn');
+    var statusEl = document.getElementById('status');
+
+    btn.addEventListener('click', function() {
+        statusEl.className = ''; statusEl.textContent = '';
+
+        var file = document.getElementById('fileInput').files[0];
+        var clientName = document.getElementById('clientName').value.trim();
+        var contactName = document.getElementById('contactName').value.trim();
+        var email = document.getElementById('email').value.trim();
+        var fyMonth = document.getElementById('fyMonth').value;
+        var threshold = parseFloat(document.getElementById('threshold').value);
+        var boardMembers = document.getElementById('boardMembers').value.trim();
+        var industryType = document.getElementById('industryType').value.trim();
+        var formSource = document.getElementById('formSource').value;
+        var analysisType = document.getElementById('analysisType').value;
+        var logoFile = document.getElementById('logoInput').files[0];
+
+        if (!file) { alert('Please choose the processed file.'); return; }
+        if (!clientName) { alert('Please enter the Client / Organization Name.'); return; }
+        if (!contactName) { alert('Please enter a Contact Name.'); return; }
+        if (!email || email.indexOf('@') < 0) { alert('Please enter a valid email address.'); return; }
+        if (!fyMonth) { alert('Please select the Fiscal Year Start Month.'); return; }
+        if (isNaN(threshold) || threshold <= 0) { alert('Please enter a valid Major Giving Threshold.'); return; }
+
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        Promise.all([
+            readAsBase64(file),
+            logoFile ? readAsBase64(logoFile) : Promise.resolve('')
+        ]).then(function(results) {
+            var payload = {
+                company_name:              clientName,
+                full_name:                 contactName,
+                email:                     email,
+                'Fiscal Year Start Month': fyMonth,
+                'Major Giving Threshold':  threshold,
+                '# of Board Members':      boardMembers || '',
+                'Industry Type':           industryType || '',
+                form_source:               formSource,
+                analysis_type:             analysisType,
+                file_content:              results[0],
+                logo_content:              results[1] || '',
+                logo_filename:             logoFile ? logoFile.name : ''
+            };
+            return fetch(PA_TRIGGER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }).then(function(res) {
+            if (res.ok || res.status === 202) {
+                statusEl.className = 'ok';
+                statusEl.textContent = '✔ Submitted (status ' + res.status + ').';
+                btn.textContent = 'Submitted';
+            } else {
+                throw new Error('Server returned ' + res.status);
+            }
+        }).catch(function(err) {
+            statusEl.className = 'err';
+            statusEl.textContent = '✘ ' + err.message;
+            btn.disabled = false;
+            btn.textContent = 'Submit to Power Automate';
+        });
+    });
+</script>
+</body>
+</html>
