@@ -174,10 +174,6 @@
     <a href="test-direct-pa.html?brand=sw&variant=staffing">SW Staffing</a>
     <a href="test-direct-pa.html?brand=sw&variant=developmentassessment">SW Dev Assessment</a>
     <a href="test-direct-pa.html?brand=sw&variant=campaigncounsel">SW Campaign Counsel</a>
-    <label style="margin-left:12px;display:flex;align-items:center;gap:5px;cursor:pointer;">
-        <input type="checkbox" id="debugSendOriginalToggle">
-        Also send original file first (debug)
-    </label>
     <span id="current-mode"></span>
 </div>
 
@@ -313,16 +309,6 @@
     });
     var modeLabel = variant === 'staffing' ? 'SW Staffing' : variant === 'developmentassessment' ? 'SW Dev Assessment' : variant === 'campaigncounsel' ? 'SW Campaign Counsel' : brand === 'sw' ? 'SW Analytics' : brand === 'databasey' ? 'Databasey' : 'Alford';
     document.getElementById('current-mode').textContent = '▸ ' + modeLabel;
-
-    // "Also send original file first" toggle — reflects/updates ?debugSendOriginal=1 via reload,
-    // since mapper.js only reads that flag once at init.
-    var debugToggle = document.getElementById('debugSendOriginalToggle');
-    debugToggle.checked = params.get('debugSendOriginal') === '1';
-    debugToggle.addEventListener('change', function() {
-        var p = new URLSearchParams(window.location.search);
-        if (debugToggle.checked) p.set('debugSendOriginal', '1'); else p.delete('debugSendOriginal');
-        window.location.search = p.toString();
-    });
 </script>
 </body>
 </html>

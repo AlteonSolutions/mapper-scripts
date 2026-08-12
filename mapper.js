@@ -22,9 +22,6 @@
     var isKellogg = _urlParams.get('brand') === 'kellogg';
     var isHF = _urlParams.get('brand') === 'hf';
     var isAlford = _urlParams.get('brand') === 'alford';
-    // Test-only: ?debugSendOriginal=1 sends the raw, unprocessed upload to PA first (sequentially),
-    // then proceeds with the normal mapper-processed submission. Never set in production embeds.
-    var _debugSendOriginal = _urlParams.get('debugSendOriginal') === '1';
     var isStaffing = _urlParams.get('variant') === 'staffing';
     var isDevelopmentAssessment = _urlParams.get('variant') === 'developmentassessment';
     var isCampaignCounsel = _urlParams.get('variant') === 'campaigncounsel';
@@ -42,7 +39,6 @@
     document.documentElement.style.setProperty('--theme-color-hover', themeColorHover);
     
     var workbook = null;
-    var uploadedOriginalFile = null; // retained only to support ?debugSendOriginal=1
     var uploadIconSvg = '<svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:46px;height:46px;display:block;margin:0 auto;"><rect x="3" y="3" width="40" height="40" rx="20" fill="#F2F4F7"></rect><rect x="3" y="3" width="40" height="40" rx="20" stroke="#F9FAFB" stroke-width="6"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M20.9167 16.3334C17.9252 16.3334 15.5 18.7585 15.5 21.7501C15.5 23.2425 16.1025 24.5926 17.0795 25.5732C17.4043 25.8992 17.4034 26.4268 17.0773 26.7517C16.7513 27.0765 16.2237 27.0756 15.8988 26.7495C14.6233 25.4693 13.8334 23.7012 13.8334 21.7501C13.8334 17.8381 17.0047 14.6667 20.9167 14.6667C23.454 14.6667 25.6787 16.0013 26.9288 18.003C29.8376 18.0973 32.1667 20.485 32.1667 23.4167C32.1667 25.0991 31.3987 26.6028 30.1974 27.595C29.8425 27.8881 29.3172 27.838 29.0242 27.4831C28.7311 27.1282 28.7812 26.603 29.1361 26.3099C29.9705 25.6208 30.5 24.581 30.5 23.4167C30.5 21.3457 28.8211 19.6667 26.75 19.6667C26.2803 19.6667 25.8332 19.422 25.5872 19.0046C24.6441 17.4042 22.905 16.3334 20.9167 16.3334ZM22.4108 22.4108C22.7362 22.0854 23.2639 22.0854 23.5893 22.4108L26.9226 25.7442C27.2481 26.0696 27.2481 26.5972 26.9226 26.9227C26.5972 27.2481 26.0696 27.2481 25.7441 26.9227L23.8334 25.0119V30.5001C23.8334 30.9603 23.4603 31.3334 23 31.3334C22.5398 31.3334 22.1667 30.9603 22.1667 30.5001V25.0119L20.256 26.9227C19.9305 27.2481 19.4029 27.2481 19.0775 26.9227C18.752 26.5972 18.752 26.0696 19.0775 25.7442L22.4108 22.4108Z" fill="#2c3345FF"></path></svg>';
     var giftAppeals = [];
     var specialEventSkipped = false;
@@ -927,44 +923,7 @@
                     var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
                     var logoFile = getLogoFile();
 
-                    // Debug/test helper (?debugSendOriginal=1 only): POST the raw pre-mapper upload as
-                    // its own PA submission, flagged debug_save_only so the flow just saves it to the
-                    // client's OneDrive folder and skips macro/Desktop Flow processing entirely.
-                    // company_name is left unchanged (not suffixed) so it resolves to the SAME client
-                    // folder as the real submission — distinguish the saved file by name, not by folder.
-                    function postDebugOriginalFile(cb) {
-                        var r = new FileReader();
-                        r.readAsDataURL(uploadedOriginalFile);
-                        r.onloadend = function() {
-                            var payload = {
-                                company_name:              clientName.trim(),
-                                full_name:                 contactName.trim(),
-                                email:                     email.trim(),
-                                'Fiscal Year Start Month': fyMonth,
-                                'Major Giving Threshold':  threshold,
-                                '# of Board Members':      boardMembers || '',
-                                'Industry Type':           selectedIndustryType || '',
-                                form_source:               formSource,
-                                analysis_type:             analysisType,
-                                file_content:              r.result.split(',')[1],
-                                logo_content:              '',
-                                logo_filename:             '',
-                                debug_save_only:           true
-                            };
-                            fetch(PA_TRIGGER_URL, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            })
-                            .then(function(res) { cb((res.ok || res.status === 202) ? null : new Error('Server returned ' + res.status)); })
-                            .catch(cb);
-                        };
-                        r.onerror = function() { cb(new Error('Failed to read file')); };
-                    }
-
-                    // onDone, if given, replaces the normal success redirect — used to hold off
-                    // navigating away until the debug original-file submission (below) also finishes.
-                    function submitPayload(logoBase64, logoFilename, onDone) {
+                    function submitPayload(logoBase64, logoFilename) {
                         var reader = new FileReader();
                         reader.readAsDataURL(blob);
                         reader.onloadend = function() {
@@ -990,7 +949,7 @@
                             })
                             .then(function(res) {
                                 if (res.ok || res.status === 202) {
-                                    if (onDone) onDone(); else window.location.href = 'https://getdatabasey.com/submitted';
+                                    window.location.href = 'https://getdatabasey.com/submitted';
                                 } else {
                                     throw new Error('Server returned ' + res.status);
                                 }
@@ -1009,33 +968,18 @@
                         };
                     }
 
-                    function proceedWithProcessedFile(onDone) {
-                        if (logoFile) {
-                            var logoReader = new FileReader();
-                            logoReader.readAsDataURL(logoFile);
-                            logoReader.onloadend = function() {
-                                submitPayload(logoReader.result.split(',')[1], logoFile.name, onDone);
-                            };
-                            logoReader.onerror = function() {
-                                console.warn('Logo file failed to read — submitting without it.');
-                                submitPayload('', '', onDone);
-                            };
-                        } else {
-                            submitPayload('', '', onDone);
-                        }
-                    }
-
-                    if (_debugSendOriginal && uploadedOriginalFile) {
-                        proceedWithProcessedFile(function() {
-                            console.log('[debugSendOriginal] Processed file submitted. Sending original upload next (save-only)...');
-                            postDebugOriginalFile(function(err) {
-                                if (err) console.error('[debugSendOriginal] Original file submit failed:', err);
-                                else console.log('[debugSendOriginal] Original file saved.');
-                                window.location.href = 'https://getdatabasey.com/submitted';
-                            });
-                        });
+                    if (logoFile) {
+                        var logoReader = new FileReader();
+                        logoReader.readAsDataURL(logoFile);
+                        logoReader.onloadend = function() {
+                            submitPayload(logoReader.result.split(',')[1], logoFile.name);
+                        };
+                        logoReader.onerror = function() {
+                            console.warn('Logo file failed to read — submitting without it.');
+                            submitPayload('', '');
+                        };
                     } else {
-                        proceedWithProcessedFile();
+                        submitPayload('', '');
                     }
                 }, 50);
             });
@@ -1183,7 +1127,6 @@
     function handleFileUpload(e) {
         var file = e.target.files[0];
         if (!file) return;
-        uploadedOriginalFile = file;
         var detected = detectIndustry();
         if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) { selectedIndustryType = lbl; setIndustryTypeField(lbl); } }
 
@@ -1931,6 +1874,28 @@
                 } catch(e) { console.warn('Could not copy sheet ' + sn + ':', e); }
             }
         }
+
+        // Trailing reference copies of the untouched, as-uploaded Gift Data / Constituent Data —
+        // for manual comparison against the processed sheets above if something looks off downstream.
+        // workbook.Sheets[...] is never mutated in place anywhere in this function (only the
+        // sheet_to_json()-derived gd/cd2 arrays are), so these are genuinely pre-mapper snapshots.
+        // Named distinctly so the macro/flow (which only ever reads 'Gift Data'/'Constituent Data'
+        // by exact name) ignores them entirely — no separate submission or flow branch needed.
+        function cloneSheetValuesOnly(srcSheet) {
+            var out = {};
+            for (var addr in srcSheet) {
+                if (addr[0] === '!') { out[addr] = srcSheet[addr]; continue; }
+                var cell = srcSheet[addr];
+                var nc = { t: cell.t };
+                if (cell.v !== undefined) nc.v = cell.v;
+                if (cell.z !== undefined) nc.z = cell.z;
+                if (cell.f && nc.v === undefined) { nc.v = ''; nc.t = 's'; }
+                out[addr] = nc;
+            }
+            return out;
+        }
+        if (workbook.Sheets['Gift Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Gift Data']), 'Original Gift Data');
+        if (workbook.Sheets['Constituent Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Constituent Data']), 'Original Constituent Data');
 
         return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
