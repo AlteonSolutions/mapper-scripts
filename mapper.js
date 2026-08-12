@@ -927,15 +927,15 @@
                     var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
                     var logoFile = getLogoFile();
 
-                    // Debug/test helper (?debugSendOriginal=1 only): POST a given file's base64 as
-                    // file_content, reusing the same metadata, without the success redirect. Used to
-                    // fire the raw pre-mapper upload as its own separate PA submission for comparison.
-                    function postDebugFile(fileToSend, companyNameOverride, cb) {
+                    // Debug/test helper (?debugSendOriginal=1 only): POST the raw pre-mapper upload as
+                    // its own PA submission, flagged debug_save_only so the flow just saves it to the
+                    // client's OneDrive folder and skips macro/Desktop Flow processing entirely.
+                    function postDebugOriginalFile(cb) {
                         var r = new FileReader();
-                        r.readAsDataURL(fileToSend);
+                        r.readAsDataURL(uploadedOriginalFile);
                         r.onloadend = function() {
                             var payload = {
-                                company_name:              companyNameOverride,
+                                company_name:              clientName.trim() + ' (ORIGINAL FILE TEST)',
                                 full_name:                 contactName.trim(),
                                 email:                     email.trim(),
                                 'Fiscal Year Start Month': fyMonth,
@@ -946,7 +946,8 @@
                                 analysis_type:             analysisType,
                                 file_content:              r.result.split(',')[1],
                                 logo_content:              '',
-                                logo_filename:             ''
+                                logo_filename:             '',
+                                debug_save_only:           true
                             };
                             fetch(PA_TRIGGER_URL, {
                                 method: 'POST',
@@ -959,7 +960,9 @@
                         r.onerror = function() { cb(new Error('Failed to read file')); };
                     }
 
-                    function submitPayload(logoBase64, logoFilename) {
+                    // onDone, if given, replaces the normal success redirect — used to hold off
+                    // navigating away until the debug original-file submission (below) also finishes.
+                    function submitPayload(logoBase64, logoFilename, onDone) {
                         var reader = new FileReader();
                         reader.readAsDataURL(blob);
                         reader.onloadend = function() {
@@ -985,7 +988,7 @@
                             })
                             .then(function(res) {
                                 if (res.ok || res.status === 202) {
-                                    window.location.href = 'https://getdatabasey.com/submitted';
+                                    if (onDone) onDone(); else window.location.href = 'https://getdatabasey.com/submitted';
                                 } else {
                                     throw new Error('Server returned ' + res.status);
                                 }
@@ -1004,28 +1007,30 @@
                         };
                     }
 
-                    function proceedWithProcessedFile() {
+                    function proceedWithProcessedFile(onDone) {
                         if (logoFile) {
                             var logoReader = new FileReader();
                             logoReader.readAsDataURL(logoFile);
                             logoReader.onloadend = function() {
-                                submitPayload(logoReader.result.split(',')[1], logoFile.name);
+                                submitPayload(logoReader.result.split(',')[1], logoFile.name, onDone);
                             };
                             logoReader.onerror = function() {
                                 console.warn('Logo file failed to read — submitting without it.');
-                                submitPayload('', '');
+                                submitPayload('', '', onDone);
                             };
                         } else {
-                            submitPayload('', '');
+                            submitPayload('', '', onDone);
                         }
                     }
 
                     if (_debugSendOriginal && uploadedOriginalFile) {
-                        console.log('[debugSendOriginal] Sending original uploaded file to PA first...');
-                        postDebugFile(uploadedOriginalFile, clientName.trim() + ' (ORIGINAL FILE TEST)', function(err) {
-                            if (err) console.error('[debugSendOriginal] Original file submit failed:', err);
-                            else console.log('[debugSendOriginal] Original file submitted. Sending mapper-processed file next...');
-                            proceedWithProcessedFile();
+                        proceedWithProcessedFile(function() {
+                            console.log('[debugSendOriginal] Processed file submitted. Sending original upload next (save-only)...');
+                            postDebugOriginalFile(function(err) {
+                                if (err) console.error('[debugSendOriginal] Original file submit failed:', err);
+                                else console.log('[debugSendOriginal] Original file saved.');
+                                window.location.href = 'https://getdatabasey.com/submitted';
+                            });
                         });
                     } else {
                         proceedWithProcessedFile();
