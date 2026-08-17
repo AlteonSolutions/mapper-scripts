@@ -356,7 +356,7 @@
         var newSrc = formBase
             + '?industrytype=' + encodeURIComponent(industryLabel)
             + '&industry=' + encodeURIComponent(mapperKey)
-            + (isSW ? '&brand=sw' : isDatabasey ? '&brand=databasey' : isKellogg ? '&brand=kellogg' : '')
+            + (isSW ? '&brand=sw' : isDatabasey ? '&brand=databasey' : isKellogg ? '&brand=kellogg' : isHF ? '&brand=hf' : isAlford ? '&brand=alford' : '')
             + (isStaffing ? '&variant=staffing' : isDevelopmentAssessment ? '&variant=developmentassessment' : isCampaignCounsel ? '&variant=campaigncounsel' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
