@@ -31,6 +31,14 @@ if exist "%~dp0mapper-scripts\.git" (
     goto :have_repo
 )
 
+if exist "%~dp0mapper-scripts" (
+    echo [1/3] Found "%~dp0mapper-scripts" but it isn't a git clone
+    echo       ^(likely left over from a different download method^) - removing it
+    echo       so a fresh clone can go there instead.
+    echo.
+    rmdir /s /q "%~dp0mapper-scripts"
+)
+
 echo [1/3] No clone found. Cloning into "%~dp0mapper-scripts" ...
 echo       (a GitHub sign-in window may appear - this is a private repo)
 echo.
