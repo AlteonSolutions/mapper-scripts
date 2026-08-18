@@ -74,29 +74,29 @@
                 associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d51f255b571c8eb1b971.svg'
             }
         },
-        // Same form/flow as Databasey — HF just gets its own accent color (#56153C) applied via
-        // iconFilter below, reusing Databasey's icon/header artwork rather than new assets.
+        // Same form/flow as Databasey, but with its own custom-colored icon/header artwork
+        // (accent color #56153C) rather than reusing Databasey's.
         hf: {
             formId: '5GIq2FyRJrWJv32C9avI',
             icons: {
-                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
-                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539a.svg',
-                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882987b799e6777801fba.svg',
-                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
-                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
-                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg',
-                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d51f255b571c8eb1b971.svg'
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b7684aaffc55cdde4e80.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b7684aaffc55cdde4e6b.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b76862d4d706d453f872.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b7684edffa1875e64cd2.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b76877487c5374cde5f9.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b769b71315ed5275e3e9.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b769817be99d83a59edd.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b76862d4d706d453f86d.svg'
             },
             headers: {
-                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
-                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539a.svg',
-                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882987b799e6777801fba.svg',
-                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
-                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
-                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg',
-                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d51f255b571c8eb1b971.svg'
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b7684aaffc55cdde4e80.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b7684aaffc55cdde4e6b.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b76862d4d706d453f872.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b7684edffa1875e64cd2.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b76877487c5374cde5f9.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b769b71315ed5275e3e9.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b769817be99d83a59edd.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a84b76862d4d706d453f86d.svg'
             }
         }
     };
@@ -125,9 +125,6 @@
     // Kellogg has been retired (removed as a brand entirely, not just for this sector).
     var brand = isSW ? brands.sw : isHF ? brands.hf : isAlford ? brands.alford : brands.databasey;
     var themeColor = isSW ? '#00386c' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
-    // HF reuses Databasey's icon/header artwork, recolored to #56153C via CSS filter (computed for a
-    // black/dark-neutral source image — spot-check in-browser and nudge if the source SVGs aren't black).
-    var iconFilter = isHF ? 'invert(19%) sepia(93%) saturate(927%) hue-rotate(285deg) brightness(63%) contrast(102%)' : '';
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
     function init() {
@@ -140,7 +137,7 @@
         btn.className = 'category-btn-icon';
         btn.type = 'button';
         btn.onclick = function() { selectIndustry(ind.key, ind.mapperKey, ind.label); };
-        btn.innerHTML = '<div class="category-icon"><img src="' + brand.icons[ind.key] + '" alt="' + ind.label + '"' + (iconFilter ? ' style="filter:' + iconFilter + '"' : '') + '></div>'
+        btn.innerHTML = '<div class="category-icon"><img src="' + brand.icons[ind.key] + '" alt="' + ind.label + '"></div>'
                       + '<div class="category-label">' + ind.label + '</div>';
         row.appendChild(btn);
     });
