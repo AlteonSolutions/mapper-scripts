@@ -44,9 +44,8 @@
 
     function emailGateMessage() {
         var primaryDomain = emailDomainAllowlist[0]; // brand's own domain, listed first above
-        return 'This submission form is set up for ' + emailGateBrandLabel + ' clients and expects an email '
-            + 'ending in @' + primaryDomain + '. If you think you\'re seeing this by mistake, please reach out '
-            + 'to your account team.';
+        return 'This form is reserved for ' + emailGateBrandLabel + ' clients and requires an email ending in '
+            + '@' + primaryDomain + '. If you think this is a mistake, click "Get Support" below.';
     }
 
     function isEmailDomainAllowed(email) {
