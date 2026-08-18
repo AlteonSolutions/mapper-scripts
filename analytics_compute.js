@@ -221,10 +221,14 @@ function computeAnalytics(giftRows, consRows, params) {
     const w4 = years.slice(-4);
     const w5 = years.slice(-5);
     const last = years[years.length - 1];
-    // block for [Year7]:[Year10] COUNTIFS = w4 giving + lift/loss of w4 except last year
+    // block = the 4 raw giving values for Year7:Year10, matching the template's
+    // COUNTIFS(Year7:Year10, ">=500", "<"&Threshold) exactly. Lift/Loss (year-over-year
+    // change) is a different metric and must NOT be mixed in here — a donor whose giving
+    // merely fluctuated through this dollar range isn't the same as one who actually gave
+    // at that level, and counting both inflates Major Gift Prospect / Lapsed Major Donors
+    // with false positives (confirmed: was 149 vs the correct 90 on one real dataset).
     const block = [];
     for (const y of w4) block.push(giving[y]);
-    for (let i = 0; i < w4.length - 1; i++) { const y = w4[i]; const v = ll[y]; if (v !== '' && v != null) block.push(v); }
     let cntMid = 0, cntMaj = 0;
     for (const v of block) { if (v != null && v !== '') { if (v >= 500 && v < threshold) cntMid++; if (v >= threshold) cntMaj++; } }
     const y9_10 = (w4.length >= 2) ? (giving[w4[w4.length - 2]] !== null || giving[w4[w4.length - 1]] !== null) : (giving[last] !== null);

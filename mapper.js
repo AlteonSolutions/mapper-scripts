@@ -244,9 +244,14 @@
                 var donorJourney = '';
                 if (doDJ) donorJourney = (_givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
                 var w4 = years.slice(-4), lastY = years[years.length - 1];
+                // block = the 4 raw giving values for Year7:Year10, matching the template's
+                // COUNTIFS(Year7:Year10, ">=500", "<"&Threshold) exactly. Lift/Loss (year-over-year
+                // change) is a different metric and must NOT be mixed in here — a donor whose giving
+                // merely fluctuated through this dollar range isn't the same as one who actually gave
+                // at that level, and counting both inflates Major Gift Prospect / Lapsed Major Donors
+                // with false positives (confirmed: was 149 vs the correct 90 on one real dataset).
                 var block = [];
                 for (var bi = 0; bi < w4.length; bi++) block.push(giving[w4[bi]]);
-                for (var bli = 0; bli < w4.length - 1; bli++) { var blv = ll[w4[bli]]; if (blv !== '' && blv != null) block.push(blv); }
                 var cntMid = 0, cntMaj = 0;
                 for (var bci = 0; bci < block.length; bci++) { var bv = block[bci]; if (bv != null && bv !== '') { if (bv >= 500 && bv < threshold) cntMid++; if (bv >= threshold) cntMaj++; } }
                 var y9_10 = (w4.length >= 2) ? (giving[w4[w4.length-2]] !== null || giving[w4[w4.length-1]] !== null) : (giving[lastY] !== null);
