@@ -122,10 +122,19 @@ function computeAnalytics(giftRows, consRows, params) {
   }
   const threshold = params.threshold;
   const doDJ = params.donorJourney !== false;
-  const djYear = (params.donorJourneyYear != null) ? params.donorJourneyYear : endYear - 5;
 
   const years = [];
   for (let y = endYear - dataYears + 1; y <= endYear; y++) years.push(y);
+
+  // Donor Journey anchors on "Year5" (the 6th slot in the reported window, matching the
+  // template's positional ConstituentData[Year5] reference) - a donor active 5 years before
+  // the end of the reported window, whose giving history through end-of-data can then be
+  // charted. That requires a full 6-year window (indices 0..5); with fewer years there's no
+  // meaningful history to show, so leave it blank for everyone rather than reaching outside
+  // the reported window into fuller raw history (the PPT automation deletes the slide when
+  // there's nothing to populate it with).
+  const djYear = (params.donorJourneyYear != null) ? params.donorJourneyYear
+    : (years.length >= 6 ? years[5] : null);
 
   // ---- prep gift rows ----
   const G = giftRows.map(r => {
@@ -157,7 +166,7 @@ function computeAnalytics(giftRows, consRows, params) {
     }
   }
   const djSum = new Map();        // cid -> sum in FY djYear
-  if (doDJ) for (const g of G) if (g.cid !== null && g.fy === djYear) djSum.set(g.cid, (djSum.get(g.cid) || 0) + g.amt);
+  if (doDJ && djYear !== null) for (const g of G) if (g.cid !== null && g.fy === djYear) djSum.set(g.cid, (djSum.get(g.cid) || 0) + g.amt);
 
   function givingFor(cid, year) {
     const m = matFull.get(cid); if (!m) return null;
@@ -214,9 +223,9 @@ function computeAnalytics(giftRows, consRows, params) {
       else if (rr === 'Recovered') v = (cur === null) ? '' : round2(cur);
       ll[y] = v;
     }
-    // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
+    // Donor Journey (constituent) = gave in FY djYear (the reported window's Year5 slot); SW: blank
     let donorJourney = '';
-    if (doDJ) donorJourney = (givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
+    if (doDJ && djYear !== null) donorJourney = (givingFor(cid, djYear) !== null) ? 'Yes' : '';
     // window helpers
     const w4 = years.slice(-4);
     const w5 = years.slice(-5);

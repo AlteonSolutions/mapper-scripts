@@ -182,8 +182,16 @@
             var endYear = params.endYear, dataYears = params.dataYears;
             if (endYear == null || dataYears == null) { var dp = _deriveYearParams(giftRows, fyStart, params.today); endYear = dp.endYear; dataYears = dp.dataYears; }
             var threshold = params.threshold, doDJ = params.donorJourney !== false;
-            var djYear = (params.donorJourneyYear != null) ? params.donorJourneyYear : endYear - 5;
             var years = []; for (var y0 = endYear - dataYears + 1; y0 <= endYear; y0++) years.push(y0);
+            // Donor Journey anchors on "Year5" (the 6th slot in the reported window, matching the
+            // template's positional ConstituentData[Year5] reference) - a donor active 5 years before
+            // the end of the reported window, whose giving history through end-of-data can then be
+            // charted. That requires a full 6-year window (indices 0..5); with fewer years there's no
+            // meaningful history to show, so leave it blank for everyone rather than reaching outside
+            // the reported window into fuller raw history (the PPT automation deletes the slide when
+            // there's nothing to populate it with).
+            var djYear = (params.donorJourneyYear != null) ? params.donorJourneyYear
+                : (years.length >= 6 ? years[5] : null);
             var G = giftRows.map(function(r) {
                 var cid = _normId(r[0]), date = _toDate(r[1]);
                 var amt = (r[2] === '' || r[2] == null || isNaN(Number(r[2]))) ? 0 : Number(r[2]);
@@ -202,7 +210,7 @@
                 if (g.date) { var gt2 = g.date.getTime(); if (!(g.cid in minDateMap) || gt2 < minDateMap[g.cid]) minDateMap[g.cid] = gt2; }
             }
             var djSum = {};
-            if (doDJ) { for (var dji = 0; dji < G.length; dji++) { var dg = G[dji]; if (dg.cid !== null && dg.fy === djYear) djSum[dg.cid] = (djSum[dg.cid] || 0) + dg.amt; } }
+            if (doDJ && djYear !== null) { for (var dji = 0; dji < G.length; dji++) { var dg = G[dji]; if (dg.cid !== null && dg.fy === djYear) djSum[dg.cid] = (djSum[dg.cid] || 0) + dg.amt; } }
             function _givingFor(cid, year) {
                 var m = matFull[cid]; if (!m) return null;
                 var v = m[year]; if (v === undefined) return null;
@@ -242,7 +250,7 @@
                 var w5 = years.slice(-5);
                 var consecutive = (w5.length === 5 && w5.every(function(y) { return giving[y] !== null; })) ? 'Yes' : '';
                 var donorJourney = '';
-                if (doDJ) donorJourney = (_givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
+                if (doDJ && djYear !== null) donorJourney = (_givingFor(cid, djYear) !== null) ? 'Yes' : '';
                 var w4 = years.slice(-4), lastY = years[years.length - 1];
                 // block = the 4 raw giving values for Year7:Year10, matching the template's
                 // COUNTIFS(Year7:Year10, ">=500", "<"&Threshold) exactly. Lift/Loss (year-over-year
