@@ -306,6 +306,7 @@
                 <span class="demo-icon-glyph">&#9993;</span>
                 <input type="email" id="demo-email" placeholder="Enter Email">
             </div>
+            <div id="demo-email-hint" style="font-size:12px;color:#b45309;margin-top:5px;"></div>
         </div>
     </div>
 
@@ -950,6 +951,22 @@
     // attaches first and runs before mapper.js's own listener on every click.
     (function () {
         'use strict';
+
+        // Testing hint only - mirrors mapper.js's emailDomainAllowlist so testers know what to
+        // type before hitting the submit-time alert. NOT the enforcement itself - that stays
+        // solely in mapper.js; this is just a label, computed independently the same way the
+        // sector-selection block above does (each section here reads ?brand= on its own rather
+        // than sharing state across IIFEs), so a stale copy here can't weaken the real check.
+        (function () {
+            var p = new URLSearchParams(window.location.search);
+            var brand = p.get('brand');
+            var ALL_TENANT = ['getdatabasey.com', 'heyfundraiser.com'];
+            var domains = (brand === 'sw') ? ['schultzwilliams.com'].concat(ALL_TENANT)
+                : (brand === 'databasey' || brand === 'hf') ? null
+                : ['alford.com'].concat(ALL_TENANT); // default here is Alford, matching this file's own brand default
+            var hintEl = document.getElementById('demo-email-hint');
+            if (hintEl) hintEl.textContent = domains ? 'Must end in: ' + domains.map(function (d) { return '@' + d; }).join(', ') : '';
+        })();
 
         var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
                        'July', 'August', 'September', 'October', 'November', 'December'];
