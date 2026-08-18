@@ -31,6 +31,42 @@
     var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
     console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
 
+    // Client-side-only guardrail against accidental wrong-brand submissions (e.g. someone
+    // on /alfordanalytics submitting with an unrelated email). NOT real access control -
+    // mapper.js and this check run entirely in the visitor's browser and can be bypassed by
+    // anyone with basic technical knowledge (devtools, or submitting the GHL form directly).
+    // null = no restriction for that brand.
+    var ALL_TENANT_EMAIL_DOMAINS = ['getdatabasey.com', 'heyfundraiser.com'];
+    var emailDomainAllowlist = isAlford ? ALL_TENANT_EMAIL_DOMAINS.concat(['alford.com'])
+        : isSW ? ALL_TENANT_EMAIL_DOMAINS.concat(['schultzwilliams.com'])
+        : null; // Databasey, HF: any email address
+
+    function isEmailDomainAllowed(email) {
+        if (!emailDomainAllowlist) return true;
+        var domain = (email || '').trim().toLowerCase().split('@')[1] || '';
+        for (var i = 0; i < emailDomainAllowlist.length; i++) {
+            if (domain === emailDomainAllowlist[i].toLowerCase()) return true;
+        }
+        return false;
+    }
+
+    // Finds the page-provided email input by locating a <label> whose text mentions "Email"
+    // and reading the nearest input, falling back to a plain input[type="email"]. Mirrors
+    // getLogoFile()/setIndustryTypeField()'s DOM-search pattern - mapper.js on this branch has
+    // no email field of its own, it reads whatever the surrounding GHL form provides.
+    function getSubmitterEmail() {
+        var labels = document.querySelectorAll('label');
+        for (var i = 0; i < labels.length; i++) {
+            if (labels[i].textContent.indexOf('Email') !== -1) {
+                var container = labels[i].closest('div');
+                var input = container ? container.querySelector('input') : null;
+                if (input && input.value) return input.value;
+            }
+        }
+        var fallback = document.querySelector('input[type="email"]');
+        return (fallback && fallback.value) ? fallback.value : '';
+    }
+
     // Apply theme to CSS variables so static CSS in HTML also picks up the color.
     // Always applied now — Databasey is a real (default) brand too, not just "no theme".
     document.documentElement.style.setProperty('--theme-color', themeColor);
@@ -741,6 +777,13 @@
 
         waitForElement('#customSubmitBtn', function(btn) {
             btn.addEventListener('click', function() {
+                if (emailDomainAllowlist) {
+                    var submitterEmail = getSubmitterEmail();
+                    if (!isEmailDomainAllowed(submitterEmail)) {
+                        alert('This form is restricted to ' + emailDomainAllowlist.map(function(d) { return '@' + d; }).join(', ') + ' email addresses.');
+                        return;
+                    }
+                }
                 // Show spinner on submit button
                 var originalText = btn.textContent;
                 btn.disabled = true;
