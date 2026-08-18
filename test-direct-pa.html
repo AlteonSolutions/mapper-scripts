@@ -310,18 +310,18 @@
     var modeLabel = variant === 'staffing' ? 'SW Staffing' : variant === 'developmentassessment' ? 'SW Dev Assessment' : variant === 'campaigncounsel' ? 'SW Campaign Counsel' : brand === 'sw' ? 'SW Analytics' : brand === 'databasey' ? 'Databasey' : 'Alford';
     document.getElementById('current-mode').textContent = '▸ ' + modeLabel;
 
-    // Testing hint only - mirrors mapper.js's emailDomainAllowlist so testers know what to
-    // type before hitting the submit-time alert. NOT the enforcement itself - that stays
-    // solely in mapper.js; this is just a label so this duplicate doesn't need to be kept in
-    // perfect lockstep to remain safe (worst case it's stale and the real check still applies).
-    var ALL_TENANT_EMAIL_DOMAINS = ['getdatabasey.com', 'heyfundraiser.com'];
-    var emailDomainHint = (brand === null || brand === undefined) ? ['alford.com'].concat(ALL_TENANT_EMAIL_DOMAINS) // default = Alford
-        : brand === 'sw' ? ['schultzwilliams.com'].concat(ALL_TENANT_EMAIL_DOMAINS)
+    // Testing hint only - shows the same brand-only domain mapper.js's alert names (not the
+    // internal @getdatabasey.com/@heyfundraiser.com override domains, which stay functional
+    // but aren't for display). NOT the enforcement itself - that stays solely in mapper.js;
+    // this duplicate doesn't need to be kept in perfect lockstep to remain safe (worst case
+    // it's stale and the real check still applies).
+    var emailDomainHint = (brand === null || brand === undefined) ? 'alford.com' // default = Alford
+        : brand === 'sw' ? 'schultzwilliams.com'
         : null; // databasey, hf: unrestricted
     if (emailDomainHint) {
         var hintEl = document.createElement('span');
         hintEl.style.cssText = 'color:#e3c76f;';
-        hintEl.textContent = 'Email must end in: ' + emailDomainHint.map(function(d) { return '@' + d; }).join(', ');
+        hintEl.textContent = 'Email must end in: @' + emailDomainHint;
         document.getElementById('current-mode').insertAdjacentElement('afterend', hintEl);
     }
 </script>

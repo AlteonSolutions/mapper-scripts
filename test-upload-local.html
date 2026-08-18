@@ -952,20 +952,20 @@
     (function () {
         'use strict';
 
-        // Testing hint only - mirrors mapper.js's emailDomainAllowlist so testers know what to
-        // type before hitting the submit-time alert. NOT the enforcement itself - that stays
-        // solely in mapper.js; this is just a label, computed independently the same way the
-        // sector-selection block above does (each section here reads ?brand= on its own rather
-        // than sharing state across IIFEs), so a stale copy here can't weaken the real check.
+        // Testing hint only - shows the same brand-only domain mapper.js's alert names (not the
+        // internal @getdatabasey.com/@heyfundraiser.com override domains, which stay functional
+        // but aren't for display). NOT the enforcement itself - that stays solely in mapper.js;
+        // this is a label, computed independently the same way the sector-selection block above
+        // does (each section here reads ?brand= on its own rather than sharing state across
+        // IIFEs), so a stale copy here can't weaken the real check.
         (function () {
             var p = new URLSearchParams(window.location.search);
             var brand = p.get('brand');
-            var ALL_TENANT = ['getdatabasey.com', 'heyfundraiser.com'];
-            var domains = (brand === 'sw') ? ['schultzwilliams.com'].concat(ALL_TENANT)
+            var domain = (brand === 'sw') ? 'schultzwilliams.com'
                 : (brand === 'databasey' || brand === 'hf') ? null
-                : ['alford.com'].concat(ALL_TENANT); // default here is Alford, matching this file's own brand default
+                : 'alford.com'; // default here is Alford, matching this file's own brand default
             var hintEl = document.getElementById('demo-email-hint');
-            if (hintEl) hintEl.textContent = domains ? 'Must end in: ' + domains.map(function (d) { return '@' + d; }).join(', ') : '';
+            if (hintEl) hintEl.textContent = domain ? 'Must end in: @' + domain : '';
         })();
 
         var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
