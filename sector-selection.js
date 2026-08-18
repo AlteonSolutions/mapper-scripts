@@ -104,13 +104,13 @@
     // ── INDUSTRY DEFINITIONS ──────────────────────────────────────────────────
     var industries = [
         { key: 'arts_culture',      mapperKey: 'arts',                label: 'Arts & Culture',       row: 1 },
-        { key: 'environmental',     mapperKey: 'environmental',       label: 'Environmental',        row: 1 },
-        { key: 'education',         mapperKey: 'education',           label: 'Education',            row: 1 },
+        { key: 'associations',      mapperKey: 'associations',        label: 'Associations & National Organizations', row: 1 },
         { key: 'family_foundation', mapperKey: 'communityfoundation', label: 'Community Foundation', row: 1 },
+        { key: 'education',         mapperKey: 'education',           label: 'Education',            row: 1 },
+        { key: 'environmental',     mapperKey: 'environmental',       label: 'Environmental',        row: 2 },
         { key: 'healthcare',        mapperKey: 'healthcare',          label: 'Healthcare',           row: 2 },
         { key: 'human_services',    mapperKey: 'humanservices',       label: 'Human Services',       row: 2 },
-        { key: 'religion',          mapperKey: 'religion',            label: 'Religion',             row: 2 },
-        { key: 'associations',      mapperKey: 'associations',        label: 'Associations & National Organizations', row: 2 }
+        { key: 'religion',          mapperKey: 'religion',            label: 'Religion',             row: 2 }
     ];
 
     // ── BRAND DETECTION ───────────────────────────────────────────────────────
