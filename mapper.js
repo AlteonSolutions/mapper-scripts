@@ -37,9 +37,17 @@
     // anyone with basic technical knowledge (devtools, or submitting the GHL form directly).
     // null = no restriction for that brand.
     var ALL_TENANT_EMAIL_DOMAINS = ['getdatabasey.com', 'heyfundraiser.com'];
-    var emailDomainAllowlist = isAlford ? ALL_TENANT_EMAIL_DOMAINS.concat(['alford.com'])
-        : isSW ? ALL_TENANT_EMAIL_DOMAINS.concat(['schultzwilliams.com'])
+    var emailDomainAllowlist = isAlford ? ['alford.com'].concat(ALL_TENANT_EMAIL_DOMAINS)
+        : isSW ? ['schultzwilliams.com'].concat(ALL_TENANT_EMAIL_DOMAINS)
         : null; // Databasey, HF: any email address
+    var emailGateBrandLabel = isAlford ? 'Alford' : isSW ? 'SW' : '';
+
+    function emailGateMessage() {
+        var primaryDomain = emailDomainAllowlist[0]; // brand's own domain, listed first above
+        return 'This submission form is set up for ' + emailGateBrandLabel + ' clients and expects an email '
+            + 'ending in @' + primaryDomain + '. If you think you\'re seeing this by mistake, please reach out '
+            + 'to your account team.';
+    }
 
     function isEmailDomainAllowed(email) {
         if (!emailDomainAllowlist) return true;
@@ -780,7 +788,7 @@
                 if (emailDomainAllowlist) {
                     var submitterEmail = getSubmitterEmail();
                     if (!isEmailDomainAllowed(submitterEmail)) {
-                        alert('This form is restricted to ' + emailDomainAllowlist.map(function(d) { return '@' + d; }).join(', ') + ' email addresses.');
+                        alert(emailGateMessage());
                         return;
                     }
                 }
