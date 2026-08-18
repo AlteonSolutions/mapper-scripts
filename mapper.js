@@ -19,7 +19,6 @@
     var _urlParams = new URLSearchParams(window.location.search);
     var isSW = _urlParams.get('brand') === 'sw';
     var isDatabasey = _urlParams.get('brand') === 'databasey'; // also the default brand when no/unmatched ?brand= is present
-    var isKellogg = _urlParams.get('brand') === 'kellogg';
     var isHF = _urlParams.get('brand') === 'hf';
     var isAlford = _urlParams.get('brand') === 'alford';
     var isStaffing = _urlParams.get('variant') === 'staffing';
@@ -27,11 +26,12 @@
     var isCampaignCounsel = _urlParams.get('variant') === 'campaigncounsel';
     var isSimpleFlow = isStaffing || isDevelopmentAssessment || isCampaignCounsel;
     // Databasey is the default/fallback brand; Alford now requires an explicit ?brand=alford match.
-    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
-    var themeColorHover = isSW ? '#004f99' : isKellogg ? '#6535a8' : isHF ? '#79385F' : isAlford ? '#3d7672' : '#5d8fa5';
-    var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isKellogg ? 'rgba(79, 38, 131, 0.1)' : isHF ? 'rgba(86, 21, 60, 0.1)' : isAlford ? 'rgba(44, 95, 93, 0.1)' : 'rgba(79, 120, 141, 0.1)';
-    var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isKellogg ? 'rgba(79, 38, 131, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
-    console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isKellogg ? 'Kellogg (#4F2683)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
+    // Kellogg has been retired (removed as a brand entirely).
+    var themeColor = isSW ? '#00386c' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
+    var themeColorHover = isSW ? '#004f99' : isHF ? '#79385F' : isAlford ? '#3d7672' : '#5d8fa5';
+    var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isHF ? 'rgba(86, 21, 60, 0.1)' : isAlford ? 'rgba(44, 95, 93, 0.1)' : 'rgba(79, 120, 141, 0.1)';
+    var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
+    console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
 
     // Apply theme to CSS variables so static CSS in HTML also picks up the color.
     // Always applied now — Databasey is a real (default) brand too, not just "no theme".
@@ -104,13 +104,15 @@
         'Community Foundation': 'communityfoundation', 'Family Foundation': 'communityfoundation',
         'healthcare': 'healthcare', 'Healthcare': 'healthcare',
         'humanservices': 'humanservices', 'human_services': 'humanservices', 'Human Services': 'humanservices',
-        'religion': 'religion', 'Religion': 'religion'
+        'religion': 'religion', 'Religion': 'religion',
+        'associations': 'associations', 'Associations & National Organizations': 'associations'
     };
 
     var industryDisplayLabels = {
         'arts': 'Arts & Culture', 'environmental': 'Environmental', 'education': 'Education',
         'communityfoundation': 'Community Foundation', 'healthcare': 'Healthcare',
-        'humanservices': 'Human Services', 'religion': 'Religion'
+        'humanservices': 'Human Services', 'religion': 'Religion',
+        'associations': 'Associations & National Organizations'
     };
 
     var industryImageIds = {
@@ -506,6 +508,8 @@
             spotlightConfig = { type: 'constituentType', title: 'Map Spotlights', categories: ['Donor', 'Fundholder', 'Skip'], completionText: 'You have successfully mapped all Constituent Types to spotlight categories.' };
         } else if (industry === 'healthcare') {
             spotlightConfig = { type: 'constituentType', title: 'Map Spotlights', categories: ['Patient', 'Physician', 'Skip'], completionText: 'You have successfully mapped all Constituent Types to spotlight categories.' };
+        } else if (industry === 'associations') {
+            spotlightConfig = { type: 'constituentType', title: 'Map Spotlights', categories: ['Members', 'Chapters', 'Skip'], completionText: 'You have successfully mapped all Constituent Types to spotlight categories.' };
         }
         if (spotlightConfig) console.log('✓ Spotlight config:', spotlightConfig.type, spotlightConfig.categories);
         else console.log('No spotlight config for:', industry);
@@ -918,7 +922,7 @@
                     var blob = generateExcelBlob();
                     if (!blob) { btn.disabled = false; btn.innerHTML = originalHTML; return; }
 
-                    // Kellogg and HF run through the same downstream pipeline/macro template as Databasey — only Alford and SW are distinct.
+                    // HF runs through the same downstream pipeline/macro template as Databasey — only Alford and SW are distinct.
                     var formSource   = isSW ? 'SW' : (isAlford ? 'Alford' : 'Databasey');
                     var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
                     var logoFile = getLogoFile();
@@ -1089,7 +1093,7 @@
             if (validConstCID === 0)  errors.push('Constituent Data — Constituent ID column appears to be entirely blank');
             if (validConstType === 0) errors.push('Constituent Data — Constituent Type column appears to be entirely blank');
         }
-        // 6-year minimum data range check (Alford, Databasey, and Kellogg)
+        // 6-year minimum data range check (all non-SW brands)
         if (!isSW && giftJson.length > 0) {
             var minTs = Infinity, maxTs = -Infinity;
             for (var k = 0; k < giftJson.length; k++) {

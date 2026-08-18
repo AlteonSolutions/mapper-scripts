@@ -14,7 +14,8 @@
                 family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69948e0fd614c9b315f2d7d1.svg',
                 healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8951171bc3cfc4e3a.svg',
                 human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8d119a5a3fe4cc554.svg',
-                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8fa89c784f91527c0.svg'
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8fa89c784f91527c0.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d551255b571c8eb1e3e0.svg'
             },
             headers: {
                 arts_culture:       'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698f7cf114c429b831563a0b.svg',
@@ -23,7 +24,8 @@
                 family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698f7cf17d68773312cb2d98.svg',
                 healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698f7cf1899b88812265c07d.svg',
                 human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698f7cf1c086655a26b05413.svg',
-                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698f7cf1899b881f8965c07c.svg'
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/698f7cf1899b881f8965c07c.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d551255b571c8eb1e3e0.svg'
             }
         },
         sw: {
@@ -35,7 +37,8 @@
                 family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931905d476dbdbf20b2.svg',
                 healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/699629313fd420c9de4da557.svg',
                 human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931f02fa478206301b5.svg',
-                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931419632499471805b.svg'
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931419632499471805b.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d5841082d64877fcbb54.svg'
             },
             headers: {
                 arts_culture:       'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931f02fa4784e6301b4.svg',
@@ -44,28 +47,8 @@
                 family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931fa6b7b23a83ffae0.svg',
                 healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931b3d5f8b11461fde4.svg',
                 human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931905d47e737bf20b4.svg',
-                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962932905d47012fbf20b8.svg'
-            }
-        },
-        kellogg: {
-            formId: '5GIq2FyRJrWJv32C9avI',
-            icons: {
-                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db0f58810f313b39b17.svg',
-                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68f58810f313b3af1f.svg',
-                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e688c6ee94929b7a342.svg',
-                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e6860904d91054158b3.svg',
-                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68fedd58e234bc1d1c.svg',
-                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e687b799e67777fc875.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db1054f002268c9ecf1.svg'
-            },
-            headers: {
-                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db0f58810f313b39b17.svg',
-                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68f58810f313b3af1f.svg',
-                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e688c6ee94929b7a342.svg',
-                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e6860904d91054158b3.svg',
-                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68fedd58e234bc1d1c.svg',
-                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e687b799e67777fc875.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db1054f002268c9ecf1.svg'
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962932905d47012fbf20b8.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d5841082d64877fcbb54.svg'
             }
         },
         databasey: {
@@ -77,7 +60,8 @@
                 family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
                 healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
                 human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d51f255b571c8eb1b971.svg'
             },
             headers: {
                 arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
@@ -86,7 +70,8 @@
                 family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
                 healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
                 human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d51f255b571c8eb1b971.svg'
             }
         },
         // Same form/flow as Databasey — HF just gets its own accent color (#56153C) applied via
@@ -100,7 +85,8 @@
                 family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
                 healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
                 human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d51f255b571c8eb1b971.svg'
             },
             headers: {
                 arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
@@ -109,7 +95,8 @@
                 family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
                 healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
                 human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
-                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg',
+                associations:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a83d51f255b571c8eb1b971.svg'
             }
         }
     };
@@ -122,21 +109,22 @@
         { key: 'family_foundation', mapperKey: 'communityfoundation', label: 'Community Foundation', row: 1 },
         { key: 'healthcare',        mapperKey: 'healthcare',          label: 'Healthcare',           row: 2 },
         { key: 'human_services',    mapperKey: 'humanservices',       label: 'Human Services',       row: 2 },
-        { key: 'religion',          mapperKey: 'religion',            label: 'Religion',             row: 2 }
+        { key: 'religion',          mapperKey: 'religion',            label: 'Religion',             row: 2 },
+        { key: 'associations',      mapperKey: 'associations',        label: 'Associations & National Organizations', row: 2 }
     ];
 
     // ── BRAND DETECTION ───────────────────────────────────────────────────────
     var isSW = window.location.href.includes('getdatabasey.com/sw');
     var isDatabasey = window.location.href.includes('getdatabasey.com/analytics');
-    var isKellogg = window.location.href.includes('heyfundraiser.com/kellogg') || window.location.href.includes('getdatabasey.com/kellogg');
     var isHF = window.location.href.includes('getdatabasey.com/heyfundraiser');
     var isAlford = window.location.href.includes('getdatabasey.com/alfordanalytics');
     var isStaffing = window.location.href.includes('getdatabasey.com/sw/staffing');
     var isDevelopmentAssessment = window.location.href.includes('getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = window.location.href.includes('getdatabasey.com/sw/campaigncounsel');
     // Databasey is now the default/fallback brand; Alford and HF require an explicit URL match.
-    var brand = isSW ? brands.sw : isKellogg ? brands.kellogg : isHF ? brands.hf : isAlford ? brands.alford : brands.databasey;
-    var themeColor = isSW ? '#00386c' : isKellogg ? '#4F2683' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
+    // Kellogg has been retired (removed as a brand entirely, not just for this sector).
+    var brand = isSW ? brands.sw : isHF ? brands.hf : isAlford ? brands.alford : brands.databasey;
+    var themeColor = isSW ? '#00386c' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
     // HF reuses Databasey's icon/header artwork, recolored to #56153C via CSS filter (computed for a
     // black/dark-neutral source image — spot-check in-browser and nudge if the source SVGs aren't black).
     var iconFilter = isHF ? 'invert(19%) sepia(93%) saturate(927%) hue-rotate(285deg) brightness(63%) contrast(102%)' : '';
@@ -356,7 +344,7 @@
         var newSrc = formBase
             + '?industrytype=' + encodeURIComponent(industryLabel)
             + '&industry=' + encodeURIComponent(mapperKey)
-            + (isSW ? '&brand=sw' : isDatabasey ? '&brand=databasey' : isKellogg ? '&brand=kellogg' : isHF ? '&brand=hf' : isAlford ? '&brand=alford' : '')
+            + (isSW ? '&brand=sw' : isDatabasey ? '&brand=databasey' : isHF ? '&brand=hf' : isAlford ? '&brand=alford' : '')
             + (isStaffing ? '&variant=staffing' : isDevelopmentAssessment ? '&variant=developmentassessment' : isCampaignCounsel ? '&variant=campaigncounsel' : '');
         if (iframeEl) iframeEl.src = newSrc;
 
