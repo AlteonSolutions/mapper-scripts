@@ -33,6 +33,25 @@
     var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
     console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
 
+    // Client-side-only guardrail against accidental wrong-brand submissions (e.g. someone
+    // on /alfordanalytics submitting with an unrelated email). NOT real access control -
+    // mapper.js and this check run entirely in the visitor's browser and can be bypassed by
+    // anyone with basic technical knowledge (devtools, or POSTing PA_TRIGGER_URL directly,
+    // which is already embedded client-side). null = no restriction for that brand.
+    var ALL_TENANT_EMAIL_DOMAINS = ['getdatabasey.com', 'heyfundraiser.com'];
+    var emailDomainAllowlist = isAlford ? ALL_TENANT_EMAIL_DOMAINS.concat(['alford.com'])
+        : isSW ? ALL_TENANT_EMAIL_DOMAINS.concat(['schultzwilliams.com'])
+        : null; // Databasey, HF: any email address
+
+    function isEmailDomainAllowed(email) {
+        if (!emailDomainAllowlist) return true;
+        var domain = (email || '').trim().toLowerCase().split('@')[1] || '';
+        for (var i = 0; i < emailDomainAllowlist.length; i++) {
+            if (domain === emailDomainAllowlist[i].toLowerCase()) return true;
+        }
+        return false;
+    }
+
     // Apply theme to CSS variables so static CSS in HTML also picks up the color.
     // Always applied now — Databasey is a real (default) brand too, not just "no theme".
     document.documentElement.style.setProperty('--theme-color', themeColor);
@@ -917,6 +936,10 @@
                 if (!clientName.trim())  { alert('Please enter the Client / Organization Name.'); return; }
                 if (!contactName.trim()) { alert('Please enter a Contact Name.'); return; }
                 if (!email.trim() || email.indexOf('@') < 0) { alert('Please enter a valid email address.'); return; }
+                if (!isEmailDomainAllowed(email)) {
+                    alert('This form is restricted to ' + emailDomainAllowlist.map(function(d) { return '@' + d; }).join(', ') + ' email addresses.');
+                    return;
+                }
                 if (!fyMonth)            { alert('Please select the Fiscal Year Start Month.'); return; }
                 if (isNaN(threshold) || threshold <= 0) { alert('Please enter a valid Major Giving Threshold.'); return; }
                 if (!PA_TRIGGER_URL)     { alert('Submission endpoint not configured. Please contact support.'); return; }
