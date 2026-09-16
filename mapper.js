@@ -258,7 +258,20 @@
             // Every derived sheet below reads consOut, so each inherits the filter.
             var giftCidSet = Object.create(null);
             for (var _gci = 0; _gci < G.length; _gci++) { if (G[_gci].cid !== null) giftCidSet[G[_gci].cid] = true; }
-            var consOut = C.filter(function(c) { return c.cid !== null && (c.cid in giftCidSet); }).map(function(c) {
+            // Constituents with at least one gift inside the reported window. Used to trim the
+            // output below: the template only ever shows these `years`, and every prospect flag
+            // reads window years only, so a constituent with no in-window giving carries blank
+            // year columns and cannot qualify for any flag or donor sheet. Dropping them is
+            // output-only - all aggregates above (Total Giving, First Gift Date fallback, gifts
+            // per year) are still built from the FULL gift history, so no reported number moves.
+            var windowStart = years[0];
+            var windowCidSet = Object.create(null);
+            for (var _wci = 0; _wci < G.length; _wci++) {
+                var _wg = G[_wci];
+                if (_wg.cid === null || _wg.fy === null) continue;
+                if (_wg.fy >= windowStart && _wg.fy <= endYear) windowCidSet[_wg.cid] = true;
+            }
+            var consOut = C.filter(function(c) { return c.cid !== null && (c.cid in giftCidSet) && (c.cid in windowCidSet); }).map(function(c) {
                 var cid = c.cid, fgdfy;
                 if (c.fgd === null) fgdfy = (cid in minFyMap) ? minFyMap[cid] : null;
                 else { var fy_y = c.fgd.getUTCFullYear(), fy_m = c.fgd.getUTCMonth() + 1; fgdfy = (fyStart === 1) ? fy_y : (fy_m < fyStart ? fy_y : fy_y + 1); }
@@ -305,6 +318,13 @@
                 return out;
             });
             var giftCols = ['Constituent ID', 'Gift Date', 'Gift Amount', 'Gift Type', 'Event', 'Spotlights', 'Gifts Per Year', 'Gift Month', 'Gift FY', 'Donor Journey Donor', 'FGD', 'National Breakdown'];
+            // Gifts older than the reported window are dropped from the OUTPUT only. The template
+            // can only ever show `years` (10 FY max), so pre-window rows are pure file weight - on a
+            // real client that was 33,684 of 44,488 rows (76%), and GenerateGivingCircles copies the
+            // whole workbook through a save/reopen/save cycle before deleting Gift Data from the copy.
+            // Post-window (current, incomplete FY) and blank/unparseable-date rows are kept: they are
+            // recent or unclassifiable, not stale. Every aggregate above was built from the full set,
+            // so Total Giving stays lifetime and the First Gift Date fallback still sees old gifts.
             var giftOut = G.map(function(g, idx) {
                 var gpy = g.fy !== null ? gpyKey[g.cid + '|' + g.fy] : '';
                 var month = g.date ? g.date.getUTCMonth() + 1 : '';
@@ -318,6 +338,10 @@
                 var nat = _TYPE_MAP.hasOwnProperty(t2) ? _TYPE_MAP[t2] : 'Individuals';
                 var raw = giftRows[idx];
                 return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy2, dj2, fgd2Serial, nat];
+            }).filter(function(row, idx) {
+                // map is 1:1 with G, so idx still indexes G here.
+                var _fy = G[idx].fy;
+                return _fy === null || _fy >= windowStart;
             });
             // ---- Donor / Prospect sheet outputs ----
             // Column index helpers into a consOut row (0-based):

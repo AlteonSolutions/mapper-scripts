@@ -200,7 +200,20 @@ function computeAnalytics(giftRows, consRows, params) {
   const giftCids = new Set();
   for (const g of G) if (g.cid !== null) giftCids.add(g.cid);
 
-  const consOut = C.filter(c => giftCids.has(c.cid)).map(c => {
+  // Constituents with at least one gift inside the reported window. Used to trim the
+  // output below: the template only ever shows these `years`, and every prospect flag
+  // reads window years only, so a constituent with no in-window giving carries blank
+  // year columns and cannot qualify for any flag or donor sheet. Dropping them is
+  // output-only - all aggregates above (Total Giving, First Gift Date fallback, gifts
+  // per year) are still built from the FULL gift history, so no reported number moves.
+  const windowStart = years[0];
+  const windowCids = new Set();
+  for (const g of G) {
+    if (g.cid === null || g.fy === null) continue;
+    if (g.fy >= windowStart && g.fy <= endYear) windowCids.add(g.cid);
+  }
+
+  const consOut = C.filter(c => giftCids.has(c.cid) && windowCids.has(c.cid)).map(c => {
     const cid = c.cid;
     // First Gift Date FY
     let fgdfy;
@@ -268,6 +281,13 @@ function computeAnalytics(giftRows, consRows, params) {
   // ---- Gift output ----
   const giftCols = ['Constituent ID', 'Gift Date', 'Gift Amount', 'Gift Type', 'Event', 'Spotlights',
     'Gifts Per Year', 'Gift Month', 'Gift FY', 'Donor Journey Donor', 'FGD', 'National Breakdown'];
+  // Gifts older than the reported window are dropped from the OUTPUT only. The template
+  // can only ever show `years` (10 FY max), so pre-window rows are pure file weight - on a
+  // real client that was 33,684 of 44,488 rows (76%), and GenerateGivingCircles copies the
+  // whole workbook through a save/reopen/save cycle before deleting Gift Data from the copy.
+  // Post-window (current, incomplete FY) and blank/unparseable-date rows are kept: they are
+  // recent or unclassifiable, not stale. Every aggregate above was built from the full set,
+  // so Total Giving stays lifetime and the First Gift Date fallback still sees 1997 gifts.
   const giftOut = G.map((g, idx) => {
     const gpy = g.fy !== null ? gpyKey.get(g.cid + '|' + g.fy) : '';
     const month = g.date ? g.date.getUTCMonth() + 1 : '';
@@ -286,6 +306,10 @@ function computeAnalytics(giftRows, consRows, params) {
     const raw = giftRows[idx];
     // raw[0] is the original Constituent ID — pass through as-is (normId only used internally for matching).
     return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy, dj, fgdSerial, nat];
+  }).filter((row, idx) => {
+    // map is 1:1 with G, so idx still indexes G here.
+    const fy = G[idx].fy;
+    return fy === null || fy >= windowStart;
   });
 
   // ---- Donor / Prospect sheet outputs ----
