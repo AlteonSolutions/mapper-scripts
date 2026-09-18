@@ -1777,6 +1777,20 @@
         // UPSTREAM_COMPUTE: derive analytics columns in the mapper (Standard Variant only)
         var _ucGiftSheet = null, _ucConstSheet = null, _ucProspectSheets = null;
         if (UPSTREAM_COMPUTE && !isSimpleFlow) {
+            // computeAnalytics returns '' for a blank cell, and SheetJS materializes that as a
+            // full <c r="E2" t="str"><v></v></c> element - ~30 bytes of nothing per cell. null
+            // is omitted from the sheet XML entirely. On a real client (Montpelier) that padding
+            // was 399,555 cells / ~11MB of the 57MB of sheet XML, most of it three Gift Data
+            // columns that are blank on every single row. Swap '' -> null on the way out; the
+            // values are identical to Excel either way (a blank cell still satisfies ="").
+            function _ucAoaSheet(columns, rows) {
+                var blanked = rows.map(function(r) {
+                    var o = new Array(r.length);
+                    for (var i = 0; i < r.length; i++) o[i] = (r[i] === '' ? null : r[i]);
+                    return o;
+                });
+                return XLSX.utils.aoa_to_sheet([columns].concat(blanked));
+            }
             try {
                 var _ucGiftRows = gd.map(function(r) {
                     return [r['Constituent ID'], r['Gift Date'], r['Gift Amount'], r['Gift Type'], r['Event'] || '', r['Spotlights'] || ''];
@@ -1816,8 +1830,8 @@
                 }
                 if (_ucFyMonth) {
                     var _ucResult = computeAnalytics(_ucGiftRows, _ucConsRows, { fyStartMonth: _ucFyMonth, threshold: _ucThreshold, donorJourney: !isSW });
-                    _ucGiftSheet = XLSX.utils.aoa_to_sheet([_ucResult.gift.columns].concat(_ucResult.gift.rows));
-                    _ucConstSheet = XLSX.utils.aoa_to_sheet([_ucResult.constituent.columns].concat(_ucResult.constituent.rows));
+                    _ucGiftSheet = _ucAoaSheet(_ucResult.gift.columns, _ucResult.gift.rows);
+                    _ucConstSheet = _ucAoaSheet(_ucResult.constituent.columns, _ucResult.constituent.rows);
                     // FGD is output as an integer Excel serial to avoid SheetJS timezone fractional offset.
                     // Apply a date number format so Excel renders it as a date, not a plain integer.
                     var _ucFgdCI = _ucResult.gift.columns.indexOf('FGD');
@@ -1833,16 +1847,16 @@
                     // Build donor/prospect sheets from upstream compute result
                     // Analytics sheets go to template; prospecting sheets go directly to Prospecting.xlsx
                     _ucProspectSheets = {
-                        'All Donors':                XLSX.utils.aoa_to_sheet([_ucResult.allDonors.columns].concat(_ucResult.allDonors.rows)),
-                        'Major Donors':              XLSX.utils.aoa_to_sheet([_ucResult.majorDonors.columns].concat(_ucResult.majorDonors.rows)),
-                        'All Prospects':             XLSX.utils.aoa_to_sheet([_ucResult.allProspects.columns].concat(_ucResult.allProspects.rows)),
-                        'Renewals':                  XLSX.utils.aoa_to_sheet([_ucResult.renewals.columns].concat(_ucResult.renewals.rows)),
-                        'Major Gift Prospects':      XLSX.utils.aoa_to_sheet([_ucResult.majorGiftProspects.columns].concat(_ucResult.majorGiftProspects.rows)),
-                        'Lapsed Major Donors':       XLSX.utils.aoa_to_sheet([_ucResult.lapsedMajorDonors.columns].concat(_ucResult.lapsedMajorDonors.rows)),
-                        'Mid-Level Giving Prospects':XLSX.utils.aoa_to_sheet([_ucResult.midLevelProspects.columns].concat(_ucResult.midLevelProspects.rows)),
-                        'Planned Giving Prospects':  XLSX.utils.aoa_to_sheet([_ucResult.plannedGivingProspects.columns].concat(_ucResult.plannedGivingProspects.rows)),
-                        'Decreased Giving Donors':   XLSX.utils.aoa_to_sheet([_ucResult.decreasedGivingDonors.columns].concat(_ucResult.decreasedGivingDonors.rows)),
-                        'Consecutive Giving Donors': XLSX.utils.aoa_to_sheet([_ucResult.consecutiveGivingDonors.columns].concat(_ucResult.consecutiveGivingDonors.rows)),
+                        'All Donors':                _ucAoaSheet(_ucResult.allDonors.columns, _ucResult.allDonors.rows),
+                        'Major Donors':              _ucAoaSheet(_ucResult.majorDonors.columns, _ucResult.majorDonors.rows),
+                        'All Prospects':             _ucAoaSheet(_ucResult.allProspects.columns, _ucResult.allProspects.rows),
+                        'Renewals':                  _ucAoaSheet(_ucResult.renewals.columns, _ucResult.renewals.rows),
+                        'Major Gift Prospects':      _ucAoaSheet(_ucResult.majorGiftProspects.columns, _ucResult.majorGiftProspects.rows),
+                        'Lapsed Major Donors':       _ucAoaSheet(_ucResult.lapsedMajorDonors.columns, _ucResult.lapsedMajorDonors.rows),
+                        'Mid-Level Giving Prospects':_ucAoaSheet(_ucResult.midLevelProspects.columns, _ucResult.midLevelProspects.rows),
+                        'Planned Giving Prospects':  _ucAoaSheet(_ucResult.plannedGivingProspects.columns, _ucResult.plannedGivingProspects.rows),
+                        'Decreased Giving Donors':   _ucAoaSheet(_ucResult.decreasedGivingDonors.columns, _ucResult.decreasedGivingDonors.rows),
+                        'Consecutive Giving Donors': _ucAoaSheet(_ucResult.consecutiveGivingDonors.columns, _ucResult.consecutiveGivingDonors.rows),
                     };
                     console.log('UPSTREAM_COMPUTE: gift rows=' + _ucResult.gift.rows.length + ' const rows=' + _ucResult.constituent.rows.length);
                 } else {
@@ -1965,10 +1979,22 @@
             }
             return out;
         }
-        if (workbook.Sheets['Gift Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Gift Data']), 'Gift Data (Original)');
-        if (workbook.Sheets['Constituent Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Constituent Data']), 'Constituent Data (Original)');
+        // Untrimmed reference copies of what was uploaded. They are never read by the PAD flow
+        // or any macro - they exist purely so the original rows can be inspected after the fact.
+        // On Montpelier they were 21.6MB of the 57MB of sheet XML (38%), which is payload the
+        // submitter's browser has to build, zip, base64 and POST. Off by default; flip to true
+        // if someone needs the raw rows round-tripped again.
+        var INCLUDE_ORIGINAL_SHEETS = false;
+        if (INCLUDE_ORIGINAL_SHEETS) {
+            if (workbook.Sheets['Gift Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Gift Data']), 'Gift Data (Original)');
+            if (workbook.Sheets['Constituent Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Constituent Data']), 'Constituent Data (Original)');
+        }
 
-        return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        // bookSST writes repeated strings once into a shared-string table and references them by
+        // index, instead of inlining every occurrence. Excel itself writes files this way - it is
+        // why the 4MB source expands to 21MB here. On Montpelier's Gift Data alone, "Cash" and
+        // "Individuals" were each written out ~40,700 times.
+        return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true, bookSST: true })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
 
     // Stub kept for backward compatibility — direct PA submit mode no longer uses GHL file input.
