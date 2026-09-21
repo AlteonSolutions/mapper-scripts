@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '7.29.2026b (upstream compute + prospect sheets)';
+    var MAPPER_VERSION = '7.29.2026c (upstream compute + prospect sheets + submit diagnostics)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -32,6 +32,118 @@
     var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isHF ? 'rgba(86, 21, 60, 0.1)' : isAlford ? 'rgba(44, 95, 93, 0.1)' : 'rgba(79, 120, 141, 0.1)';
     var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
     console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
+
+    // ---- Submission diagnostics ------------------------------------------------
+    // The submit button spins until the page navigates away, so a stall anywhere in
+    // build -> attach -> hand off to the GHL form looks identical to "still working".
+    // This records each step with timings and surfaces errors that are otherwise only
+    // visible in the console. Counts, sizes and timings only - never donor data or
+    // file contents, so the report is safe for a client to paste into an email.
+    var MapperDiag = (function() {
+        var steps = [], t0 = null, box = null, statusEl = null, listEl = null, done = false;
+        function now() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
+        function fmt(ms) { return ms < 1000 ? Math.round(ms) + ' ms' : (ms / 1000).toFixed(1) + ' s'; }
+        function heap() {
+            try { if (window.performance && performance.memory && performance.memory.usedJSHeapSize)
+                return Math.round(performance.memory.usedJSHeapSize / 1048576) + ' MB'; } catch (e) {}
+            return null;
+        }
+        function ensureBox() {
+            if (box) return box;
+            var anchor = document.getElementById('customSubmitBtn');
+            if (!anchor) return null;
+            box = document.createElement('div');
+            box.id = 'mapperDiagBox';
+            box.style.cssText = 'margin:14px auto 0;max-width:640px;border:1px solid #d1d5db;border-radius:8px;'
+                + 'background:#f9fafb;padding:12px 14px;font-size:13px;color:#374151;text-align:left;line-height:1.5;';
+            box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">'
+                + '<strong id="mapperDiagStatus" style="font-size:13px;color:' + themeColor + ';">Starting…</strong>'
+                + '<button type="button" id="mapperDiagCopy" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;'
+                + 'padding:4px 10px;font-size:12px;cursor:pointer;color:#374151;">Copy diagnostics</button></div>'
+                + '<div id="mapperDiagList" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#4b5563;"></div>';
+            (anchor.parentNode || document.body).insertBefore(box, anchor.nextSibling);
+            statusEl = box.querySelector('#mapperDiagStatus');
+            listEl = box.querySelector('#mapperDiagList');
+            box.querySelector('#mapperDiagCopy').addEventListener('click', function() {
+                var btn = this, txt = report();
+                function ok() { btn.textContent = 'Copied ✓'; setTimeout(function() { btn.textContent = 'Copy diagnostics'; }, 2000); }
+                if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, fallback);
+                else fallback();
+                function fallback() {
+                    var ta = document.createElement('textarea');
+                    ta.value = txt; ta.style.cssText = 'position:fixed;top:-1000px;';
+                    document.body.appendChild(ta); ta.select();
+                    try { document.execCommand('copy'); ok(); } catch (e) { btn.textContent = 'Press Ctrl+C'; ta.style.cssText = 'width:100%;height:120px;'; }
+                    setTimeout(function() { if (ta.parentNode) ta.parentNode.removeChild(ta); }, 100);
+                }
+            });
+            return box;
+        }
+        function render() {
+            if (!ensureBox()) return;
+            var html = '';
+            for (var i = 0; i < steps.length; i++) {
+                var s = steps[i];
+                var color = s.level === 'error' ? '#b91c1c' : s.level === 'warn' ? '#b45309' : '#4b5563';
+                html += '<div style="color:' + color + ';">' + (s.level === 'error' ? '✕ ' : s.level === 'warn' ? '! ' : '• ')
+                      + s.label + (s.detail ? ' — ' + s.detail : '')
+                      + ' <span style="color:#9ca3af;">[' + fmt(s.at) + ']</span></div>';
+            }
+            listEl.innerHTML = html;
+        }
+        function setStatus(text, level) {
+            if (!ensureBox()) return;
+            statusEl.textContent = text;
+            statusEl.style.color = level === 'error' ? '#b91c1c' : level === 'warn' ? '#b45309' : themeColor;
+            if (level === 'error') { box.style.borderColor = '#fca5a5'; box.style.background = '#fef2f2'; }
+        }
+        function padLeft(s, n) { s = String(s); while (s.length < n) s = ' ' + s; return s; }
+        function add(label, detail, level) {
+            if (t0 === null) t0 = now();
+            steps.push({ label: label, detail: detail || '', at: now() - t0, level: level || 'info' });
+            render();
+        }
+        function report() {
+            var lines = [];
+            lines.push('Mapper submission diagnostics');
+            lines.push('version: ' + MAPPER_VERSION);
+            lines.push('brand: ' + (isSW ? 'SW' : isHF ? 'HF' : isAlford ? 'Alford' : 'Databasey')
+                     + (isSimpleFlow ? ' / ' + (isStaffing ? 'staffing' : isDevelopmentAssessment ? 'developmentassessment' : 'campaigncounsel') : ''));
+            lines.push('when: ' + new Date().toISOString());
+            lines.push('browser: ' + navigator.userAgent);
+            if (heap()) lines.push('js heap in use: ' + heap());
+            lines.push('');
+            for (var i = 0; i < steps.length; i++) {
+                var s = steps[i];
+                lines.push((s.level === 'error' ? 'ERROR ' : s.level === 'warn' ? 'WARN  ' : '      ')
+                         + padLeft(fmt(s.at), 8) + '  ' + s.label + (s.detail ? ' - ' + s.detail : ''));
+            }
+            return lines.join('\n');
+        }
+        return {
+            start: function() { steps = []; t0 = now(); done = false; ensureBox(); setStatus('Working…'); add('Submit clicked', heap() ? 'heap ' + heap() : ''); },
+            step:  function(label, detail) { add(label, detail); setStatus(label + '…'); },
+            ok:    function(label, detail) { done = true; add(label, detail); setStatus(label, 'info'); },
+            warn:  function(label, detail) { add(label, detail, 'warn'); setStatus(label, 'warn'); },
+            fail:  function(label, detail) { done = true; add(label, detail, 'error');
+                     setStatus('Stopped — ' + label + '. Use "Copy diagnostics" and send it to support.', 'error'); },
+            isDone: function() { return done; },
+            started: function() { return t0 !== null; },
+            report: report
+        };
+    })();
+
+    // Surface errors that would otherwise only appear in the console. A submission that
+    // dies here is exactly the case where the spinner never stops.
+    window.addEventListener('error', function(e) {
+        if (MapperDiag.started() && !MapperDiag.isDone())
+            MapperDiag.fail('Script error', (e && e.message ? e.message : 'unknown')
+                + (e && e.filename ? ' (' + String(e.filename).split('/').pop() + ':' + e.lineno + ')' : ''));
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        if (MapperDiag.started() && !MapperDiag.isDone())
+            MapperDiag.fail('Unhandled error', (e && e.reason && e.reason.message) ? e.reason.message : String(e && e.reason));
+    });
 
     // Client-side-only guardrail against accidental wrong-brand submissions (e.g. someone
     // on /alfordanalytics submitting with an unrelated email). NOT real access control -
@@ -984,10 +1096,20 @@
                     document.head.appendChild(spinStyle);
                 }
                 btn.innerHTML = '<div style="display:inline-flex;align-items:center;gap:10px;"><div style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #ffffff;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div><span>Uploading...</span></div>';
+                MapperDiag.start();
 
                 setTimeout(function() {
-                    var blob = generateExcelBlob();
-                    if (!blob) { btn.disabled = false; btn.innerHTML = originalHTML; return; }
+                    MapperDiag.step('Building the data file', 'computing and packaging - the slow step on large files');
+                    var blob;
+                    try {
+                        blob = generateExcelBlob();
+                    } catch (buildErr) {
+                        MapperDiag.fail('Building the file failed', buildErr && buildErr.message ? buildErr.message : String(buildErr));
+                        btn.disabled = false; btn.innerHTML = originalHTML;
+                        return;
+                    }
+                    if (!blob) { MapperDiag.fail('Mapping steps are incomplete', 'finish every mapping step, then submit'); btn.disabled = false; btn.innerHTML = originalHTML; return; }
+                    MapperDiag.step('Data file built', (blob.size / 1048576).toFixed(1) + ' MB');
 
                     // HF runs through the same downstream pipeline/macro template as Databasey — only Alford and SW are distinct.
                     var formSource   = isSW ? 'SW' : (isAlford ? 'Alford' : 'Databasey');
@@ -996,9 +1118,11 @@
 
                     function submitPayload(logoBase64, logoFilename) {
                         var reader = new FileReader();
+                        MapperDiag.step('Encoding for upload', 'base64 - roughly a third larger than the file');
                         reader.readAsDataURL(blob);
                         reader.onloadend = function() {
                             var base64 = reader.result.split(',')[1];
+                            MapperDiag.step('Encoded', (base64.length / 1048576).toFixed(1) + ' MB to send');
                             var payload = {
                                 company_name:              clientName.trim(),
                                 full_name:                 contactName.trim(),
@@ -1013,6 +1137,7 @@
                                 logo_content:              logoBase64 || '',
                                 logo_filename:             logoFilename || ''
                             };
+                            MapperDiag.step('Uploading', 'sending to the processing service');
                             fetch(PA_TRIGGER_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -1020,6 +1145,7 @@
                             })
                             .then(function(res) {
                                 if (res.ok || res.status === 202) {
+                                    MapperDiag.ok('Submitted successfully', 'redirecting');
                                     window.location.href = 'https://getdatabasey.com/submitted';
                                 } else {
                                     throw new Error('Server returned ' + res.status);
@@ -1027,12 +1153,14 @@
                             })
                             .catch(function(err) {
                                 console.error('PA submit error:', err);
+                                MapperDiag.fail('Upload failed', err && err.message ? err.message : String(err));
                                 btn.disabled = false;
                                 btn.innerHTML = originalHTML;
                                 alert('Submission failed — please try again or contact support.\n\nError: ' + err.message);
                             });
                         };
                         reader.onerror = function() {
+                            MapperDiag.fail('Could not encode the file for upload', 'the browser may have run out of memory');
                             btn.disabled = false;
                             btn.innerHTML = originalHTML;
                             alert('Failed to prepare file for upload. Please try again.');
@@ -1859,11 +1987,14 @@
                         'Consecutive Giving Donors': _ucAoaSheet(_ucResult.consecutiveGivingDonors.columns, _ucResult.consecutiveGivingDonors.rows),
                     };
                     console.log('UPSTREAM_COMPUTE: gift rows=' + _ucResult.gift.rows.length + ' const rows=' + _ucResult.constituent.rows.length);
+                    MapperDiag.step('Analytics computed', _ucResult.gift.rows.length.toLocaleString() + ' gift rows, ' + _ucResult.constituent.rows.length.toLocaleString() + ' constituents');
                 } else {
                     console.warn('UPSTREAM_COMPUTE: FY Start Month not found in form, using standard output');
+                    MapperDiag.warn('Fiscal Year Start Month not found', 'submitting without the computed analytics columns');
                 }
             } catch(_ucErr) {
                 console.error('UPSTREAM_COMPUTE error, falling back to standard output:', _ucErr);
+                MapperDiag.warn('Analytics computation failed', (_ucErr && _ucErr.message ? _ucErr.message : String(_ucErr)) + ' - falling back to standard output');
             }
         }
 
