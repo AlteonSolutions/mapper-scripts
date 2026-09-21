@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '7.27.2026c (upstream compute)';
+    var MAPPER_VERSION = '7.27.2026d (upstream compute + submit diagnostics)';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
 
     if (window.location.href.includes('page-builder') || 
@@ -30,6 +30,118 @@
     var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isHF ? 'rgba(86, 21, 60, 0.1)' : isAlford ? 'rgba(44, 95, 93, 0.1)' : 'rgba(79, 120, 141, 0.1)';
     var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
     console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
+
+    // ---- Submission diagnostics ------------------------------------------------
+    // The submit button spins until the page navigates away, so a stall anywhere in
+    // build -> attach -> hand off to the GHL form looks identical to "still working".
+    // This records each step with timings and surfaces errors that are otherwise only
+    // visible in the console. Counts, sizes and timings only - never donor data or
+    // file contents, so the report is safe for a client to paste into an email.
+    var MapperDiag = (function() {
+        var steps = [], t0 = null, box = null, statusEl = null, listEl = null, done = false;
+        function now() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
+        function fmt(ms) { return ms < 1000 ? Math.round(ms) + ' ms' : (ms / 1000).toFixed(1) + ' s'; }
+        function heap() {
+            try { if (window.performance && performance.memory && performance.memory.usedJSHeapSize)
+                return Math.round(performance.memory.usedJSHeapSize / 1048576) + ' MB'; } catch (e) {}
+            return null;
+        }
+        function ensureBox() {
+            if (box) return box;
+            var anchor = document.getElementById('customSubmitBtn');
+            if (!anchor) return null;
+            box = document.createElement('div');
+            box.id = 'mapperDiagBox';
+            box.style.cssText = 'margin:14px auto 0;max-width:640px;border:1px solid #d1d5db;border-radius:8px;'
+                + 'background:#f9fafb;padding:12px 14px;font-size:13px;color:#374151;text-align:left;line-height:1.5;';
+            box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">'
+                + '<strong id="mapperDiagStatus" style="font-size:13px;color:' + themeColor + ';">Starting…</strong>'
+                + '<button type="button" id="mapperDiagCopy" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;'
+                + 'padding:4px 10px;font-size:12px;cursor:pointer;color:#374151;">Copy diagnostics</button></div>'
+                + '<div id="mapperDiagList" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#4b5563;"></div>';
+            (anchor.parentNode || document.body).insertBefore(box, anchor.nextSibling);
+            statusEl = box.querySelector('#mapperDiagStatus');
+            listEl = box.querySelector('#mapperDiagList');
+            box.querySelector('#mapperDiagCopy').addEventListener('click', function() {
+                var btn = this, txt = report();
+                function ok() { btn.textContent = 'Copied ✓'; setTimeout(function() { btn.textContent = 'Copy diagnostics'; }, 2000); }
+                if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, fallback);
+                else fallback();
+                function fallback() {
+                    var ta = document.createElement('textarea');
+                    ta.value = txt; ta.style.cssText = 'position:fixed;top:-1000px;';
+                    document.body.appendChild(ta); ta.select();
+                    try { document.execCommand('copy'); ok(); } catch (e) { btn.textContent = 'Press Ctrl+C'; ta.style.cssText = 'width:100%;height:120px;'; }
+                    setTimeout(function() { if (ta.parentNode) ta.parentNode.removeChild(ta); }, 100);
+                }
+            });
+            return box;
+        }
+        function render() {
+            if (!ensureBox()) return;
+            var html = '';
+            for (var i = 0; i < steps.length; i++) {
+                var s = steps[i];
+                var color = s.level === 'error' ? '#b91c1c' : s.level === 'warn' ? '#b45309' : '#4b5563';
+                html += '<div style="color:' + color + ';">' + (s.level === 'error' ? '✕ ' : s.level === 'warn' ? '! ' : '• ')
+                      + s.label + (s.detail ? ' — ' + s.detail : '')
+                      + ' <span style="color:#9ca3af;">[' + fmt(s.at) + ']</span></div>';
+            }
+            listEl.innerHTML = html;
+        }
+        function setStatus(text, level) {
+            if (!ensureBox()) return;
+            statusEl.textContent = text;
+            statusEl.style.color = level === 'error' ? '#b91c1c' : level === 'warn' ? '#b45309' : themeColor;
+            if (level === 'error') { box.style.borderColor = '#fca5a5'; box.style.background = '#fef2f2'; }
+        }
+        function padLeft(s, n) { s = String(s); while (s.length < n) s = ' ' + s; return s; }
+        function add(label, detail, level) {
+            if (t0 === null) t0 = now();
+            steps.push({ label: label, detail: detail || '', at: now() - t0, level: level || 'info' });
+            render();
+        }
+        function report() {
+            var lines = [];
+            lines.push('Mapper submission diagnostics');
+            lines.push('version: ' + MAPPER_VERSION);
+            lines.push('brand: ' + (isSW ? 'SW' : isHF ? 'HF' : isAlford ? 'Alford' : 'Databasey')
+                     + (isSimpleFlow ? ' / ' + (isStaffing ? 'staffing' : isDevelopmentAssessment ? 'developmentassessment' : 'campaigncounsel') : ''));
+            lines.push('when: ' + new Date().toISOString());
+            lines.push('browser: ' + navigator.userAgent);
+            if (heap()) lines.push('js heap in use: ' + heap());
+            lines.push('');
+            for (var i = 0; i < steps.length; i++) {
+                var s = steps[i];
+                lines.push((s.level === 'error' ? 'ERROR ' : s.level === 'warn' ? 'WARN  ' : '      ')
+                         + padLeft(fmt(s.at), 8) + '  ' + s.label + (s.detail ? ' - ' + s.detail : ''));
+            }
+            return lines.join('\n');
+        }
+        return {
+            start: function() { steps = []; t0 = now(); done = false; ensureBox(); setStatus('Working…'); add('Submit clicked', heap() ? 'heap ' + heap() : ''); },
+            step:  function(label, detail) { add(label, detail); setStatus(label + '…'); },
+            ok:    function(label, detail) { done = true; add(label, detail); setStatus(label, 'info'); },
+            warn:  function(label, detail) { add(label, detail, 'warn'); setStatus(label, 'warn'); },
+            fail:  function(label, detail) { done = true; add(label, detail, 'error');
+                     setStatus('Stopped — ' + label + '. Use "Copy diagnostics" and send it to support.', 'error'); },
+            isDone: function() { return done; },
+            started: function() { return t0 !== null; },
+            report: report
+        };
+    })();
+
+    // Surface errors that would otherwise only appear in the console. A submission that
+    // dies here is exactly the case where the spinner never stops.
+    window.addEventListener('error', function(e) {
+        if (MapperDiag.started() && !MapperDiag.isDone())
+            MapperDiag.fail('Script error', (e && e.message ? e.message : 'unknown')
+                + (e && e.filename ? ' (' + String(e.filename).split('/').pop() + ':' + e.lineno + ')' : ''));
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        if (MapperDiag.started() && !MapperDiag.isDone())
+            MapperDiag.fail('Unhandled error', (e && e.reason && e.reason.message) ? e.reason.message : String(e && e.reason));
+    });
 
     // Client-side-only guardrail against accidental wrong-brand submissions (e.g. someone
     // on /alfordanalytics submitting with an unrelated email). NOT real access control -
@@ -803,9 +915,18 @@
                     document.head.appendChild(spinStyle);
                 }
                 console.log('Submit clicked');
+                MapperDiag.start();
                 setTimeout(function() {
-                    var attached = window.attachToGHLForm();
+                    var attached;
+                    try {
+                        attached = window.attachToGHLForm();
+                    } catch (err) {
+                        MapperDiag.fail('Building the file failed', err && err.message ? err.message : String(err));
+                        btn.disabled = false; btn.textContent = originalText;
+                        return;
+                    }
                     if (!attached) {
+                        MapperDiag.fail('File could not be attached to the form', 'mapping incomplete, or the upload field was not found');
                         btn.disabled = false;
                         btn.textContent = originalText;
                         return;
@@ -814,8 +935,23 @@
                     if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
                     setTimeout(function() {
                         var ghlBtn = document.querySelector('button[type="submit"]');
-                        if (ghlBtn) { console.log('Clicking GHL submit'); ghlBtn.click(); }
-                        else { var form = document.querySelector('form'); if (form) form.submit(); else { btn.disabled = false; btn.textContent = originalText; alert('Could not submit. Contact support.'); } }
+                        if (ghlBtn) {
+                            console.log('Clicking GHL submit');
+                            MapperDiag.step('Handed off to the upload form', 'the form is now sending the file');
+                            ghlBtn.click();
+                            // Past this point the GHL form owns the upload and we get no callback -
+                            // the page simply navigates on success. If it has not, say so rather
+                            // than spinning silently forever.
+                            setTimeout(function() {
+                                if (!MapperDiag.isDone())
+                                    MapperDiag.warn('Still uploading after 90s', 'the form has not responded - likely the file size or the network');
+                            }, 90000);
+                            setTimeout(function() {
+                                if (!MapperDiag.isDone())
+                                    MapperDiag.fail('No response after 5 minutes', 'the upload did not complete');
+                            }, 300000);
+                        }
+                        else { var form = document.querySelector('form'); if (form) { MapperDiag.step('Handed off to the upload form', 'submitting directly'); form.submit(); } else { MapperDiag.fail('No submit form found on the page', 'contact support'); btn.disabled = false; btn.textContent = originalText; alert('Could not submit. Contact support.'); } }
                     }, 200);
                 }, 50);
             });
@@ -1588,11 +1724,14 @@
                         }
                     }
                     console.log('UPSTREAM_COMPUTE: gift rows=' + _ucResult.gift.rows.length + ' const rows=' + _ucResult.constituent.rows.length);
+                    MapperDiag.step('Analytics computed', _ucResult.gift.rows.length.toLocaleString() + ' gift rows, ' + _ucResult.constituent.rows.length.toLocaleString() + ' constituents');
                 } else {
                     console.warn('UPSTREAM_COMPUTE: FY Start Month not found in form, using standard output');
+                    MapperDiag.warn('Fiscal Year Start Month not found', 'submitting without the computed analytics columns');
                 }
             } catch(_ucErr) {
                 console.error('UPSTREAM_COMPUTE error, falling back to standard output:', _ucErr);
+                MapperDiag.warn('Analytics computation failed', (_ucErr && _ucErr.message ? _ucErr.message : String(_ucErr)) + ' - falling back to standard output');
             }
         }
 
@@ -1682,12 +1821,14 @@
     }
 
     window.attachToGHLForm = function() {
+        MapperDiag.step('Building the data file', 'computing and packaging - the slow step on large files');
         var blob = generateExcelBlob();
-        if (!blob) { alert('Please complete all ' + (isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
+        if (!blob) { MapperDiag.fail('Mapping steps are incomplete', 'finish every mapping step, then submit'); alert('Please complete all ' + (isSimpleFlow ? ((isStaffing && solicitors.length > 0) || (isDevelopmentAssessment && appealCategories.length > 0) || (isCampaignCounsel && pledgeStatuses.length > 0) ? 'three' : 'two') : spotlightConfig ? 'four' : 'three') + ' mapping steps before submitting'); return false; }
+        MapperDiag.step('Data file built', (blob.size / 1048576).toFixed(1) + ' MB');
         var file = new File([blob], 'Gift_Data_with_Events.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         var fi = document.querySelector('input[type="file"][name="  Client Data File"]') || document.querySelector('input[type="file"][name*="Client Data File"]') || document.querySelector('input[type="file"][name*="e874762e"]') || document.querySelector('#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13 input[type="file"]');
-        if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); return true; }
-        else { alert('Could not attach file. Please contact support.'); return false; }
+        if (fi) { var dt = new DataTransfer(); dt.items.add(file); fi.files = dt.files; fi.dispatchEvent(new Event('change', { bubbles: true })); MapperDiag.step('File attached to the form'); return true; }
+        else { MapperDiag.fail('Upload field not found on the page', 'the form may have changed'); alert('Could not attach file. Please contact support.'); return false; }
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
