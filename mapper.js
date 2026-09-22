@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 18:58 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b12';
+    var MAPPER_BUILD   = '2026-09-22 19:22 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b13';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1104,7 +1104,11 @@
         + '.mp-drop .mp-drop-icon{display:flex!important;align-items:center!important;justify-content:center!important;'
         +   'padding:14px 0!important;pointer-events:none!important;}'
         + '.mp-drop-hide{display:none!important;}'
-        + '.mp-drop.mp-has-file{display:none!important;}'
+        // GHL injects the chosen file's card into .file-placeholder, which lives
+        // inside the drop zone - so hiding the zone takes the thumbnail with it.
+        // Hide the badge instead and let the card have the box.
+        + '.mp-drop.mp-has-file .mp-drop-icon{display:none!important;}'
+        + '.mp-drop.mp-has-file{cursor:default!important;padding:8px!important;}'
         + '.mp-hide{display:none!important;}'
         // The preview card GHL renders under the drop zone once a file is chosen.
         + '.mp-preview{border:1px solid #e5e7eb!important;border-radius:8px!important;background:#fff!important;'
@@ -1209,15 +1213,31 @@
                 var thumb = field.querySelector('img');
                 var preview = null;
                 if (thumb) {
-                    preview = thumb.parentNode;
-                    while (preview && preview !== field && preview.parentNode !== field) preview = preview.parentNode;
-                    if (preview && String(preview.className).indexOf('mp-preview') === -1) {
+                    // The card's own container, not an ancestor of it. Climbing until
+                    // the node was a direct child of the field walked straight past the
+                    // card and bordered a wrapper holding the title as well.
+                    preview = (thumb.closest && thumb.closest('[class*="placeholder"]')) || thumb.parentNode;
+                    if (preview === zone || preview === field) preview = thumb.parentNode;
+                    if (preview && preview !== zone && String(preview.className).indexOf('mp-preview') === -1) {
                         preview.className += ' mp-preview'; tagged.preview++;
                     }
                 }
 
+                // Skip the badge's own svg. This loop runs on every pass, so once the
+                // badge had been inserted the next pass hid it along with GHL's and
+                // left an empty box.
                 var svgs = zone.querySelectorAll('svg');
-                for (var i = 0; i < svgs.length; i++) svgs[i].classList.add('mp-drop-hide');
+                for (var i = 0; i < svgs.length; i++) {
+                    // Skip the badge's own svg: this loop runs on every pass, so once
+                    // the badge was inserted the next pass hid it along with GHL's and
+                    // left an empty box.
+                    if (svgs[i].closest && svgs[i].closest('.mp-drop-icon')) continue;
+                    // And skip the card's, which sits inside the zone too - its delete
+                    // button is the only way to swap the logo out.
+                    if (preview && preview.contains(svgs[i])) continue;
+                    if (svgs[i].closest && svgs[i].closest('[class*="placeholder"]')) continue;
+                    svgs[i].classList.add('mp-drop-hide');
+                }
                 if (!zone.querySelector('.mp-drop-icon')) {
                     var icon = document.createElement('div');
                     icon.className = 'mp-drop-icon';
@@ -1253,6 +1273,19 @@
             console.log('Mapper: restyled ' + tagged.fields + ' field(s), ' + tagged.selects + ' dropdown(s), '
                       + tagged.labels + ' label(s), ' + tagged.drop + ' drop zone(s), '
                       + tagged.preview + ' preview(s)');
+            // Name every element carrying a class of ours. A border appearing where
+            // none was asked for is otherwise a guessing game about which rule found
+            // which wrapper.
+            try {
+                var mine = document.querySelectorAll('.mp-field,.mp-select,.mp-drop,.mp-preview');
+                for (var m = 0; m < mine.length; m++) {
+                    var t = mine[m];
+                    console.log('  tagged →', t.tagName.toLowerCase()
+                        + '.' + String(t.className).trim().split(/\s+/).join('.')
+                        + '  [' + Math.round(t.getBoundingClientRect().width) + '×'
+                        + Math.round(t.getBoundingClientRect().height) + ']');
+                }
+            } catch (e) {}
         }
         return tagged;
     }
