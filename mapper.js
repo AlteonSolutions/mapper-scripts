@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 18:31 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b11';
+    var MAPPER_BUILD   = '2026-09-22 18:58 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b12';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -87,8 +87,18 @@
             });
             return box;
         }
+        // A clean submission has nothing worth reading, so the panel stays out of the
+        // way until something goes wrong. Steps are recorded from the start either
+        // way, so whatever led up to a snag is all there the moment it appears.
+        var revealed = false;
+        function reveal() {
+            if (revealed) return;
+            revealed = true;
+            ensureBox();
+            render();
+        }
         function render() {
-            if (!ensureBox()) return;
+            if (!revealed || !ensureBox()) return;
             var html = '';
             for (var i = 0; i < steps.length; i++) {
                 var s = steps[i];
@@ -100,7 +110,7 @@
             listEl.innerHTML = html;
         }
         function setStatus(text, level) {
-            if (!ensureBox()) return;
+            if (!revealed || !ensureBox()) return;
             statusEl.textContent = text;
             statusEl.style.color = level === 'error' ? '#b91c1c' : level === 'warn' ? '#b45309' : themeColor;
             if (level === 'error') { box.style.borderColor = '#fca5a5'; box.style.background = '#fef2f2'; }
@@ -140,6 +150,7 @@
         // that recorded a warning waits for a click instead, so whoever submitted
         // can read the note - or copy it - before the page goes away.
         function holdForContinue(onContinue) {
+            reveal();
             if (!ensureBox()) { onContinue(); return; }
             setStatus('Submitted — review the notes below, then continue', 'warn');
             if (box.querySelector('#mapperDiagContinue')) return;
@@ -152,11 +163,12 @@
             box.querySelector('#mapperDiagContinue').addEventListener('click', onContinue);
         }
         return {
-            start: function() { steps = []; t0 = now(); done = false; ensureBox(); setStatus('Working…'); add('Submit clicked', heap() ? 'heap ' + heap() : ''); },
+            start: function() { steps = []; t0 = now(); done = false; revealed = false;
+                     add('Submit clicked', heap() ? 'heap ' + heap() : ''); },
             step:  function(label, detail) { add(label, detail); setStatus(label + '…'); },
             ok:    function(label, detail) { done = true; add(label, detail); setStatus(label, 'info'); },
-            warn:  function(label, detail) { add(label, detail, 'warn'); setStatus(label, 'warn'); },
-            fail:  function(label, detail) { done = true; add(label, detail, 'error');
+            warn:  function(label, detail) { add(label, detail, 'warn'); reveal(); setStatus(label, 'warn'); },
+            fail:  function(label, detail) { done = true; add(label, detail, 'error'); reveal();
                      setStatus('Stopped — ' + label + '. Use "Copy diagnostics" and send it to support.', 'error');
                      persist(); },
             isDone: function() { return done; },
@@ -1178,12 +1190,18 @@
                     } catch (e) {}
                 }
                 if (!zone) zone = closestMatching(input, /drop|upload|dropzone/i, 4);
-                if (!zone || String(zone.className).indexOf('mp-drop') !== -1) return;
+                if (!zone) return;
 
-                console.log('Mapper: logo drop zone →', zone.tagName.toLowerCase()
-                          + '.' + (String(zone.className).trim().split(/\s+/).join('.') || '(no class)'));
-                zone.className += ' mp-drop';
-                tagged.drop++;
+                // Tagging and the icon happen once; the chosen/not-chosen state has to
+                // be re-evaluated on every pass. Returning early when the class was
+                // already present meant the state below never ran after the first
+                // paint, so the box stayed put once a file was picked.
+                if (String(zone.className).indexOf('mp-drop') === -1) {
+                    console.log('Mapper: logo drop zone →', zone.tagName.toLowerCase()
+                              + '.' + (String(zone.className).trim().split(/\s+/).join('.') || '(no class)'));
+                    zone.className += ' mp-drop';
+                    tagged.drop++;
+                }
 
                 // The card GHL builds for the chosen file - the one holding the
                 // thumbnail. Identified by the image rather than by class, and kept
@@ -1207,30 +1225,26 @@
                     zone.insertBefore(icon, zone.firstChild);
                 }
 
-                // Once a file is chosen the drop zone has done its job, so the box and
-                // GHL's "1 file selected" counter both come off and the thumbnail card
-                // stands alone.
-                var chosen = !!thumb;
-                zone.classList.toggle('mp-has-file', chosen);
+                // Once a file is chosen the drop zone has done its job, so the box comes
+                // off and the thumbnail card stands alone.
+                zone.classList.toggle('mp-has-file', !!thumb);
+
+                // GHL's "File selected / 1 file selected" counter goes regardless of
+                // state - it restates what the card below it already shows, and the
+                // card shows it better.
                 var kids = field.querySelectorAll('div,span,p');
                 for (var k = 0; k < kids.length; k++) {
                     var el = kids[k];
-                    if (el === zone || el === preview) continue;
-                    if (preview && preview.contains(el)) continue;
-                    if (zone.contains(el)) continue;
-                    if (/file\s+selected/i.test((el.textContent || '').replace(/\s+/g, ' '))) {
-                        el.classList.toggle('mp-hide', chosen);
-                    }
+                    if (el === preview || (preview && preview.contains(el))) continue;
+                    var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+                    if (/file selected/i.test(txt) && txt.length <= 60) el.classList.add('mp-hide');
                 }
             });
 
-            // GHL renders the chosen file in a card below the drop zone.
-            var previews = document.querySelectorAll('[class*="preview"],[class*="file-item"],[class*="uploaded"]');
-            for (var p = 0; p < previews.length; p++) {
-                if (previews[p].className.indexOf('mp-preview') === -1) {
-                    previews[p].className += ' mp-preview'; tagged.preview++;
-                }
-            }
+            // The thumbnail card is tagged inside the logo block above, by the image it
+            // contains. A page-wide sweep for "preview"/"uploaded" class names used to
+            // do it here and matched one of GHL's outer wrappers, which is where the
+            // second border around the whole field came from.
         } catch (e) {
             console.warn('Mapper: could not restyle the brand form —', e && e.message);
         }
@@ -1427,21 +1441,6 @@
         // uploadTitle pre-styled in HTML
 
         // uploadBox pre-styled in HTML - just attach click listener
-        // A build stamp on the page itself, so "which version am I looking at"
-        // does not need devtools - the question a stale CDN makes you ask most.
-        // Remove this along with the FEATURE TEST label before the permanent
-        // cutover; it is deliberately visible only while this is a test build.
-        waitForElement('#uploadBox', function(el) {
-            if (document.getElementById('mapperBuildStamp')) return;
-            var stamp = document.createElement('div');
-            stamp.id = 'mapperBuildStamp';
-            stamp.style.cssText = 'margin:6px auto 0;max-width:640px;text-align:right;'
-                + 'font-size:10.5px;color:#9ca3af;font-family:ui-monospace,Menlo,monospace;'
-                + 'letter-spacing:.02em;';
-            stamp.textContent = MAPPER_VERSION + ' · built ' + MAPPER_BUILD;
-            if (el.parentNode) el.parentNode.insertBefore(stamp, el.nextSibling);
-        });
-
         waitForElement('#uploadBox', function(el) {
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
