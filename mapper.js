@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 17:34 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b8';
+    var MAPPER_BUILD   = '2026-09-22 17:48 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b9';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -787,39 +787,86 @@
         return h.indexOf('client data') !== -1 || h.indexOf('gift') !== -1 || h.indexOf('constituent') !== -1;
     }
 
+    // An uploader that ships the file to its own storage on selection is free to
+    // clear input.files afterwards, and GHL's does exactly that often enough that
+    // reading .files at submit time cannot be relied on - by then there may be
+    // nothing left to read, however good the selector.
+    //
+    // So take a reference the moment the file is chosen. The change event fires
+    // before the uploader gets to it, the File object stays valid once captured,
+    // and a listener on the document in capture phase also catches inputs GHL
+    // renders after this runs.
+    var _pickedFiles = [];
+    document.addEventListener('change', function(e) {
+        var el = e.target;
+        if (!el || el.type !== 'file' || el.id === 'fileInput') return;
+        if (!el.files || !el.files[0]) return;
+        for (var i = 0; i < _pickedFiles.length; i++) {
+            if (_pickedFiles[i].el === el) { _pickedFiles[i].file = el.files[0]; return; }
+        }
+        _pickedFiles.push({ el: el, file: el.files[0] });
+        console.log('Mapper: file selected on a host input —', el.files[0].name,
+                    '(' + Math.round(el.files[0].size / 1024) + ' KB)');
+    }, true);
+
     // Returns { file, how } - file is null when nothing qualified, and how always
     // explains the outcome so the diagnostics panel can show it.
     function getLogoFile() {
         var inputs = logoCandidateInputs();
-        var withFile = inputs.filter(function(el) { return el.files && el.files[0]; });
+
+        // Pair every reachable input with its file, preferring what the input still
+        // holds and falling back to what was captured when it was chosen.
+        var pairs = [];
+        inputs.forEach(function(el) {
+            if (el.files && el.files[0]) { pairs.push({ el: el, file: el.files[0], live: true }); return; }
+            for (var i = 0; i < _pickedFiles.length; i++) {
+                if (_pickedFiles[i].el === el) { pairs.push({ el: el, file: _pickedFiles[i].file, live: false }); return; }
+            }
+        });
+        // A capture whose input has since been removed from the page still counts.
+        _pickedFiles.forEach(function(p) {
+            for (var i = 0; i < pairs.length; i++) if (pairs[i].el === p.el) return;
+            if (p.el.id !== 'fileInput') pairs.push({ el: p.el, file: p.file, live: false });
+        });
+
+        var live = pairs.filter(function(p) { return p.live; }).length;
 
         function firstUsable(list, how) {
             for (var i = 0; i < list.length; i++) {
-                if (list[i].files[0].size <= LOGO_MAX_BYTES) return { file: list[i].files[0], how: how };
+                if (list[i].file.size <= LOGO_MAX_BYTES) {
+                    return { file: list[i].file, how: how + (list[i].live ? '' : ', recovered from selection') };
+                }
             }
             return null;
         }
 
-        var hit = firstUsable(withFile.filter(function(el) {
-            return inputHints(el).indexOf('logo') !== -1;
+        var hit = firstUsable(pairs.filter(function(p) {
+            return inputHints(p.el).indexOf('logo') !== -1;
         }), 'field named "logo"');
         if (hit) return hit;
 
-        hit = firstUsable(withFile.filter(function(el) {
-            return !looksLikeDataFile(el)
-                && ((el.accept || '').toLowerCase().indexOf('image') !== -1
-                    || /^image\//.test(el.files[0].type || ''));
+        hit = firstUsable(pairs.filter(function(p) {
+            return !looksLikeDataFile(p.el)
+                && ((p.el.accept || '').toLowerCase().indexOf('image') !== -1
+                    || /^image\//.test(p.file.type || ''));
         }), 'image upload');
         if (hit) return hit;
 
-        var other = withFile.filter(function(el) { return !looksLikeDataFile(el); });
+        var other = pairs.filter(function(p) { return !looksLikeDataFile(p.el); });
         if (other.length === 1) {
             hit = firstUsable(other, 'only other upload on the page');
             if (hit) return hit;
         }
 
-        return { file: null, how: inputs.length + ' file input(s) reachable, '
-                                 + withFile.length + ' with a file selected' };
+        // Say which of the two cases this is, since they need different answers:
+        // nothing was ever chosen, or something was chosen and could not be used.
+        var how;
+        if (!pairs.length) {
+            how = 'no file was chosen on any of the ' + inputs.length + ' upload field(s) on this page';
+        } else {
+            how = pairs.length + ' file(s) found (' + live + ' still on the input) but none qualified as a logo';
+        }
+        return { file: null, how: how };
     }
 
     // The brand page's "Client Information" block collects all of this before the
