@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 17:48 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b9';
+    var MAPPER_BUILD   = '2026-09-22 18:05 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b10';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -742,9 +742,33 @@
         while (node && node.querySelector && hops < 8) {
             var near = node.querySelector('label');
             if (near) { bits.push(near.textContent.toLowerCase()); break; }
+            // Not every form titles its fields with a <label>; GHL's uploader uses
+            // a plain div, which is why searching for label elements alone never
+            // found the logo field. Fall back to the container's own text once it
+            // is short enough to be one field's worth rather than the whole form's.
+            var txt = (node.textContent || '').replace(/\s+/g, ' ').trim();
+            if (txt && txt.length <= 120) { bits.push(txt.toLowerCase()); break; }
             node = node.parentNode; hops++;
         }
         return bits.join(' ');
+    }
+
+    // Finds the element that actually paints the box the user sees. Class names
+    // have been the wrong handle three times running, but a drawn border is a
+    // drawn border whatever GHL calls it - so walk up from the input and take the
+    // first ancestor with a visible one.
+    function drawnBox(el, maxHops) {
+        var node = el.parentNode, hops = 0;
+        while (node && node.nodeType === 1 && hops < (maxHops || 6)) {
+            try {
+                var cs = window.getComputedStyle(node);
+                var w = parseFloat(cs.borderTopWidth) || 0;
+                var style = cs.borderTopStyle;
+                if (w > 0 && style && style !== 'none' && style !== 'hidden') return node;
+            } catch (e) {}
+            node = node.parentNode; hops++;
+        }
+        return null;
     }
 
     // Prints what the page actually contains, once, so the shape of a widget
@@ -1049,7 +1073,14 @@
         + '.mp-select .multiselect__option--highlight{background:' + themeColor + '!important;color:#fff!important;}'
         + '.mp-select .multiselect__option--highlight:after{background:transparent!important;color:#fff!important;}'
         // The logo drop zone, matched to the client-data upload box above it.
-        + '.mp-drop{border:1px solid #ACACACFF!important;border-radius:8px!important;min-height:74px!important;'
+        // border-style is called out separately: GHL draws this box dashed, and a
+        // shorthand alone has lost to it before. Padding is zeroed so the height
+        // comes from the icon, the way the client-data box's does - otherwise the
+        // box keeps GHL's generous padding and stays visibly taller.
+        + '.mp-drop{border:1px solid #ACACACFF!important;border-style:solid!important;'
+        +   'border-radius:8px!important;min-height:74px!important;height:auto!important;'
+        +   'padding:0!important;box-sizing:border-box!important;'
+        +   'display:flex!important;align-items:center!important;justify-content:center!important;'
         +   'background:#fff!important;cursor:pointer!important;'
         +   'transition:border-color .15s ease,background .15s ease!important;}'
         + '.mp-drop:hover{border-color:' + themeColor + '!important;background:#fafbfc!important;}'
@@ -1119,7 +1150,9 @@
                 // depend on one: GHL's uploader wraps the input in several generic
                 // divs, so fall back to the largest ancestor that still belongs to
                 // this field - the one just inside the element holding the label.
-                var zone = closestMatching(input, /drop|upload|file|dropzone/i, 6);
+                // The element painting the dashed box first, since that is the thing
+                // being replaced; a class-name match only as a fallback.
+                var zone = drawnBox(input, 6) || closestMatching(input, /drop|upload|file|dropzone/i, 6);
                 if (!zone) {
                     var node = input.parentNode, hops = 0;
                     while (node && node.parentNode && hops < 5) {
