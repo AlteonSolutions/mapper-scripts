@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 20:11 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b15';
+    var MAPPER_BUILD   = '2026-09-22 20:24 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b16';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1115,12 +1115,11 @@
         + '.mp-drop:focus,.mp-drop:focus-visible{outline:none!important;}'
         + '.mp-drop:focus-visible{box-shadow:0 0 0 3px ' + themeColorLight + '!important;}'
         + '.mp-hide{display:none!important;}'
-        // .mp-preview is a marker, not a treatment. It tags the element holding the
-        // chosen file so the icon sweep and the counter search can leave it alone;
-        // GHL's own card already shows the thumbnail, name, size and progress bar,
-        // and the element it lands on is the thumbnail itself, so a border here
-        // boxes the image rather than the row.
-        + '.mp-preview{}';
+        // The card keeps GHL's own layout - thumbnail, name, size, progress bar - but
+        // loses its grey fill and edge: it now sits inside the drop zone, so its own
+        // background reads as a second panel within the box.
+        + '.mp-preview{background:transparent!important;background-color:transparent!important;'
+        +   'border:0!important;box-shadow:none!important;margin:0!important;}';
     }
 
     // Walks up from a control looking for the element that draws the widget.
