@@ -818,6 +818,25 @@
         return out;
     }
 
+    // A custom dropdown keeps its value out of the input that carries the label.
+    // GHL builds these with vue-multiselect, whose multiselect__input is only the
+    // type-to-filter box - zero width, value always "" - while the chosen option
+    // is the text of the .multiselect__single beside it. Read the widget's
+    // rendered selection when the matched control itself comes back empty.
+    function readWidgetSelection(el) {
+        var node = el.parentNode, hops = 0;
+        while (node && node.querySelector && hops < 4) {
+            var shown = node.querySelector('.multiselect__single, [class*="__single"]')
+                     || node.querySelector('.multiselect__option--selected, [aria-selected="true"]');
+            if (shown) {
+                var txt = (shown.textContent || '').replace(/\s+/g, ' ').trim();
+                if (txt) return txt;
+            }
+            node = node.parentNode; hops++;
+        }
+        return '';
+    }
+
     function readHostField(needles) {
         var els = hostFormControls();
         function scan(hintsOf) {
@@ -826,6 +845,7 @@
                 for (var j = 0; j < needles.length; j++) {
                     if (h.indexOf(needles[j]) !== -1) {
                         var v = (els[i].value == null ? '' : String(els[i].value)).trim();
+                        if (!v) v = readWidgetSelection(els[i]);
                         if (v) return v;
                     }
                 }
@@ -833,6 +853,21 @@
             return '';
         }
         return scan(directHints) || scan(inputHints);
+    }
+
+    // Resolves a host value to an option the select already offers, tolerating
+    // case and the abbreviations some forms use ("Jan" for January). Never
+    // invents a value - anything unrecognised returns empty and leaves the
+    // field on screen.
+    function matchSelectOption(sel, value) {
+        var want = value.toLowerCase(), opts = sel.options || [], i;
+        for (i = 0; i < opts.length; i++) if (String(opts[i].value).toLowerCase() === want) return opts[i].value;
+        for (i = 0; i < opts.length; i++) if (String(opts[i].text).trim().toLowerCase() === want) return opts[i].value;
+        for (i = 0; i < opts.length; i++) {
+            var ov = String(opts[i].value).toLowerCase();
+            if (ov && want.length >= 3 && ov.indexOf(want) === 0) return opts[i].value;
+        }
+        return '';
     }
 
     // Fills and hides every field the brand form already answered. Returns the
@@ -845,6 +880,7 @@
         function apply(id, value) {
             var el = document.getElementById(id);
             if (!el) return;
+            if (value && el.tagName === 'SELECT') value = matchSelectOption(el, value);
             if (value) {
                 el.value = value;
                 // A <select> silently ignores a value with no matching option, and
