@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 19:22 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b13';
+    var MAPPER_BUILD   = '2026-09-22 19:44 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b14';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1110,9 +1110,12 @@
         + '.mp-drop.mp-has-file .mp-drop-icon{display:none!important;}'
         + '.mp-drop.mp-has-file{cursor:default!important;padding:8px!important;}'
         + '.mp-hide{display:none!important;}'
-        // The preview card GHL renders under the drop zone once a file is chosen.
-        + '.mp-preview{border:1px solid #e5e7eb!important;border-radius:8px!important;background:#fff!important;'
-        +   'margin-top:10px!important;}';
+        // .mp-preview is a marker, not a treatment. It tags the element holding the
+        // chosen file so the icon sweep and the counter search can leave it alone;
+        // GHL's own card already shows the thumbnail, name, size and progress bar,
+        // and the element it lands on is the thumbnail itself, so a border here
+        // boxes the image rather than the row.
+        + '.mp-preview{}';
     }
 
     // Walks up from a control looking for the element that draws the widget.
@@ -1181,19 +1184,27 @@
                 }
                 if (!field) return;
 
-                // GHL draws the drop area dashed and draws nothing else that way, so
-                // that is the handle. Walking up from the input found the wrapper
-                // holding both the title and the drop area instead, which is how the
-                // label ended up inside the box - the drop area is a descendant here,
-                // not an ancestor of the input.
-                var zone = null, all = field.querySelectorAll('*');
-                for (var z = 0; z < all.length; z++) {
-                    try {
-                        var zs = window.getComputedStyle(all[z]);
-                        if (zs.borderTopStyle === 'dashed' && (parseFloat(zs.borderTopWidth) || 0) > 0) { zone = all[z]; break; }
-                    } catch (e) {}
+                // Once a zone has been chosen, keep it. The search below identifies the
+                // box by its dashed border, and .mp-drop replaces that with a solid
+                // one - so on the next pass the search missed the label it had just
+                // styled, fell through to the class-name fallback and tagged
+                // div.file-upload, an ancestor. That second box was the stray border
+                // around the whole field.
+                var zone = field.querySelector('.mp-drop');
+                if (!zone) {
+                    // GHL draws the drop area dashed and draws nothing else that way.
+                    // It is a descendant of the field, not an ancestor of the input -
+                    // walking up from the input lands on the wrapper holding the title
+                    // as well, which is how the label ended up inside the box.
+                    var all = field.querySelectorAll('*');
+                    for (var z = 0; z < all.length; z++) {
+                        try {
+                            var zs = window.getComputedStyle(all[z]);
+                            if (zs.borderTopStyle === 'dashed' && (parseFloat(zs.borderTopWidth) || 0) > 0) { zone = all[z]; break; }
+                        } catch (e) {}
+                    }
+                    if (!zone) zone = closestMatching(input, /drop|upload|dropzone/i, 4);
                 }
-                if (!zone) zone = closestMatching(input, /drop|upload|dropzone/i, 4);
                 if (!zone) return;
 
                 // Tagging and the icon happen once; the chosen/not-chosen state has to
