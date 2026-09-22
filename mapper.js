@@ -701,33 +701,45 @@
         return out;
     }
 
-    // Everything on the page that might name this input, flattened to one
-    // lowercase haystack. GHL puts the field's label in the name attribute and
-    // also renders it as a sibling <label>, but which of the two survives varies
-    // by form version, so check both plus the usual accessibility attributes.
-    function inputHints(input) {
-        var bits = [input.name, input.id, input.getAttribute('aria-label'),
-                    input.getAttribute('placeholder'), input.getAttribute('title'),
-                    input.getAttribute('data-q')];
+    // What a field calls itself: its own attributes, plus a label that points at
+    // it explicitly. Nothing here can belong to a neighbouring field, so this is
+    // the safe pass. GHL puts the field's label in the name attribute and repeats
+    // it in the placeholder ("Enter Client Name"), which between them identify
+    // every field on the brand form.
+    function directHints(el) {
+        var bits = [el.name, el.id, el.getAttribute('aria-label'),
+                    el.getAttribute('placeholder'), el.getAttribute('title'),
+                    el.getAttribute('data-q')];
         try {
-            var wrapping = input.closest('label');
+            var wrapping = el.closest('label');
             if (wrapping) bits.push(wrapping.textContent);
-            if (input.id) {
-                var forLbl = input.ownerDocument.querySelector('label[for="' + input.id.replace(/"/g, '\\"') + '"]');
+            if (el.id) {
+                var forLbl = el.ownerDocument.querySelector('label[for="' + el.id.replace(/"/g, '\\"') + '"]');
                 if (forLbl) bits.push(forLbl.textContent);
             }
         } catch (e) {}
-        var node = input.parentNode, hops = 0;
-        while (node && node.querySelector && hops < 4) {
-            var near = node.querySelector('label');
-            if (near) { bits.push(near.textContent); break; }
-            node = node.parentNode; hops++;
-        }
         return bits.filter(Boolean).join(' ').toLowerCase();
     }
 
+    // Adds the nearest label found in an ancestor container. Forms that label by
+    // position rather than by "for" need this, but a tightly packed layout can
+    // hand back the neighbour's label - so it is only ever a second pass.
+    function inputHints(el) {
+        var bits = [directHints(el)];
+        var node = el.parentNode, hops = 0;
+        while (node && node.querySelector && hops < 4) {
+            var near = node.querySelector('label');
+            if (near) { bits.push(near.textContent.toLowerCase()); break; }
+            node = node.parentNode; hops++;
+        }
+        return bits.join(' ');
+    }
+
+    // Uses the field's own naming only. The ancestor walk in inputHints can pick
+    // up a neighbour's label - on a flat form every input sees the first label in
+    // it - and mistaking the logo for the data file would skip it entirely.
     function looksLikeDataFile(input) {
-        var h = inputHints(input);
+        var h = directHints(input);
         return h.indexOf('client data') !== -1 || h.indexOf('gift') !== -1 || h.indexOf('constituent') !== -1;
     }
 
@@ -764,6 +776,114 @@
 
         return { file: null, how: inputs.length + ' file input(s) reachable, '
                                  + withFile.length + ' with a file selected' };
+    }
+
+    // The brand page's "Client Information" block collects all of this before the
+    // upload step, so asking for it again once the mapping is done is redundant.
+    // Read it off the host form instead.
+    //
+    // Matching is on text mapper.js does not own, so any lookup can miss. That is
+    // why this fills the mapper's own inputs rather than bypassing them: a field
+    // that is found gets filled and hidden, a field that is missed stays visible
+    // and goes through exactly the validation it always did. Nothing can be
+    // submitted blank because a label was renamed.
+    var HOST_FIELD_HINTS = {
+        'mapper-client-name':            ['client name', 'organization name'],
+        'mapper-email':                  ['email'],
+        'mapper-fy-start-month':         ['fiscal year start month', 'fiscal year start'],
+        'mapper-major-giving-threshold': ['major giving threshold'],
+        'mapper-board-members':          ['# of board members', 'number of board members', 'board members']
+    };
+    // The host form splits the contact across two fields; the mapper has one.
+    var HOST_FIRST_NAME = ['first name'];
+    var HOST_LAST_NAME  = ['last name'];
+
+    function hostFormControls() {
+        var docs = [document];
+        [window.parent, window.top].forEach(function(w) {
+            try {
+                if (w && w !== window && w.document && docs.indexOf(w.document) === -1) docs.push(w.document);
+            } catch (e) { /* cross-origin */ }
+        });
+        var out = [];
+        docs.forEach(function(d) {
+            var els = d.querySelectorAll('input, select, textarea');
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
+                if (el.type === 'file' || el.type === 'hidden') continue;
+                if (el.id && el.id.indexOf('mapper-') === 0) continue;  // the mapper's own copy of the field
+                out.push(el);
+            }
+        });
+        return out;
+    }
+
+    function readHostField(needles) {
+        var els = hostFormControls();
+        function scan(hintsOf) {
+            for (var i = 0; i < els.length; i++) {
+                var h = hintsOf(els[i]);
+                for (var j = 0; j < needles.length; j++) {
+                    if (h.indexOf(needles[j]) !== -1) {
+                        var v = (els[i].value == null ? '' : String(els[i].value)).trim();
+                        if (v) return v;
+                    }
+                }
+            }
+            return '';
+        }
+        return scan(directHints) || scan(inputHints);
+    }
+
+    // Fills and hides every field the brand form already answered. Returns the
+    // number of fields still left on screen for the client to complete.
+    function prefillFromHostForm() {
+        var card = document.getElementById('allDoneCard');
+        if (!card) return -1;
+        var remaining = 0, taken = [];
+
+        function apply(id, value) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (value) {
+                el.value = value;
+                // A <select> silently ignores a value with no matching option, and
+                // hiding an empty required field is worse than showing a filled one.
+                // Only hide what actually took.
+                if (String(el.value).trim()) {
+                    el.dispatchEvent(new Event('input',  { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (el.parentNode && el.parentNode !== card) el.parentNode.style.display = 'none';
+                    taken.push(id.replace('mapper-', ''));
+                    return;
+                }
+                el.value = '';
+            }
+            remaining++;
+        }
+
+        for (var id in HOST_FIELD_HINTS) {
+            if (HOST_FIELD_HINTS.hasOwnProperty(id)) apply(id, readHostField(HOST_FIELD_HINTS[id]));
+        }
+        apply('mapper-contact-name', (readHostField(HOST_FIRST_NAME) + ' ' + readHostField(HOST_LAST_NAME)).trim());
+
+        // Collapse a two-column row once both of its fields are gone.
+        var rows = card.querySelectorAll('div[style*="grid-template-columns"]');
+        for (var r = 0; r < rows.length; r++) {
+            var kids = rows[r].children, anyVisible = false;
+            for (var k = 0; k < kids.length; k++) if (kids[k].style.display !== 'none') anyVisible = true;
+            if (!anyVisible) rows[r].style.display = 'none';
+        }
+
+        var heading = document.getElementById('allDoneHeading');
+        if (heading) {
+            heading.textContent = remaining === 0
+                ? '🎉 All Done! Click Submit below to send your data.'
+                : '🎉 All Done! Fill in the details below to submit.';
+        }
+        console.log('Mapper: carried over from the brand form [' + (taken.join(', ') || 'nothing')
+                  + '] — ' + remaining + ' field(s) still shown');
+        return remaining;
     }
 
     window.addEventListener('message', function(event) {
@@ -1137,7 +1257,7 @@
                 var _lbl = 'display:block;font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:4px;';
                 var _req = '<span style="color:#ef4444;">*</span>';
                 allDoneCard.innerHTML = ''
-                    + '<div style="font-size:1.3rem;font-weight:700;color:#111827;margin-bottom:6px;">🎉 All Done! Fill in the details below to submit.</div>'
+                    + '<div id="allDoneHeading" style="font-size:1.3rem;font-weight:700;color:#111827;margin-bottom:6px;">🎉 All Done! Fill in the details below to submit.</div>'
                     + '<div style="display:grid;gap:12px;margin-top:16px;">'
                     +   '<div>'
                     +     '<label style="' + _lbl + '">Client / Organization Name ' + _req + '</label>'
@@ -1866,7 +1986,14 @@
         var pc = gts ? gts.querySelector('.progress-container') : null; if (pc) pc.style.display = 'none';
         var gtc = document.getElementById('giftTypeCompletionCard'); if (gtc) gtc.style.display = 'none';
         var gtContainer = document.getElementById('giftTypeMappingContainer'); if (gtContainer) gtContainer.innerHTML = '';
-        var adc = document.getElementById('allDoneCard'); if (adc) adc.style.display = 'block';
+        var adc = document.getElementById('allDoneCard');
+        if (adc) {
+            // Read the brand form now rather than when the card was built - the
+            // client fills it in before uploading, so the values are only
+            // guaranteed to be there by the time the card is about to be shown.
+            prefillFromHostForm();
+            adc.style.display = 'block';
+        }
         var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
         updateStepTracker(99);
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
