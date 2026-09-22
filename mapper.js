@@ -922,6 +922,147 @@
         return remaining;
     }
 
+    // The brand page's own fields are stock GHL form controls, which do not match
+    // the mapper sitting directly beneath them. Restyle them in place: appearance
+    // only - borders, spacing, type, focus - never layout or behaviour, so GHL's
+    // own validation and its uploader keep working. Everything is applied by
+    // class through one injected stylesheet rather than inline, so :focus and
+    // ::placeholder come along too.
+    function hostFormStyleSheet() {
+        return ''
+        + '.mp-field{width:100%!important;padding:11px 14px!important;border:1.5px solid #d1d5db!important;'
+        +   'border-radius:10px!important;font-size:0.95rem!important;line-height:1.4!important;'
+        +   'color:#111827!important;background:#fff!important;box-shadow:none!important;'
+        +   'box-sizing:border-box!important;transition:border-color .15s ease,box-shadow .15s ease!important;}'
+        + '.mp-field::placeholder{color:#9ca3af!important;opacity:1!important;}'
+        + '.mp-field:hover{border-color:#9ca3af!important;}'
+        + '.mp-field:focus,.mp-field:focus-visible{border-color:' + themeColor + '!important;'
+        +   'box-shadow:0 0 0 3px ' + themeColorLight + '!important;outline:none!important;}'
+        + '.mp-label{display:block!important;font-size:0.82rem!important;font-weight:600!important;'
+        +   'color:#374151!important;margin-bottom:6px!important;}'
+        // vue-multiselect draws its box on .multiselect__tags, not on the input,
+        // so the field styling has to land there instead.
+        + '.mp-select .multiselect__tags{padding:11px 14px!important;border:1.5px solid #d1d5db!important;'
+        +   'border-radius:10px!important;background:#fff!important;min-height:0!important;'
+        +   'font-size:0.95rem!important;transition:border-color .15s ease,box-shadow .15s ease!important;}'
+        + '.mp-select:hover .multiselect__tags{border-color:#9ca3af!important;}'
+        + '.mp-select.multiselect--active .multiselect__tags{border-color:' + themeColor + '!important;'
+        +   'box-shadow:0 0 0 3px ' + themeColorLight + '!important;}'
+        + '.mp-select .multiselect__input,.mp-select .multiselect__single{border:0!important;padding:0!important;'
+        +   'margin:0!important;background:transparent!important;box-shadow:none!important;'
+        +   'font-size:0.95rem!important;color:#111827!important;line-height:1.4!important;}'
+        + '.mp-select .multiselect__placeholder{margin:0!important;padding:0!important;color:#9ca3af!important;'
+        +   'font-size:0.95rem!important;}'
+        + '.mp-select .multiselect__content-wrapper{border:1px solid #e5e7eb!important;border-radius:10px!important;'
+        +   'box-shadow:0 10px 24px rgba(17,24,39,.10)!important;margin-top:4px!important;overflow:hidden!important;}'
+        + '.mp-select .multiselect__option--highlight{background:' + themeColor + '!important;color:#fff!important;}'
+        + '.mp-select .multiselect__option--highlight:after{background:transparent!important;color:#fff!important;}'
+        // The logo drop zone, matched to the client-data upload box above it.
+        + '.mp-drop{border:1px solid #ACACACFF!important;border-radius:8px!important;min-height:74px!important;'
+        +   'background:#fff!important;cursor:pointer!important;'
+        +   'transition:border-color .15s ease,background .15s ease!important;}'
+        + '.mp-drop:hover{border-color:' + themeColor + '!important;background:#fafbfc!important;}'
+        + '.mp-drop .mp-drop-icon{display:flex!important;align-items:center!important;justify-content:center!important;'
+        +   'padding:14px 0!important;pointer-events:none!important;}'
+        + '.mp-drop-hide{display:none!important;}'
+        // The preview card GHL renders under the drop zone once a file is chosen.
+        + '.mp-preview{border:1px solid #e5e7eb!important;border-radius:8px!important;background:#fff!important;'
+        +   'margin-top:10px!important;}';
+    }
+
+    // Walks up from a control looking for the element that draws the widget.
+    function closestMatching(el, re, maxHops) {
+        var node = el, hops = 0;
+        while (node && hops <= (maxHops || 5)) {
+            var cls = (node.className && node.className.baseVal !== undefined)
+                    ? node.className.baseVal : String(node.className || '');
+            if (re.test(cls)) return node;
+            node = node.parentNode; hops++;
+        }
+        return null;
+    }
+
+    function styleHostForm() {
+        var tagged = { fields: 0, selects: 0, labels: 0, drop: 0, preview: 0 };
+        try {
+            if (!document.getElementById('mapperHostFormStyle')) {
+                var st = document.createElement('style');
+                st.id = 'mapperHostFormStyle';
+                st.textContent = hostFormStyleSheet();
+                (document.head || document.documentElement).appendChild(st);
+            }
+
+            hostFormControls().forEach(function(el) {
+                // The wrapper's class is exactly "multiselect"; its children are
+                // "multiselect__input" and "multiselect__tags", which a loose match
+                // would catch first - and the styling has to land on the wrapper.
+                var ms = closestMatching(el, /(^|\s)multiselect(\s|$)/, 4);
+                if (ms) {
+                    if (ms.className.indexOf('mp-select') === -1) { ms.className += ' mp-select'; tagged.selects++; }
+                } else if (el.className.indexOf('mp-field') === -1) {
+                    el.className += ' mp-field'; tagged.fields++;
+                }
+                // Label the field owns, or the nearest one above it.
+                var lbl = null;
+                try {
+                    if (el.id) lbl = document.querySelector('label[for="' + el.id.replace(/"/g, '\\"') + '"]');
+                } catch (e) {}
+                if (!lbl) {
+                    var node = (ms || el).parentNode, hops = 0;
+                    while (node && node.querySelector && hops < 3) {
+                        lbl = node.querySelector('label');
+                        if (lbl) break;
+                        node = node.parentNode; hops++;
+                    }
+                }
+                if (lbl && lbl.className.indexOf('mp-label') === -1) { lbl.className += ' mp-label'; tagged.labels++; }
+            });
+
+            // The logo uploader: style its drop zone like the client-data box and
+            // swap GHL's icon for the mapper's, leaving the preview card - the part
+            // that shows the logo thumbnail - in place.
+            logoCandidateInputs().forEach(function(input) {
+                if (inputHints(input).indexOf('logo') === -1) return;
+                var zone = closestMatching(input, /drop|upload|file/i, 5) || input.parentNode;
+                if (!zone || zone.className.indexOf('mp-drop') !== -1) return;
+                zone.className += ' mp-drop';
+                tagged.drop++;
+                var svgs = zone.querySelectorAll('svg');
+                for (var i = 0; i < svgs.length; i++) {
+                    // Keep anything inside the preview card; only the drop zone's
+                    // own decoration is replaced.
+                    if (!closestMatching(svgs[i], /preview|thumb|item|list/i, 3)) svgs[i].classList.add('mp-drop-hide');
+                }
+                var icon = document.createElement('div');
+                icon.className = 'mp-drop-icon';
+                icon.innerHTML = uploadIconSvg;
+                zone.insertBefore(icon, zone.firstChild);
+                // File inputs are left out of hostFormControls, so this label has
+                // not been picked up by the pass above.
+                var zoneNode = zone.parentNode, zoneHops = 0, zoneLbl = null;
+                while (zoneNode && zoneNode.querySelector && zoneHops < 3) {
+                    zoneLbl = zoneNode.querySelector('label');
+                    if (zoneLbl) break;
+                    zoneNode = zoneNode.parentNode; zoneHops++;
+                }
+                if (zoneLbl && zoneLbl.className.indexOf('mp-label') === -1) {
+                    zoneLbl.className += ' mp-label'; tagged.labels++;
+                }
+            });
+
+            // GHL renders the chosen file in a card below the drop zone.
+            var previews = document.querySelectorAll('[class*="preview"],[class*="file-item"],[class*="uploaded"]');
+            for (var p = 0; p < previews.length; p++) {
+                if (previews[p].className.indexOf('mp-preview') === -1) {
+                    previews[p].className += ' mp-preview'; tagged.preview++;
+                }
+            }
+        } catch (e) {
+            console.warn('Mapper: could not restyle the brand form —', e && e.message);
+        }
+        return tagged;
+    }
+
     window.addEventListener('message', function(event) {
         var data = event.data;
         if (data && data.type === 'setIndustryType' && data.value) {
@@ -1041,6 +1182,26 @@
         waitForElement('#customSubmitBtn', function(btn) {
             btn.parentElement.style.display = 'none';
         });
+
+        // Restyle the brand form. GHL renders it asynchronously and adds the logo
+        // preview card only once a file is chosen, so re-run on a few timers and
+        // on DOM changes rather than once at load. Tagging is idempotent - an
+        // element already carrying its class is skipped.
+        (function styleHostFormWhenReady() {
+            styleHostForm();
+            var tries = 0;
+            var timer = setInterval(function() {
+                styleHostForm();
+                if (++tries >= 8) clearInterval(timer);
+            }, 600);
+            if (window.MutationObserver) {
+                var pending = null;
+                new MutationObserver(function() {
+                    if (pending) return;
+                    pending = setTimeout(function() { pending = null; styleHostForm(); }, 150);
+                }).observe(document.body, { childList: true, subtree: true });
+            }
+        })();
 
         // Hide GHL's Client Data File upload field and submit button via JS
         (function hideGHLElements() {
