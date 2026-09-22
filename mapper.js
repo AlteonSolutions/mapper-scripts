@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 20:24 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b16';
+    var MAPPER_BUILD   = '2026-09-22 20:41 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b17';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1083,8 +1083,12 @@
         +   'font-size:0.95rem!important;color:#111827!important;line-height:1.4!important;}'
         + '.mp-select .multiselect__placeholder{margin:0!important;padding:0!important;color:#9ca3af!important;'
         +   'font-size:0.95rem!important;}'
+        // overflow-y stays auto. Setting overflow:hidden here to clip the rounded
+        // corners also cancelled vue-multiselect's own scrolling, so a twelve-month
+        // list ran off the panel with no way to reach the bottom of it.
         + '.mp-select .multiselect__content-wrapper{border:1px solid #e5e7eb!important;border-radius:10px!important;'
-        +   'box-shadow:0 10px 24px rgba(17,24,39,.10)!important;margin-top:4px!important;overflow:hidden!important;}'
+        +   'box-shadow:0 10px 24px rgba(17,24,39,.10)!important;margin-top:4px!important;'
+        +   'max-height:260px!important;overflow-y:auto!important;overflow-x:hidden!important;}'
         + '.mp-select .multiselect__option--highlight{background:' + themeColor + '!important;color:#fff!important;}'
         + '.mp-select .multiselect__option--highlight:after{background:transparent!important;color:#fff!important;}'
         // The logo drop zone, matched to the client-data upload box above it.
@@ -1253,7 +1257,19 @@
                 // ancestor that is still purely the card, and gives the same answer
                 // whether the card is still a sibling of the box or already inside it.
                 var thumb = field.querySelector('img');
-                var preview = field.querySelector('.mp-preview');
+                // GHL names the card section.upload-card, which beats inferring it from
+                // the thumbnail: the card is built progressively during the upload, so
+                // a pass that runs mid-render can latch onto a part of it and - being
+                // cached from then on - never correct itself.
+                var preview = field.querySelector('[class*="upload-card"]');
+                if (preview) {
+                    var stale = field.querySelectorAll('.mp-preview');
+                    for (var s = 0; s < stale.length; s++) {
+                        if (stale[s] !== preview) stale[s].classList.remove('mp-preview');
+                    }
+                } else {
+                    preview = field.querySelector('.mp-preview');
+                }
                 if (!preview && thumb) {
                     // Climb to the card, and no further. Two stop conditions, because
                     // GHL renders the card beside the box in some states and inside it
@@ -1268,9 +1284,9 @@
                         preview = preview.parentNode;
                     }
                     if (preview === zone || preview.contains(zone)) preview = thumb.parentNode;
-                    if (preview && preview !== zone && String(preview.className).indexOf('mp-preview') === -1) {
-                        preview.className += ' mp-preview'; tagged.preview++;
-                    }
+                }
+                if (preview && preview !== zone && String(preview.className).indexOf('mp-preview') === -1) {
+                    preview.className += ' mp-preview'; tagged.preview++;
                 }
 
                 // Skip the badge's own svg. This loop runs on every pass, so once the
