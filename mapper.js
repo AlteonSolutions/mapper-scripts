@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 18:05 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b10';
+    var MAPPER_BUILD   = '2026-09-22 18:31 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b11';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -831,6 +831,9 @@
         _pickedFiles.push({ el: el, file: el.files[0] });
         console.log('Mapper: file selected on a host input —', el.files[0].name,
                     '(' + Math.round(el.files[0].size / 1024) + ' KB)');
+        // Swap the drop zone for the thumbnail card straight away rather than
+        // waiting for the observer to notice GHL building it.
+        setTimeout(function() { try { styleHostForm(); } catch (e) {} }, 60);
     }, true);
 
     // Returns { file, how } - file is null when nothing qualified, and how always
@@ -1083,10 +1086,14 @@
         +   'display:flex!important;align-items:center!important;justify-content:center!important;'
         +   'background:#fff!important;cursor:pointer!important;'
         +   'transition:border-color .15s ease,background .15s ease!important;}'
-        + '.mp-drop:hover{border-color:' + themeColor + '!important;background:#fafbfc!important;}'
+        // A grey hover, not the brand colour - the client-data box this is matching
+        // has no coloured state, and a navy edge here reads as a different control.
+        + '.mp-drop:hover{border-color:#8f8f8f!important;background:#fafbfc!important;}'
         + '.mp-drop .mp-drop-icon{display:flex!important;align-items:center!important;justify-content:center!important;'
         +   'padding:14px 0!important;pointer-events:none!important;}'
         + '.mp-drop-hide{display:none!important;}'
+        + '.mp-drop.mp-has-file{display:none!important;}'
+        + '.mp-hide{display:none!important;}'
         // The preview card GHL renders under the drop zone once a file is chosen.
         + '.mp-preview{border:1px solid #e5e7eb!important;border-radius:8px!important;background:#fff!important;'
         +   'margin-top:10px!important;}';
@@ -1146,47 +1153,74 @@
             // that shows the logo thumbnail - in place.
             logoCandidateInputs().forEach(function(input) {
                 if (inputHints(input).indexOf('logo') === -1) return;
-                // Prefer a wrapper whose class names it as the drop zone, but do not
-                // depend on one: GHL's uploader wraps the input in several generic
-                // divs, so fall back to the largest ancestor that still belongs to
-                // this field - the one just inside the element holding the label.
-                // The element painting the dashed box first, since that is the thing
-                // being replaced; a class-name match only as a fallback.
-                var zone = drawnBox(input, 6) || closestMatching(input, /drop|upload|file|dropzone/i, 6);
-                if (!zone) {
-                    var node = input.parentNode, hops = 0;
-                    while (node && node.parentNode && hops < 5) {
-                        if (node.parentNode.querySelector
-                            && node.parentNode.querySelector(':scope > label')) break;
-                        node = node.parentNode; hops++;
-                    }
-                    zone = node || input.parentNode;
+
+                // The field's own wrapper: the nearest ancestor whose text names it.
+                // Everything below is scoped to this, so nothing here can reach a
+                // neighbouring field.
+                var field = null, node = input.parentNode, hops = 0;
+                while (node && node.nodeType === 1 && hops < 8) {
+                    var t = (node.textContent || '').replace(/\s+/g, ' ').trim();
+                    if (t.toLowerCase().indexOf('logo') !== -1 && t.length <= 400) { field = node; break; }
+                    node = node.parentNode; hops++;
                 }
+                if (!field) return;
+
+                // GHL draws the drop area dashed and draws nothing else that way, so
+                // that is the handle. Walking up from the input found the wrapper
+                // holding both the title and the drop area instead, which is how the
+                // label ended up inside the box - the drop area is a descendant here,
+                // not an ancestor of the input.
+                var zone = null, all = field.querySelectorAll('*');
+                for (var z = 0; z < all.length; z++) {
+                    try {
+                        var zs = window.getComputedStyle(all[z]);
+                        if (zs.borderTopStyle === 'dashed' && (parseFloat(zs.borderTopWidth) || 0) > 0) { zone = all[z]; break; }
+                    } catch (e) {}
+                }
+                if (!zone) zone = closestMatching(input, /drop|upload|dropzone/i, 4);
                 if (!zone || String(zone.className).indexOf('mp-drop') !== -1) return;
+
                 console.log('Mapper: logo drop zone →', zone.tagName.toLowerCase()
                           + '.' + (String(zone.className).trim().split(/\s+/).join('.') || '(no class)'));
                 zone.className += ' mp-drop';
                 tagged.drop++;
+
+                // The card GHL builds for the chosen file - the one holding the
+                // thumbnail. Identified by the image rather than by class, and kept
+                // out of everything that follows.
+                var thumb = field.querySelector('img');
+                var preview = null;
+                if (thumb) {
+                    preview = thumb.parentNode;
+                    while (preview && preview !== field && preview.parentNode !== field) preview = preview.parentNode;
+                    if (preview && String(preview.className).indexOf('mp-preview') === -1) {
+                        preview.className += ' mp-preview'; tagged.preview++;
+                    }
+                }
+
                 var svgs = zone.querySelectorAll('svg');
-                for (var i = 0; i < svgs.length; i++) {
-                    // Keep anything inside the preview card; only the drop zone's
-                    // own decoration is replaced.
-                    if (!closestMatching(svgs[i], /preview|thumb|item|list/i, 3)) svgs[i].classList.add('mp-drop-hide');
+                for (var i = 0; i < svgs.length; i++) svgs[i].classList.add('mp-drop-hide');
+                if (!zone.querySelector('.mp-drop-icon')) {
+                    var icon = document.createElement('div');
+                    icon.className = 'mp-drop-icon';
+                    icon.innerHTML = uploadIconSvg;
+                    zone.insertBefore(icon, zone.firstChild);
                 }
-                var icon = document.createElement('div');
-                icon.className = 'mp-drop-icon';
-                icon.innerHTML = uploadIconSvg;
-                zone.insertBefore(icon, zone.firstChild);
-                // File inputs are left out of hostFormControls, so this label has
-                // not been picked up by the pass above.
-                var zoneNode = zone.parentNode, zoneHops = 0, zoneLbl = null;
-                while (zoneNode && zoneNode.querySelector && zoneHops < 3) {
-                    zoneLbl = zoneNode.querySelector('label');
-                    if (zoneLbl) break;
-                    zoneNode = zoneNode.parentNode; zoneHops++;
-                }
-                if (zoneLbl && zoneLbl.className.indexOf('mp-label') === -1) {
-                    zoneLbl.className += ' mp-label'; tagged.labels++;
+
+                // Once a file is chosen the drop zone has done its job, so the box and
+                // GHL's "1 file selected" counter both come off and the thumbnail card
+                // stands alone.
+                var chosen = !!thumb;
+                zone.classList.toggle('mp-has-file', chosen);
+                var kids = field.querySelectorAll('div,span,p');
+                for (var k = 0; k < kids.length; k++) {
+                    var el = kids[k];
+                    if (el === zone || el === preview) continue;
+                    if (preview && preview.contains(el)) continue;
+                    if (zone.contains(el)) continue;
+                    if (/file\s+selected/i.test((el.textContent || '').replace(/\s+/g, ' '))) {
+                        el.classList.toggle('mp-hide', chosen);
+                    }
                 }
             });
 
