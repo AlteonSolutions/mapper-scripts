@@ -1146,7 +1146,12 @@
                             .then(function(res) {
                                 if (res.ok || res.status === 202) {
                                     MapperDiag.ok('Submitted successfully', 'redirecting');
-                                    window.location.href = 'https://getdatabasey.com/submitted';
+                                    // mapper.js runs inside an iframe on the brand page, so
+                                    // window.location would navigate the frame and render the
+                                    // confirmation page *inside* the host page - Databasey
+                                    // branding embedded in an SW layout. Navigate the top frame.
+                                    try { window.top.location.href = 'https://getdatabasey.com/submitted'; }
+                                    catch (e) { window.location.href = 'https://getdatabasey.com/submitted'; }
                                 } else {
                                     throw new Error('Server returned ' + res.status);
                                 }
