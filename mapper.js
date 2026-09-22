@@ -120,15 +120,45 @@
             }
             return lines.join('\n');
         }
+        // Redirecting on success tears this panel off the screen before anyone can
+        // read it. Mirror the report somewhere that survives the navigation first -
+        // the console for a live session, sessionStorage for afterwards.
+        function persist() {
+            var txt = report();
+            try { console.log('--- mapper diagnostics ---\n' + txt); } catch (e) {}
+            try { sessionStorage.setItem('mapperDiagReport', txt); } catch (e) {}
+        }
+        // A clean run has nothing worth reading, so it redirects on its own. A run
+        // that recorded a warning waits for a click instead, so whoever submitted
+        // can read the note - or copy it - before the page goes away.
+        function holdForContinue(onContinue) {
+            if (!ensureBox()) { onContinue(); return; }
+            setStatus('Submitted — review the notes below, then continue', 'warn');
+            if (box.querySelector('#mapperDiagContinue')) return;
+            var bar = document.createElement('div');
+            bar.style.cssText = 'margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+            bar.innerHTML = '<button type="button" id="mapperDiagContinue" style="border:0;background:' + themeColor
+                + ';color:#fff;border-radius:6px;padding:8px 18px;font-size:13px;cursor:pointer;">Continue</button>'
+                + '<span style="font-size:12px;color:#6b7280;">Your files were received and are being processed.</span>';
+            box.appendChild(bar);
+            box.querySelector('#mapperDiagContinue').addEventListener('click', onContinue);
+        }
         return {
             start: function() { steps = []; t0 = now(); done = false; ensureBox(); setStatus('Working…'); add('Submit clicked', heap() ? 'heap ' + heap() : ''); },
             step:  function(label, detail) { add(label, detail); setStatus(label + '…'); },
             ok:    function(label, detail) { done = true; add(label, detail); setStatus(label, 'info'); },
             warn:  function(label, detail) { add(label, detail, 'warn'); setStatus(label, 'warn'); },
             fail:  function(label, detail) { done = true; add(label, detail, 'error');
-                     setStatus('Stopped — ' + label + '. Use "Copy diagnostics" and send it to support.', 'error'); },
+                     setStatus('Stopped — ' + label + '. Use "Copy diagnostics" and send it to support.', 'error');
+                     persist(); },
             isDone: function() { return done; },
             started: function() { return t0 !== null; },
+            hasWarnings: function() {
+                for (var i = 0; i < steps.length; i++) if (steps[i].level === 'warn') return true;
+                return false;
+            },
+            persist: persist,
+            holdForContinue: holdForContinue,
             report: report
         };
     })();
@@ -1234,13 +1264,19 @@
                             })
                             .then(function(res) {
                                 if (res.ok || res.status === 202) {
-                                    MapperDiag.ok('Submitted successfully', 'redirecting');
                                     // mapper.js runs inside an iframe on the brand page, so
                                     // window.location would navigate the frame and render the
                                     // confirmation page *inside* the host page - Databasey
                                     // branding embedded in an SW layout. Navigate the top frame.
-                                    try { window.top.location.href = 'https://getdatabasey.com/submitted'; }
-                                    catch (e) { window.location.href = 'https://getdatabasey.com/submitted'; }
+                                    var goToConfirmation = function() {
+                                        try { window.top.location.href = 'https://getdatabasey.com/submitted'; }
+                                        catch (e) { window.location.href = 'https://getdatabasey.com/submitted'; }
+                                    };
+                                    var held = MapperDiag.hasWarnings();
+                                    MapperDiag.ok('Submitted successfully', held ? 'with notes - see below' : 'redirecting');
+                                    MapperDiag.persist();
+                                    if (held) MapperDiag.holdForContinue(goToConfirmation);
+                                    else setTimeout(goToConfirmation, 2500);
                                 } else {
                                     throw new Error('Server returned ' + res.status);
                                 }
