@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 20:41 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b17';
+    var MAPPER_BUILD   = '2026-09-22 21:02 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b18';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -170,7 +170,10 @@
             warn:  function(label, detail) { add(label, detail, 'warn'); reveal(); setStatus(label, 'warn'); },
             fail:  function(label, detail) { done = true; add(label, detail, 'error'); reveal();
                      setStatus('Stopped — ' + label + '. Use "Copy diagnostics" and send it to support.', 'error');
-                     persist(); },
+                     persist();
+                     // The panel is the message once something has gone wrong; leaving
+                     // a cheerful "Uploading…" pulsing above it reads as still running.
+                     try { MapperStatus.hide(); } catch (e) {} },
             isDone: function() { return done; },
             started: function() { return t0 !== null; },
             hasWarnings: function() {
@@ -180,6 +183,55 @@
             persist: persist,
             holdForContinue: holdForContinue,
             report: report
+        };
+    })();
+
+    // What the person submitting sees while they wait. Deliberately separate from
+    // MapperDiag: that one records timings and sizes for support and stays hidden
+    // unless something goes wrong, which leaves a spinner and no explanation on a
+    // submission that takes a minute. This says roughly where things are in plain
+    // terms - enough to show it has not hung, without narrating internals.
+    var MapperStatus = (function() {
+        var box = null, dot = null, main = null, sub = null;
+        function ensure() {
+            if (box) return box;
+            var anchor = document.getElementById('customSubmitBtn');
+            if (!anchor) return null;
+            if (!document.getElementById('mapper-status-style')) {
+                var st = document.createElement('style');
+                st.id = 'mapper-status-style';
+                st.textContent = '@keyframes mapperPulse{0%,100%{opacity:.3;transform:scale(.75)}'
+                               + '50%{opacity:1;transform:scale(1)}}';
+                document.head.appendChild(st);
+            }
+            box = document.createElement('div');
+            box.id = 'mapperSubmitStatus';
+            box.style.cssText = 'margin:14px auto 0;text-align:center;line-height:1.45;';
+            box.innerHTML = '<div style="display:inline-flex;align-items:center;gap:9px;font-size:13.5px;'
+                + 'font-weight:600;color:' + themeColor + ';">'
+                + '<span id="mapperStatusDot" style="width:7px;height:7px;border-radius:50%;flex:none;'
+                + 'background:' + themeColor + ';animation:mapperPulse 1.1s ease-in-out infinite;"></span>'
+                + '<span id="mapperStatusMain"></span></div>'
+                + '<div id="mapperStatusSub" style="font-size:12px;color:#6b7280;margin-top:4px;"></div>';
+            (anchor.parentNode || document.body).insertBefore(box, anchor.nextSibling);
+            dot  = box.querySelector('#mapperStatusDot');
+            main = box.querySelector('#mapperStatusMain');
+            sub  = box.querySelector('#mapperStatusSub');
+            return box;
+        }
+        function write(text, detail, pulsing) {
+            if (!ensure()) return;
+            box.style.display = '';
+            main.textContent = text;
+            sub.textContent = detail || '';
+            sub.style.display = detail ? '' : 'none';
+            dot.style.animation = pulsing ? 'mapperPulse 1.1s ease-in-out infinite' : 'none';
+            dot.style.opacity = '1';
+        }
+        return {
+            set:  function(text, detail) { write(text, detail, true); },
+            done: function(text, detail) { write(text, detail, false); },
+            hide: function() { if (box) box.style.display = 'none'; }
         };
     })();
 
@@ -1818,11 +1870,16 @@
                     spinStyle.textContent = '@keyframes mapperSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
                     document.head.appendChild(spinStyle);
                 }
-                btn.innerHTML = '<div style="display:inline-flex;align-items:center;gap:10px;"><div style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #ffffff;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div><span>Uploading...</span></div>';
+                // "Working" rather than "Uploading": nothing is uploaded for the first
+                // several seconds, and on a large file the compute below is most of the
+                // wait. The status line underneath says which part it is actually on.
+                btn.innerHTML = '<div style="display:inline-flex;align-items:center;gap:10px;"><div style="width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #ffffff;border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div><span>Working...</span></div>';
                 MapperDiag.start();
+                MapperStatus.set('Checking your entries');
 
                 setTimeout(function() {
                     MapperDiag.step('Building the data file', 'computing and packaging - the slow step on large files');
+                    MapperStatus.set('Reviewing your data', 'this is the longest step on a large file');
                     var blob;
                     try {
                         blob = generateExcelBlob();
@@ -1833,6 +1890,7 @@
                     }
                     if (!blob) { MapperDiag.fail('Mapping steps are incomplete', 'finish every mapping step, then submit'); btn.disabled = false; btn.innerHTML = originalHTML; return; }
                     MapperDiag.step('Data file built', (blob.size / 1048576).toFixed(1) + ' MB');
+                    MapperStatus.set('Packaging your analysis');
 
                     // HF runs through the same downstream pipeline/macro template as Databasey — only Alford and SW are distinct.
                     var formSource   = isSW ? 'SW' : (isAlford ? 'Alford' : 'Databasey');
@@ -1842,6 +1900,7 @@
                     if (logoFile) {
                         MapperDiag.step('Logo found', logoFile.name + ' — '
                             + Math.round(logoFile.size / 1024) + ' KB, via ' + logoLookup.how);
+                        MapperStatus.set('Adding your logo', logoFile.name);
                     } else {
                         MapperDiag.warn('No logo attached', logoLookup.how
                             + ' — submitting without one');
@@ -1871,6 +1930,8 @@
                                 logo_filename:             logoFilename || ''
                             };
                             MapperDiag.step('Uploading', 'sending to the processing service');
+                            MapperStatus.set('Uploading client data',
+                                (base64.length / 1048576).toFixed(1) + ' MB — please keep this page open');
                             fetch(PA_TRIGGER_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -1889,6 +1950,7 @@
                                     var held = MapperDiag.hasWarnings();
                                     MapperDiag.ok('Submitted successfully', held ? 'with notes - see below' : 'redirecting');
                                     MapperDiag.persist();
+                                    MapperStatus.done('Submitted', 'taking you to the confirmation page');
                                     if (held) MapperDiag.holdForContinue(goToConfirmation);
                                     else setTimeout(goToConfirmation, 2500);
                                 } else {
