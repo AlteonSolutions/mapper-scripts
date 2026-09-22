@@ -1,7 +1,11 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b6';
+    // Bumped by hand on every push. It has to be a constant baked in at build
+    // time, not a new Date() at load - a runtime clock reads "now" whichever
+    // build is being served, so it cannot tell a fresh file from a cached one.
+    var MAPPER_BUILD   = '2026-09-22 17:15 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b7';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -32,6 +36,10 @@
     var themeColorLight = isSW ? 'rgba(0, 56, 108, 0.1)' : isHF ? 'rgba(86, 21, 60, 0.1)' : isAlford ? 'rgba(44, 95, 93, 0.1)' : 'rgba(79, 120, 141, 0.1)';
     var themeColorShadow = isSW ? 'rgba(0, 56, 108, 0.3)' : isHF ? 'rgba(86, 21, 60, 0.3)' : isAlford ? 'rgba(44, 95, 93, 0.3)' : 'rgba(79, 120, 141, 0.3)';
     console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
+    // Logged before anything else can fail, so a build that breaks on load still
+    // says which build it is.
+    console.log('%cmapper.js ' + MAPPER_VERSION + ' — built ' + MAPPER_BUILD,
+                'background:' + themeColor + ';color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;');
 
     // ---- Submission diagnostics ------------------------------------------------
     // The submit button spins until the page navigates away, so a stall anywhere in
@@ -106,7 +114,7 @@
         function report() {
             var lines = [];
             lines.push('Mapper submission diagnostics');
-            lines.push('version: ' + MAPPER_VERSION);
+            lines.push('version: ' + MAPPER_VERSION + ' (built ' + MAPPER_BUILD + ')');
             lines.push('brand: ' + (isSW ? 'SW' : isHF ? 'HF' : isAlford ? 'Alford' : 'Databasey')
                      + (isSimpleFlow ? ' / ' + (isStaffing ? 'staffing' : isDevelopmentAssessment ? 'developmentassessment' : 'campaigncounsel') : ''));
             lines.push('when: ' + new Date().toISOString());
@@ -1247,6 +1255,21 @@
         // uploadTitle pre-styled in HTML
 
         // uploadBox pre-styled in HTML - just attach click listener
+        // A build stamp on the page itself, so "which version am I looking at"
+        // does not need devtools - the question a stale CDN makes you ask most.
+        // Remove this along with the FEATURE TEST label before the permanent
+        // cutover; it is deliberately visible only while this is a test build.
+        waitForElement('#uploadBox', function(el) {
+            if (document.getElementById('mapperBuildStamp')) return;
+            var stamp = document.createElement('div');
+            stamp.id = 'mapperBuildStamp';
+            stamp.style.cssText = 'margin:6px auto 0;max-width:640px;text-align:right;'
+                + 'font-size:10.5px;color:#9ca3af;font-family:ui-monospace,Menlo,monospace;'
+                + 'letter-spacing:.02em;';
+            stamp.textContent = MAPPER_VERSION + ' · built ' + MAPPER_BUILD;
+            if (el.parentNode) el.parentNode.insertBefore(stamp, el.nextSibling);
+        });
+
         waitForElement('#uploadBox', function(el) {
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
