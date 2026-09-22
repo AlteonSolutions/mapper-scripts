@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 19:44 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b14';
+    var MAPPER_BUILD   = '2026-09-22 20:11 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b15';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1089,26 +1089,31 @@
         + '.mp-select .multiselect__option--highlight:after{background:transparent!important;color:#fff!important;}'
         // The logo drop zone, matched to the client-data upload box above it.
         // border-style is called out separately: GHL draws this box dashed, and a
-        // shorthand alone has lost to it before. Padding is zeroed so the height
-        // comes from the icon, the way the client-data box's does - otherwise the
-        // box keeps GHL's generous padding and stays visibly taller.
-        + '.mp-drop{border:1px solid #ACACACFF!important;border-style:solid!important;'
-        +   'border-radius:8px!important;min-height:74px!important;height:auto!important;'
-        +   'padding:0!important;box-sizing:border-box!important;'
-        +   'display:flex!important;align-items:center!important;justify-content:center!important;'
-        +   'background:#fff!important;cursor:pointer!important;'
+        // shorthand alone has lost to it before. Border, radius and height are set
+        // inline from the client-data box's own computed style - see matchUploadBox
+        // - so the two are identical rather than merely similar.
+        + '.mp-drop{border-style:solid!important;box-sizing:border-box!important;'
+        +   'height:auto!important;padding:0!important;display:block!important;'
+        +   'position:relative!important;cursor:pointer!important;'
         +   'transition:border-color .15s ease,background .15s ease!important;}'
         // A grey hover, not the brand colour - the client-data box this is matching
         // has no coloured state, and a navy edge here reads as a different control.
         + '.mp-drop:hover{border-color:#8f8f8f!important;background:#fafbfc!important;}'
-        + '.mp-drop .mp-drop-icon{display:flex!important;align-items:center!important;justify-content:center!important;'
-        +   'padding:14px 0!important;pointer-events:none!important;}'
+        // Centred by taking the badge out of flow entirely. Laying the zone out as a
+        // flex row let GHL's own children take the space and pinned the badge left.
+        + '.mp-drop .mp-drop-icon{position:absolute!important;top:0!important;right:0!important;'
+        +   'bottom:0!important;left:0!important;margin:0!important;padding:0!important;'
+        +   'display:flex!important;align-items:center!important;justify-content:center!important;'
+        +   'pointer-events:none!important;}'
         + '.mp-drop-hide{display:none!important;}'
-        // GHL injects the chosen file's card into .file-placeholder, which lives
-        // inside the drop zone - so hiding the zone takes the thumbnail with it.
-        // Hide the badge instead and let the card have the box.
+        // With a file chosen the badge goes and the card, moved inside, sets the height.
+        + '.mp-drop.mp-has-file{cursor:default!important;padding:10px!important;}'
         + '.mp-drop.mp-has-file .mp-drop-icon{display:none!important;}'
-        + '.mp-drop.mp-has-file{cursor:default!important;padding:8px!important;}'
+        // The label is keyboard-focusable, and GHL paints a heavy dark border on
+        // focus. Suppress that but keep a visible ring, or tabbing through the form
+        // lands somewhere with no indication.
+        + '.mp-drop:focus,.mp-drop:focus-visible{outline:none!important;}'
+        + '.mp-drop:focus-visible{box-shadow:0 0 0 3px ' + themeColorLight + '!important;}'
         + '.mp-hide{display:none!important;}'
         // .mp-preview is a marker, not a treatment. It tags the element holding the
         // chosen file so the icon sweep and the counter search can leave it alone;
@@ -1128,6 +1133,27 @@
             node = node.parentNode; hops++;
         }
         return null;
+    }
+
+    // Copies the client-data box's own measurements onto the logo box. Asked to make
+    // one control look exactly like another, read the one you are matching rather
+    // than hard-coding numbers off a screenshot - #uploadBox is styled a few hundred
+    // lines above and would otherwise drift out of step with this.
+    function matchUploadBox(zone) {
+        var src = document.getElementById('uploadBox');
+        if (!src) return;
+        try {
+            var cs = window.getComputedStyle(src);
+            var h = parseFloat(cs.height) || 0;
+            if (h < 40) return;   // not laid out yet
+            zone.style.setProperty('min-height', Math.round(h) + 'px', 'important');
+            zone.style.setProperty('border-width', cs.borderTopWidth, 'important');
+            zone.style.setProperty('border-color', cs.borderTopColor, 'important');
+            if ((parseFloat(cs.borderTopLeftRadius) || 0) > 0) {
+                zone.style.setProperty('border-radius', cs.borderTopLeftRadius, 'important');
+            }
+            zone.style.setProperty('background-color', cs.backgroundColor, 'important');
+        } catch (e) {}
     }
 
     function styleHostForm() {
@@ -1221,14 +1247,28 @@
                 // The card GHL builds for the chosen file - the one holding the
                 // thumbnail. Identified by the image rather than by class, and kept
                 // out of everything that follows.
+                // The whole card, not just the thumbnail's own container: it has to be
+                // identified before the icon sweep below, because once the card has
+                // been moved inside the zone the sweep would otherwise hide its delete
+                // button along with GHL's decoration. The climb stops at the last
+                // ancestor that is still purely the card, and gives the same answer
+                // whether the card is still a sibling of the box or already inside it.
                 var thumb = field.querySelector('img');
-                var preview = null;
-                if (thumb) {
-                    // The card's own container, not an ancestor of it. Climbing until
-                    // the node was a direct child of the field walked straight past the
-                    // card and bordered a wrapper holding the title as well.
-                    preview = (thumb.closest && thumb.closest('[class*="placeholder"]')) || thumb.parentNode;
-                    if (preview === zone || preview === field) preview = thumb.parentNode;
+                var preview = field.querySelector('.mp-preview');
+                if (!preview && thumb) {
+                    // Climb to the card, and no further. Two stop conditions, because
+                    // GHL renders the card beside the box in some states and inside it
+                    // in others: stop at the block sitting next to the box, or - once
+                    // already inside it - as soon as the node has the card's own
+                    // several children. Over-climbing swallowed the "1 file selected"
+                    // counter, which then escaped being hidden.
+                    preview = thumb;
+                    while (preview.parentNode && preview.parentNode !== field
+                           && !preview.parentNode.contains(zone)) {
+                        if (zone.contains(preview) && preview.children && preview.children.length > 1) break;
+                        preview = preview.parentNode;
+                    }
+                    if (preview === zone || preview.contains(zone)) preview = thumb.parentNode;
                     if (preview && preview !== zone && String(preview.className).indexOf('mp-preview') === -1) {
                         preview.className += ' mp-preview'; tagged.preview++;
                     }
@@ -1256,8 +1296,12 @@
                     zone.insertBefore(icon, zone.firstChild);
                 }
 
-                // Once a file is chosen the drop zone has done its job, so the box comes
-                // off and the thumbnail card stands alone.
+                matchUploadBox(zone);
+
+                // GHL renders the chosen file's card as a sibling below the box. Move
+                // it inside, so the logo sits in its own field the way the client-data
+                // file does rather than floating underneath it.
+                if (preview && !zone.contains(preview) && !preview.contains(zone)) zone.appendChild(preview);
                 zone.classList.toggle('mp-has-file', !!thumb);
 
                 // GHL's "File selected / 1 file selected" counter goes regardless of
