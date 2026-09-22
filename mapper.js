@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 17:15 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b7';
+    var MAPPER_BUILD   = '2026-09-22 17:34 UTC';
+    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b8';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -732,15 +732,51 @@
     // Adds the nearest label found in an ancestor container. Forms that label by
     // position rather than by "for" need this, but a tightly packed layout can
     // hand back the neighbour's label - so it is only ever a second pass.
+    //
+    // The hop limit is generous because GHL's file uploader nests the input
+    // several wrappers below the field container the label sits in; four levels
+    // stopped short of it and the logo field went unstyled and unread.
     function inputHints(el) {
         var bits = [directHints(el)];
         var node = el.parentNode, hops = 0;
-        while (node && node.querySelector && hops < 4) {
+        while (node && node.querySelector && hops < 8) {
             var near = node.querySelector('label');
             if (near) { bits.push(near.textContent.toLowerCase()); break; }
             node = node.parentNode; hops++;
         }
         return bits.join(' ');
+    }
+
+    // Prints what the page actually contains, once, so the shape of a widget
+    // mapper.js does not own can be read off a screenshot instead of guessed at.
+    // Two rounds of inferring GHL's uploader markup from a picture is enough.
+    var _domReported = false;
+    function reportHostDom() {
+        if (_domReported) return;
+        _domReported = true;
+        try {
+            var files = document.querySelectorAll('input[type="file"]');
+            if (!files.length) { console.log('Mapper DOM: no file inputs on the page yet'); return; }
+            var rows = [];
+            for (var i = 0; i < files.length; i++) {
+                var el = files[i], chain = [], node = el.parentNode, h = 0;
+                while (node && node.tagName && h < 6) {
+                    chain.push(node.tagName.toLowerCase()
+                        + (node.className && typeof node.className === 'string' && node.className.trim()
+                           ? '.' + node.className.trim().split(/\s+/).join('.') : ''));
+                    node = node.parentNode; h++;
+                }
+                rows.push({
+                    name: el.name || '', id: el.id || '', cls: el.className || '',
+                    accept: el.accept || '', hasFile: !!(el.files && el.files[0]),
+                    file: el.files && el.files[0] ? el.files[0].name : '',
+                    hints: inputHints(el).slice(0, 120),
+                    ancestors: chain.join('  <  ')
+                });
+            }
+            console.log('Mapper DOM: %d file input(s)', files.length);
+            rows.forEach(function(r, i) { console.log('  [' + i + ']', JSON.stringify(r, null, 1)); });
+        } catch (e) { console.warn('Mapper DOM report failed —', e && e.message); }
     }
 
     // Uses the field's own naming only. The ancestor walk in inputHints can pick
@@ -993,6 +1029,7 @@
     function styleHostForm() {
         var tagged = { fields: 0, selects: 0, labels: 0, drop: 0, preview: 0 };
         try {
+            reportHostDom();
             if (!document.getElementById('mapperHostFormStyle')) {
                 var st = document.createElement('style');
                 st.id = 'mapperHostFormStyle';
@@ -1031,8 +1068,23 @@
             // that shows the logo thumbnail - in place.
             logoCandidateInputs().forEach(function(input) {
                 if (inputHints(input).indexOf('logo') === -1) return;
-                var zone = closestMatching(input, /drop|upload|file/i, 5) || input.parentNode;
-                if (!zone || zone.className.indexOf('mp-drop') !== -1) return;
+                // Prefer a wrapper whose class names it as the drop zone, but do not
+                // depend on one: GHL's uploader wraps the input in several generic
+                // divs, so fall back to the largest ancestor that still belongs to
+                // this field - the one just inside the element holding the label.
+                var zone = closestMatching(input, /drop|upload|file|dropzone/i, 6);
+                if (!zone) {
+                    var node = input.parentNode, hops = 0;
+                    while (node && node.parentNode && hops < 5) {
+                        if (node.parentNode.querySelector
+                            && node.parentNode.querySelector(':scope > label')) break;
+                        node = node.parentNode; hops++;
+                    }
+                    zone = node || input.parentNode;
+                }
+                if (!zone || String(zone.className).indexOf('mp-drop') !== -1) return;
+                console.log('Mapper: logo drop zone →', zone.tagName.toLowerCase()
+                          + '.' + (String(zone.className).trim().split(/\s+/).join('.') || '(no class)'));
                 zone.className += ' mp-drop';
                 tagged.drop++;
                 var svgs = zone.querySelectorAll('svg');
@@ -1067,6 +1119,12 @@
             }
         } catch (e) {
             console.warn('Mapper: could not restyle the brand form —', e && e.message);
+        }
+        // Only when something was tagged, so the DOM-change re-runs stay quiet.
+        if (tagged.fields || tagged.selects || tagged.labels || tagged.drop || tagged.preview) {
+            console.log('Mapper: restyled ' + tagged.fields + ' field(s), ' + tagged.selects + ' dropdown(s), '
+                      + tagged.labels + ' label(s), ' + tagged.drop + ' drop zone(s), '
+                      + tagged.preview + ' preview(s)');
         }
         return tagged;
     }
