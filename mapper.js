@@ -638,23 +638,102 @@
         }
     }
 
-    // Finds a page-provided file input for the organization logo by locating a
-    // <label> whose text mentions "Logo" and reading the nearest file input's
-    // currently-selected file. Mirrors setIndustryTypeField's DOM-search
-    // pattern above, since both rely on a field the surrounding page provides
-    // rather than one mapper.js creates itself.
-    function getLogoFile() {
-        var labels = document.querySelectorAll('label');
-        for (var i = 0; i < labels.length; i++) {
-            if (labels[i].textContent.indexOf('Logo') !== -1) {
-                var container = labels[i].closest('div');
-                var input = container ? container.querySelector('input[type="file"]') : null;
-                if (input && input.files && input.files[0]) return input.files[0];
+    // Finds a page-provided file input for the organization logo. mapper.js is
+    // injected into the host form's document, so the logo input belongs to the
+    // surrounding page rather than to anything mapper.js builds - the only handle
+    // on it is whatever the form author named it. Mirrors setIndustryTypeField's
+    // DOM-search pattern above for the same reason.
+    //
+    // On the GHL path the form itself carried the upload, so failing to find the
+    // input here was invisible. On the direct path the logo only reaches Power
+    // Automate if this finds it, so it searches several ways and reports which
+    // one hit - see the "Logo" line in the submission diagnostics.
+    var LOGO_MAX_BYTES = 12 * 1024 * 1024;
+
+    // Every file input mapper.js can reach, minus its own data-file upload.
+    // Same-origin ancestor frames are included; cross-origin ones throw and are
+    // skipped, which is the correct outcome - their files are unreachable anyway.
+    function logoCandidateInputs() {
+        var docs = [document];
+        [window.parent, window.top].forEach(function(w) {
+            try {
+                if (w && w !== window && w.document && docs.indexOf(w.document) === -1) docs.push(w.document);
+            } catch (e) { /* cross-origin */ }
+        });
+        var out = [];
+        docs.forEach(function(d) {
+            var inputs = d.querySelectorAll('input[type="file"]');
+            for (var i = 0; i < inputs.length; i++) {
+                if (inputs[i].id === 'fileInput') continue;   // the mapper's own client-data upload
+                out.push(inputs[i]);
             }
+        });
+        return out;
+    }
+
+    // Everything on the page that might name this input, flattened to one
+    // lowercase haystack. GHL puts the field's label in the name attribute and
+    // also renders it as a sibling <label>, but which of the two survives varies
+    // by form version, so check both plus the usual accessibility attributes.
+    function inputHints(input) {
+        var bits = [input.name, input.id, input.getAttribute('aria-label'),
+                    input.getAttribute('placeholder'), input.getAttribute('title'),
+                    input.getAttribute('data-q')];
+        try {
+            var wrapping = input.closest('label');
+            if (wrapping) bits.push(wrapping.textContent);
+            if (input.id) {
+                var forLbl = input.ownerDocument.querySelector('label[for="' + input.id.replace(/"/g, '\\"') + '"]');
+                if (forLbl) bits.push(forLbl.textContent);
+            }
+        } catch (e) {}
+        var node = input.parentNode, hops = 0;
+        while (node && node.querySelector && hops < 4) {
+            var near = node.querySelector('label');
+            if (near) { bits.push(near.textContent); break; }
+            node = node.parentNode; hops++;
         }
-        var fallback = document.querySelector('input[type="file"][name*="logo"]')
-                     || document.querySelector('input[type="file"][name*="Logo"]');
-        return (fallback && fallback.files && fallback.files[0]) ? fallback.files[0] : null;
+        return bits.filter(Boolean).join(' ').toLowerCase();
+    }
+
+    function looksLikeDataFile(input) {
+        var h = inputHints(input);
+        return h.indexOf('client data') !== -1 || h.indexOf('gift') !== -1 || h.indexOf('constituent') !== -1;
+    }
+
+    // Returns { file, how } - file is null when nothing qualified, and how always
+    // explains the outcome so the diagnostics panel can show it.
+    function getLogoFile() {
+        var inputs = logoCandidateInputs();
+        var withFile = inputs.filter(function(el) { return el.files && el.files[0]; });
+
+        function firstUsable(list, how) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].files[0].size <= LOGO_MAX_BYTES) return { file: list[i].files[0], how: how };
+            }
+            return null;
+        }
+
+        var hit = firstUsable(withFile.filter(function(el) {
+            return inputHints(el).indexOf('logo') !== -1;
+        }), 'field named "logo"');
+        if (hit) return hit;
+
+        hit = firstUsable(withFile.filter(function(el) {
+            return !looksLikeDataFile(el)
+                && ((el.accept || '').toLowerCase().indexOf('image') !== -1
+                    || /^image\//.test(el.files[0].type || ''));
+        }), 'image upload');
+        if (hit) return hit;
+
+        var other = withFile.filter(function(el) { return !looksLikeDataFile(el); });
+        if (other.length === 1) {
+            hit = firstUsable(other, 'only other upload on the page');
+            if (hit) return hit;
+        }
+
+        return { file: null, how: inputs.length + ' file input(s) reachable, '
+                                 + withFile.length + ' with a file selected' };
     }
 
     window.addEventListener('message', function(event) {
@@ -1114,7 +1193,15 @@
                     // HF runs through the same downstream pipeline/macro template as Databasey — only Alford and SW are distinct.
                     var formSource   = isSW ? 'SW' : (isAlford ? 'Alford' : 'Databasey');
                     var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
-                    var logoFile = getLogoFile();
+                    var logoLookup = getLogoFile();
+                    var logoFile   = logoLookup.file;
+                    if (logoFile) {
+                        MapperDiag.step('Logo found', logoFile.name + ' — '
+                            + Math.round(logoFile.size / 1024) + ' KB, via ' + logoLookup.how);
+                    } else {
+                        MapperDiag.warn('No logo attached', logoLookup.how
+                            + ' — submitting without one');
+                    }
 
                     function submitPayload(logoBase64, logoFilename) {
                         var reader = new FileReader();
@@ -1122,7 +1209,9 @@
                         reader.readAsDataURL(blob);
                         reader.onloadend = function() {
                             var base64 = reader.result.split(',')[1];
-                            MapperDiag.step('Encoded', (base64.length / 1048576).toFixed(1) + ' MB to send');
+                            MapperDiag.step('Encoded', (base64.length / 1048576).toFixed(1) + ' MB to send'
+                                + (logoBase64 ? ', logo ' + Math.round(logoBase64.length / 1024) + ' KB'
+                                              : ', no logo'));
                             var payload = {
                                 company_name:              clientName.trim(),
                                 full_name:                 contactName.trim(),
@@ -1179,7 +1268,7 @@
                             submitPayload(logoReader.result.split(',')[1], logoFile.name);
                         };
                         logoReader.onerror = function() {
-                            console.warn('Logo file failed to read — submitting without it.');
+                            MapperDiag.warn('Logo could not be read', 'submitting without it');
                             submitPayload('', '');
                         };
                     } else {
