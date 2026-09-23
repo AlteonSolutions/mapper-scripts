@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 22:04 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s4';
+    var MAPPER_BUILD   = '2026-09-23 22:36 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s5';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1004,11 +1004,15 @@
             var label = document.createElement('div');
             label.id = 'mappingBoxLabel';
             label.textContent = 'Client Data File Mapping';
-            label.style.cssText = 'margin-bottom:10px;margin-top:15px;color:#2c3345;text-align:left;font-family:Inter,sans-serif;font-size:14px;font-weight:500;display:none;';
+            // Matches the panel's section headings, so the page reads as four
+            // sections rather than three and a caption.
+            label.style.cssText = 'margin:30px 0 16px;color:#2c3345;text-align:left;'
+                + 'font-size:17px;font-weight:600;display:none;';
             // Create wrapper box
             var box = document.createElement('div');
             box.id = 'mappingBox';
-            box.style.cssText = 'border:none;padding:20px;background:white;width:100%;box-sizing:border-box;display:none;';
+            box.style.cssText = 'border:none;padding:0;background:#fff;width:100%;'
+                + 'box-sizing:border-box;display:none;';
             // Insert label and box before categorySetup
             parent.insertBefore(label, catSetup);
             parent.insertBefore(box, catSetup);
@@ -1536,13 +1540,16 @@
                     if (giftTypeMappingSkipped) {
                         var gtBtn = document.getElementById('startGiftTypeMappingBtn'); if (gtBtn) gtBtn.textContent = 'Submit ➡';
                     }
-                    // Update upload box to show the chosen file
+                    // The box now shows a result rather than offering an upload, so the
+                    // badge goes - the same way the logo box drops its own once filled.
                     var uploadBox = document.getElementById('uploadBox');
-                    uploadBox.innerHTML = uploadIconSvg
-                        + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 14px 10px;border-top:1px solid #eee;margin-top:8px;box-sizing:border-box;">'
+                    uploadBox.innerHTML =
+                          '<div style="display:flex;justify-content:space-between;align-items:center;'
+                        + 'gap:16px;width:100%;padding:0 16px;box-sizing:border-box;flex-wrap:wrap;">'
                         + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
-                        + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
+                        + '<div style="text-align:right;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
                         + '</div>';
+                    uploadBox.style.cursor = 'default';
                     document.getElementById('fileInfo').innerHTML = '';
                     var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                     var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
@@ -2125,7 +2132,7 @@
     // Both upload boxes are ours, so they come from one definition rather than two
     // that drift. This is the client-data box's finished appearance - the styles
     // init() applies to it and the badge icon it ends up with.
-    var UPLOAD_BOX_CSS = 'border:1px solid #ACACACFF;border-radius:8px;min-height:74px;'
+    var UPLOAD_BOX_CSS = 'border:1px solid #ACACACFF;border-radius:8px;min-height:112px;'
         + 'background:#fff;cursor:pointer;text-align:center;display:flex;flex-direction:column;'
         + 'align-items:center;justify-content:center;width:100%;box-sizing:border-box;'
         + 'transition:border-color .15s ease,background .15s ease;';
@@ -2204,6 +2211,8 @@
         '#mapperClientPanel #mapper-logo{display:none;}',
         '#mapperClientPanel .mp-logo-box{' + UPLOAD_BOX_CSS + '}',
         '#mapperClientPanel .mp-logo-box:hover{border-color:#8f8f8f;background:#fafbfc;}',
+        '#mapperClientPanel .mp-logo-box.mp-has-file{cursor:default;padding:14px 16px;}',
+        '#mapperClientPanel .mp-logo-box.mp-has-file:hover{border-color:#ACACACFF;background:#fff;}',
         // The client-data box sits in this section too, so its own heading becomes a
         // field label like the logo's and the two read as one pair.
         '#mapperClientPanel #uploadSection{margin:0;}',
@@ -2228,7 +2237,7 @@
         var uploadBox = document.getElementById('uploadBox');
         if (!slot && !uploadBox) return;
 
-        var req = ' <i>*</i>';
+        var req = '';
         var envelope = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
             + 'stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect>'
             + '<path d="m2 7 10 6 10-6"></path></svg>';
@@ -2359,8 +2368,8 @@
 
         function reset() {
             box.innerHTML = '';
+            box.classList.remove('mp-has-file');
             dressUploadBox(box);
-            box.style.cursor = 'pointer';
         }
         reset();
         function show(file) {
@@ -2389,7 +2398,7 @@
             });
             box.innerHTML = '';
             box.appendChild(card);
-            box.style.cursor = 'default';
+            box.classList.add('mp-has-file');
         }
 
         box.addEventListener('click', function(e) {
