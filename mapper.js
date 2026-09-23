@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 11:31 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b24';
+    var MAPPER_BUILD   = '2026-09-23 11:56 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b25';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -851,6 +851,7 @@
     // Names whatever is wider than the page. A horizontal scrollbar is caused by
     // one element's right edge, and guessing which has already been wrong once -
     // this reports it with its width and its ancestors, so the fix lands first time.
+    var _lastOverflow = '';
     function reportOverflow(tag) {
         try {
             var limit = document.documentElement.clientWidth;
@@ -866,7 +867,14 @@
                     if (!covered) hits.push({ el: all[i], r: r });
                 }
             }
-            if (!hits.length) return;
+            // Only speak when the picture changes, so a watcher can run often
+            // without burying the moment the bar actually appears.
+            var sig = hits.map(function(h) {
+                return (h.el.tagName + '.' + h.el.className + '@' + Math.round(h.r.right));
+            }).join('|');
+            if (sig === _lastOverflow) return;
+            _lastOverflow = sig;
+            if (!hits.length) { console.log('Mapper: nothing overflows any more (%s)', tag); return; }
             console.warn('Mapper: %d element(s) wider than the page (%dpx) at "%s"', hits.length, limit, tag);
             hits.slice(0, 6).forEach(function(h) {
                 var chain = [], n = h.el, k = 0;
@@ -1192,7 +1200,8 @@
         // list ran off the panel with no way to reach the bottom of it.
         + '.mp-select .multiselect__content-wrapper{border:1px solid #e5e7eb!important;border-radius:10px!important;'
         +   'box-shadow:0 10px 24px rgba(17,24,39,.10)!important;margin-top:4px!important;'
-        +   'max-height:260px!important;overflow-y:auto!important;overflow-x:hidden!important;}'
+        +   'max-height:190px!important;overflow-y:auto!important;overflow-x:hidden!important;'
+        +   'width:100%!important;box-sizing:border-box!important;}'
         + '.mp-select .multiselect__option--highlight{background:' + themeColor + '!important;color:#fff!important;}'
         + '.mp-select .multiselect__option--highlight:after{background:transparent!important;color:#fff!important;}'
         // The logo drop zone, matched to the client-data upload box above it.
@@ -1246,21 +1255,46 @@
     // one control look exactly like another, read the one you are matching rather
     // than hard-coding numbers off a screenshot - #uploadBox is styled a few hundred
     // lines above and would otherwise drift out of step with this.
-    // The month field's hint has stayed a size larger than everything around it
-    // through two rounds of CSS, so stop competing on specificity: read what a real
-    // field renders at and set it inline, which nothing in a stylesheet can outrank.
+    // The month control has now been a size larger and a few pixels taller than its
+    // neighbours through three rounds of naming its parts, so stop naming parts.
+    // Read what a real field renders at and force it onto the box and onto every
+    // element inside it, whichever one happens to hold the text.
     function matchFieldType(select) {
-        var ref = document.querySelector('.mp-field');
+        var ref = document.querySelector('input.mp-field');
         if (!ref) return;
         try {
             var cs = window.getComputedStyle(ref);
-            var bits = select.querySelectorAll(
-                '.multiselect__placeholder,.multiselect__single,.multiselect__input,.multiselect__tags');
+            var h = parseFloat(cs.height) || 0;
+            if (h < 20) return;                     // not laid out yet
+
+            var tags = select.querySelector('.multiselect__tags');
+            if (tags) {
+                tags.style.setProperty('min-height', Math.round(h) + 'px', 'important');
+                tags.style.setProperty('height', Math.round(h) + 'px', 'important');
+                tags.style.setProperty('padding-top', '0', 'important');
+                tags.style.setProperty('padding-bottom', '0', 'important');
+                tags.style.setProperty('padding-left', cs.paddingLeft, 'important');
+                tags.style.setProperty('padding-right', '34px', 'important');   // room for the caret
+                tags.style.setProperty('display', 'flex', 'important');
+                tags.style.setProperty('align-items', 'center', 'important');
+                tags.style.setProperty('box-sizing', 'border-box', 'important');
+            }
+            var bits = select.querySelectorAll('*');
             for (var i = 0; i < bits.length; i++) {
+                if (typeof bits[i].className !== 'string') continue;   // leave svg alone
                 bits[i].style.setProperty('font-size', cs.fontSize, 'important');
                 bits[i].style.setProperty('line-height', cs.lineHeight, 'important');
                 bits[i].style.setProperty('font-family', cs.fontFamily, 'important');
             }
+            // vue-multiselect gives the text a bottom margin, which is most of the
+            // extra height - the box was taller than its neighbour by about that much.
+            ['.multiselect__single', '.multiselect__placeholder', '.multiselect__input'].forEach(function(sel) {
+                var el = select.querySelector(sel);
+                if (!el) return;
+                el.style.setProperty('margin', '0', 'important');
+                el.style.setProperty('padding', '0', 'important');
+                el.style.setProperty('min-height', '0', 'important');
+            });
         } catch (e) {}
     }
 
@@ -1602,6 +1636,18 @@
         waitForElement('#customSubmitBtn', function(btn) {
             btn.parentElement.style.display = 'none';
         });
+
+        // The horizontal scrollbar turns up at some point during a large upload and
+        // guessing at the cause has been wrong once already. Watch for it for the
+        // first minute and report the moment the picture changes.
+        (function watchOverflow() {
+            var checks = 0;
+            var t = setInterval(function() {
+                reportOverflow('watch +' + (++checks) + 's');
+                if (checks >= 60) clearInterval(t);
+            }, 1000);
+            window.addEventListener('resize', function() { reportOverflow('resize'); });
+        })();
 
         // Restyle the brand form. GHL renders it asynchronously and adds the logo
         // preview card only once a file is chosen, so re-run on a few timers and
