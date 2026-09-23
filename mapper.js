@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 23:02 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s6';
+    var MAPPER_BUILD   = '2026-09-23 23:28 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s7';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -2225,11 +2225,18 @@
         '  color:#2c3345!important;margin:0 0 6px!important;font-family:inherit!important;}',
         '#mapperClientPanel .upload-note{margin-top:10px;}',
         '#mapperClientPanel .mp-logo-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;}',
-        '#mapperClientPanel .mp-logo-card img{width:56px;height:56px;object-fit:contain;flex:none;border-radius:4px;}',
+        '#mapperClientPanel .mp-logo-card img{width:76px;height:76px;object-fit:contain;flex:none;',
+        '  border-radius:4px;background:#fff;}',
         '#mapperClientPanel .mp-logo-meta{min-width:0;flex:1;}',
         '#mapperClientPanel .mp-logo-meta b{display:block;font-size:13px;font-weight:600;color:#12181f;',
         '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
         '#mapperClientPanel .mp-logo-meta span{font-size:12px;color:#6b7280;}',
+        '#mapperClientPanel .mp-logo-bar{display:flex;align-items:center;gap:9px;margin-top:7px;}',
+        '#mapperClientPanel .mp-logo-track{flex:1;height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;}',
+        '#mapperClientPanel .mp-logo-track i{display:block;height:100%;width:0;border-radius:3px;',
+        '  background:#22a06b;transition:width .45s ease;}',
+        '#mapperClientPanel .mp-logo-pct{font-size:11px;color:#6b7280;flex:none;min-width:30px;',
+        '  text-align:right;font-variant-numeric:tabular-nums;}',
         '#mapperClientPanel .mp-logo-clear{border:0;background:transparent;cursor:pointer;color:#9ca3af;',
         '  padding:6px;line-height:0;flex:none;}',
         '#mapperClientPanel .mp-logo-clear:hover{color:#b91c1c;}'
@@ -2384,18 +2391,41 @@
             var card = document.createElement('div');
             card.className = 'mp-logo-card';
             card.innerHTML = '<img alt="">'
-                + '<span class="mp-logo-meta"><b></b><span></span></span>'
+                + '<span class="mp-logo-meta"><b></b><span class="mp-logo-size"></span>'
+                +   '<span class="mp-logo-bar"><span class="mp-logo-track"><i></i></span>'
+                +   '<span class="mp-logo-pct">0%</span></span></span>'
                 + '<button type="button" class="mp-logo-clear" aria-label="Remove logo">'
                 +   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
                 +   'stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14"></path>'
                 +   '</svg></button>';
             card.querySelector('b').textContent = file.name;
-            card.querySelector('.mp-logo-meta span').textContent = size;
+            card.querySelector('.mp-logo-size').textContent = size;
+
             // Read it here rather than at submit: the thumbnail is the confirmation
             // that the right file was picked, and the file object is already in hand.
+            // The bar is the read's own progress rather than a decoration - though a
+            // logo is small enough that it usually arrives in one event, so it is
+            // held briefly at the start to be seen at all.
+            var fill = card.querySelector('.mp-logo-track i');
+            var pct  = card.querySelector('.mp-logo-pct');
+            function setPct(n) {
+                n = Math.max(0, Math.min(100, Math.round(n)));
+                fill.style.width = n + '%';
+                pct.textContent = n + '%';
+            }
             var reader = new FileReader();
-            reader.onload = function() { card.querySelector('img').src = reader.result; };
-            reader.readAsDataURL(file);
+            reader.onprogress = function(e) {
+                if (e.lengthComputable) setPct((e.loaded / e.total) * 100);
+            };
+            reader.onload = function() {
+                card.querySelector('img').src = reader.result;
+                setTimeout(function() { setPct(100); }, 120);
+            };
+            reader.onerror = function() {
+                pct.textContent = 'failed';
+                fill.style.background = '#b91c1c';
+                setPct(100);
+            };
             card.querySelector('.mp-logo-clear').addEventListener('click', function(e) {
                 e.stopPropagation();
                 input.value = '';
@@ -2404,6 +2434,13 @@
             box.innerHTML = '';
             box.appendChild(card);
             box.classList.add('mp-has-file');
+
+            // Start the read only once the bar is on the page and has been laid out.
+            // A width set on a detached element, or in the same frame it was inserted,
+            // has nothing to transition from - the bar would snap to full instead of
+            // travelling, which is the whole point of showing it.
+            void fill.offsetWidth;
+            reader.readAsDataURL(file);
         }
 
         box.addEventListener('click', function(e) {
