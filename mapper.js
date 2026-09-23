@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 10:34 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b22';
+    var MAPPER_BUILD   = '2026-09-23 11:08 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b23';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1106,10 +1106,10 @@
             if (!anyVisible) rows[r].style.display = 'none';
         }
 
+        var fields = document.getElementById('allDoneFields');
+        if (fields) fields.style.display = 'none';
         var heading = document.getElementById('allDoneHeading');
-        if (heading) {
-            heading.textContent = remaining === 0 ? 'Mapping complete' : 'Almost there';
-        }
+        if (heading) heading.textContent = 'Mapping complete';
         console.log('Mapper: carried over from the brand form [' + (taken.join(', ') || 'nothing')
                   + '] — ' + remaining + ' field(s) still shown');
         return remaining;
@@ -1211,6 +1211,24 @@
     // one control look exactly like another, read the one you are matching rather
     // than hard-coding numbers off a screenshot - #uploadBox is styled a few hundred
     // lines above and would otherwise drift out of step with this.
+    // The month field's hint has stayed a size larger than everything around it
+    // through two rounds of CSS, so stop competing on specificity: read what a real
+    // field renders at and set it inline, which nothing in a stylesheet can outrank.
+    function matchFieldType(select) {
+        var ref = document.querySelector('.mp-field');
+        if (!ref) return;
+        try {
+            var cs = window.getComputedStyle(ref);
+            var bits = select.querySelectorAll(
+                '.multiselect__placeholder,.multiselect__single,.multiselect__input,.multiselect__tags');
+            for (var i = 0; i < bits.length; i++) {
+                bits[i].style.setProperty('font-size', cs.fontSize, 'important');
+                bits[i].style.setProperty('line-height', cs.lineHeight, 'important');
+                bits[i].style.setProperty('font-family', cs.fontFamily, 'important');
+            }
+        } catch (e) {}
+    }
+
     function matchUploadBox(zone) {
         var src = document.getElementById('uploadBox');
         if (!src) return;
@@ -1246,6 +1264,7 @@
                 var ms = closestMatching(el, /(^|\s)multiselect(\s|$)/, 4);
                 if (ms) {
                     if (ms.className.indexOf('mp-select') === -1) { ms.className += ' mp-select'; tagged.selects++; }
+                    matchFieldType(ms);
                 } else if (el.className.indexOf('mp-field') === -1) {
                     el.className += ' mp-field'; tagged.fields++;
                 }
@@ -1827,7 +1846,15 @@
                     +   'display:flex;align-items:center;justify-content:center;background:' + themeColor + ';">' + _chk + '</div>'
                     + '<div id="allDoneHeading" style="font-size:1.12rem;font-weight:700;color:#111827;margin-bottom:5px;">Mapping complete</div>'
                     + '<div id="allDoneSummary" style="font-size:0.87rem;color:#6b7280;margin-bottom:2px;"></div>'
-                    + '<div style="display:grid;gap:12px;margin-top:16px;">'
+                    + '<div id="allDoneError" style="display:none;margin-top:14px;padding:10px 14px;'
+                    +   'background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#b91c1c;'
+                    +   'font-size:0.87rem;font-weight:500;text-align:left;"></div>'
+                    // Never shown. These inputs exist only as the place the brand form's
+                    // values are written to, so the submit path keeps reading one set of
+                    // fields. None of them carries a default: a hidden field with a value
+                    // in it would submit that value silently when the brand form left the
+                    // real one blank.
+                    + '<div id="allDoneFields" style="display:grid;gap:12px;margin-top:16px;">'
                     +   '<div>'
                     +     '<label style="' + _lbl + '">Client / Organization Name ' + _req + '</label>'
                     +     '<input id="mapper-client-name" type="text" placeholder="e.g. Smith Animal Shelter" style="' + _inp + '">'
@@ -1851,7 +1878,7 @@
                     +     '</div>'
                     +     '<div>'
                     +       '<label style="' + _lbl + '">Major Giving Threshold ' + _req + '</label>'
-                    +       '<input id="mapper-major-giving-threshold" type="number" value="10000" min="1" placeholder="10000" style="' + _inp + '">'
+                    +       '<input id="mapper-major-giving-threshold" type="number" min="1" placeholder="10000" style="' + _inp + '">'
                     +     '</div>'
                     +   '</div>'
                     +   '<div>'
@@ -1874,16 +1901,23 @@
                 var threshold   = parseFloat(threshRaw);
                 var boardMembers = (document.getElementById('mapper-board-members')          || {}).value || '';
 
-                if (!clientName.trim())  { alert('Please enter the Client / Organization Name.'); return; }
-                if (!contactName.trim()) { alert('Please enter a Contact Name.'); return; }
-                if (!email.trim() || email.indexOf('@') < 0) { alert('Please enter a valid email address.'); return; }
-                if (!isEmailDomainAllowed(email)) {
-                    alert(emailGateMessage());
+                // These values come from the brand form at the top of the page, not
+                // from anything on this card - so name what is missing and point back
+                // up there rather than asking for it again down here.
+                var missing = [];
+                if (!clientName.trim())  missing.push('Client Name');
+                if (!contactName.trim()) missing.push('First and Last Name');
+                if (!email.trim() || email.indexOf('@') < 0) missing.push('Email');
+                if (!fyMonth)            missing.push('Fiscal Year Start Month');
+                if (isNaN(threshold) || threshold <= 0) missing.push('Major Giving Threshold');
+                if (missing.length) {
+                    showAllDoneError('Almost there — please complete ' + listToSentence(missing)
+                        + ' in the form above, then submit again.');
                     return;
                 }
-                if (!fyMonth)            { alert('Please select the Fiscal Year Start Month.'); return; }
-                if (isNaN(threshold) || threshold <= 0) { alert('Please enter a valid Major Giving Threshold.'); return; }
-                if (!PA_TRIGGER_URL)     { alert('Submission endpoint not configured. Please contact support.'); return; }
+                if (!isEmailDomainAllowed(email)) { showAllDoneError(emailGateMessage()); return; }
+                if (!PA_TRIGGER_URL) { showAllDoneError('Submission endpoint not configured. Please contact support.'); return; }
+                showAllDoneError('');
 
                 var originalHTML = btn.innerHTML;
                 btn.disabled = true;
@@ -2165,7 +2199,8 @@
         uploadBox.style.cursor = 'default';
         uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px 0;">'
             + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid ' + themeColor + ';border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
-            + '<div id="mapperReadStatus" style="margin-top:10px;font-size:13px;color:#666;font-weight:500;">Reading ' + file.name + '…</div>'
+            + '<div id="mapperReadStatus" style="margin-top:10px;font-size:13px;color:#666;font-weight:500;'
+            +   'max-width:100%;padding:0 12px;box-sizing:border-box;overflow-wrap:anywhere;">Reading Your File…</div>'
             + '</div>';
         // Inject spinner keyframes if not already present
         if (!document.getElementById('mapper-spinner-style')) {
@@ -2200,28 +2235,28 @@
                 alert('Error reading file: ' + err.message);
             }
             var phases = [
-                ['Reading ' + file.name, function() {
+                ['Reading Your File', function() {
                     var data = new Uint8Array(e.target.result);
                     workbook = XLSX.read(data, { type: 'array', cellFormula: false, cellHTML: false, cellNF: false });
                     if (workbook.SheetNames.indexOf('Gift Data') === -1) { alert('Error: No Gift Data sheet found!'); return false; }
                     if (workbook.SheetNames.indexOf('Constituent Data') === -1) { alert('Error: No Constituent Data sheet found!'); return false; }
                 }],
-                ['Reading gift data', function() {
+                ['Reading Gift Data', function() {
                     giftJson = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
                     uploadedGiftCount = giftJson.length;
                     var ua = {};
                     for (var i = 0; i < giftJson.length; i++) { if (giftJson[i]['Gift Appeal']) ua[giftJson[i]['Gift Appeal']] = true; }
                     giftAppeals = Object.keys(ua).sort();
                 }],
-                ['Reading constituent data', function() {
+                ['Reading Constituent Data', function() {
                     constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
                     uploadedConstituentCount = constJson.length;
                 }],
-                ['Checking your data', function() {
+                ['Checking Your Data', function() {
                     var valErrors = validateWorkbook(workbook, giftJson, constJson);
                     if (valErrors.length > 0) { showUploadValidationError(valErrors); return false; }
                 }],
-                ['Preparing your mapping', function() {
+                ['Preparing Your Mapping', function() {
 
                     var uc = {};
                     for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
@@ -2592,6 +2627,25 @@
     }
 
 
+    function listToSentence(items) {
+        if (items.length === 1) return items[0];
+        if (items.length === 2) return items[0] + ' and ' + items[1];
+        return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+    }
+
+    // Shown in the card rather than an alert: an alert has to be dismissed before
+    // the form it is talking about can be reached, and it does not survive long
+    // enough to read while scrolling back up.
+    function showAllDoneError(message) {
+        var el = document.getElementById('allDoneError');
+        if (!el) { if (message) alert(message); return; }
+        el.textContent = message || '';
+        el.style.display = message ? 'block' : 'none';
+        if (message) {
+            try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+        }
+    }
+
     function showAllDoneCard() {
         ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection','constituentMappingSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
         var gts = document.getElementById('giftTypeMappingSection'); if (gts) gts.style.display = 'block';
@@ -2612,9 +2666,8 @@
                 // reason they are missing, say nothing rather than "0 gifts".
                 var g = uploadedGiftCount, c = uploadedConstituentCount;
                 sum.textContent = (g && c)
-                    ? (g.toLocaleString() + ' gifts and ' + c.toLocaleString() + ' constituents, '
-                       + (remaining > 0 ? 'ready once the details below are filled in.' : 'ready to send.'))
-                    : (remaining > 0 ? 'Fill in the details below to submit.' : 'Ready to send.');
+                    ? (g.toLocaleString() + ' gifts and ' + c.toLocaleString() + ' constituents, ready to send.')
+                    : 'Ready to send.';
             }
             adc.style.display = 'block';
         }
