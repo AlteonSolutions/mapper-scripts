@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 10:05 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b21';
+    var MAPPER_BUILD   = '2026-09-23 10:34 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b22';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -291,6 +291,9 @@
     var workbook = null;
     var uploadIconSvg = '<svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:46px;height:46px;display:block;margin:0 auto;"><rect x="3" y="3" width="40" height="40" rx="20" fill="#F2F4F7"></rect><rect x="3" y="3" width="40" height="40" rx="20" stroke="#F9FAFB" stroke-width="6"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M20.9167 16.3334C17.9252 16.3334 15.5 18.7585 15.5 21.7501C15.5 23.2425 16.1025 24.5926 17.0795 25.5732C17.4043 25.8992 17.4034 26.4268 17.0773 26.7517C16.7513 27.0765 16.2237 27.0756 15.8988 26.7495C14.6233 25.4693 13.8334 23.7012 13.8334 21.7501C13.8334 17.8381 17.0047 14.6667 20.9167 14.6667C23.454 14.6667 25.6787 16.0013 26.9288 18.003C29.8376 18.0973 32.1667 20.485 32.1667 23.4167C32.1667 25.0991 31.3987 26.6028 30.1974 27.595C29.8425 27.8881 29.3172 27.838 29.0242 27.4831C28.7311 27.1282 28.7812 26.603 29.1361 26.3099C29.9705 25.6208 30.5 24.581 30.5 23.4167C30.5 21.3457 28.8211 19.6667 26.75 19.6667C26.2803 19.6667 25.8332 19.422 25.5872 19.0046C24.6441 17.4042 22.905 16.3334 20.9167 16.3334ZM22.4108 22.4108C22.7362 22.0854 23.2639 22.0854 23.5893 22.4108L26.9226 25.7442C27.2481 26.0696 27.2481 26.5972 26.9226 26.9227C26.5972 27.2481 26.0696 27.2481 25.7441 26.9227L23.8334 25.0119V30.5001C23.8334 30.9603 23.4603 31.3334 23 31.3334C22.5398 31.3334 22.1667 30.9603 22.1667 30.5001V25.0119L20.256 26.9227C19.9305 27.2481 19.4029 27.2481 19.0775 26.9227C18.752 26.5972 18.752 26.0696 19.0775 25.7442L22.4108 22.4108Z" fill="#2c3345FF"></path></svg>';
     var giftAppeals = [];
+    // Recorded as the workbook is read, so the All Done card can say what is about
+    // to be sent without re-walking the data.
+    var uploadedGiftCount = 0, uploadedConstituentCount = 0;
     var specialEventSkipped = false;
     var spotlightSkipped = false;
     var constituentTypes = [];
@@ -1105,9 +1108,7 @@
 
         var heading = document.getElementById('allDoneHeading');
         if (heading) {
-            heading.textContent = remaining === 0
-                ? '🎉 All Done! Click Submit below to send your data.'
-                : '🎉 All Done! Fill in the details below to submit.';
+            heading.textContent = remaining === 0 ? 'Mapping complete' : 'Almost there';
         }
         console.log('Mapper: carried over from the brand form [' + (taken.join(', ') || 'nothing')
                   + '] — ' + remaining + ' field(s) still shown');
@@ -1818,8 +1819,14 @@
                 var _inp = 'width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.9rem;box-sizing:border-box;outline:none;';
                 var _lbl = 'display:block;font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:4px;';
                 var _req = '<span style="color:#ef4444;">*</span>';
+                var _chk = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" '
+                    + 'stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+                    + '<path d="m5 12 5 5L20 7"></path></svg>';
                 allDoneCard.innerHTML = ''
-                    + '<div id="allDoneHeading" style="font-size:1.3rem;font-weight:700;color:#111827;margin-bottom:6px;">🎉 All Done! Fill in the details below to submit.</div>'
+                    + '<div id="allDoneCheck" style="width:44px;height:44px;border-radius:50%;margin:0 auto 14px;'
+                    +   'display:flex;align-items:center;justify-content:center;background:' + themeColor + ';">' + _chk + '</div>'
+                    + '<div id="allDoneHeading" style="font-size:1.12rem;font-weight:700;color:#111827;margin-bottom:5px;">Mapping complete</div>'
+                    + '<div id="allDoneSummary" style="font-size:0.87rem;color:#6b7280;margin-bottom:2px;"></div>'
                     + '<div style="display:grid;gap:12px;margin-top:16px;">'
                     +   '<div>'
                     +     '<label style="' + _lbl + '">Client / Organization Name ' + _req + '</label>'
@@ -2201,12 +2208,14 @@
                 }],
                 ['Reading gift data', function() {
                     giftJson = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
+                    uploadedGiftCount = giftJson.length;
                     var ua = {};
                     for (var i = 0; i < giftJson.length; i++) { if (giftJson[i]['Gift Appeal']) ua[giftJson[i]['Gift Appeal']] = true; }
                     giftAppeals = Object.keys(ua).sort();
                 }],
                 ['Reading constituent data', function() {
                     constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
+                    uploadedConstituentCount = constJson.length;
                 }],
                 ['Checking your data', function() {
                     var valErrors = validateWorkbook(workbook, giftJson, constJson);
@@ -2595,10 +2604,28 @@
             // Read the brand form now rather than when the card was built - the
             // client fills it in before uploading, so the values are only
             // guaranteed to be there by the time the card is about to be shown.
-            prefillFromHostForm();
+            var remaining = prefillFromHostForm();
+            var sum = document.getElementById('allDoneSummary');
+            if (sum) {
+                // One line of context, so the last screen before an irreversible step
+                // is not purely decorative. Counts come from the parse; if for any
+                // reason they are missing, say nothing rather than "0 gifts".
+                var g = uploadedGiftCount, c = uploadedConstituentCount;
+                sum.textContent = (g && c)
+                    ? (g.toLocaleString() + ' gifts and ' + c.toLocaleString() + ' constituents, '
+                       + (remaining > 0 ? 'ready once the details below are filled in.' : 'ready to send.'))
+                    : (remaining > 0 ? 'Fill in the details below to submit.' : 'Ready to send.');
+            }
             adc.style.display = 'block';
         }
-        var csBtn = document.getElementById('customSubmitBtn'); if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = '';
+        var csBtn = document.getElementById('customSubmitBtn');
+        if (csBtn) {
+            // The button is near-black by default, which matches nothing else on the
+            // page - every mapping button above it is already themed.
+            csBtn.style.setProperty('background', themeColor, 'important');
+            csBtn.style.setProperty('border-color', themeColor, 'important');
+            if (csBtn.parentElement) csBtn.parentElement.style.display = '';
+        }
         updateStepTracker(99);
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
     }
