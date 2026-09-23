@@ -27,15 +27,29 @@
     
     console.log('Mapper.js: Initializing on live page');
 
-    // Theme/variant detection based on URL params passed from outer page
+    // Brand and variant come from the URL. The query params are what the GHL form
+    // iframe was handed; running inline on the brand page there are none, so fall
+    // back to the path - the same rule sector-selection.js has always used. Query
+    // param wins where present, so an explicit ?brand= still overrides for testing.
     var _urlParams = new URLSearchParams(window.location.search);
-    var isSW = _urlParams.get('brand') === 'sw';
-    var isDatabasey = _urlParams.get('brand') === 'databasey'; // also the default brand when no/unmatched ?brand= is present
-    var isHF = _urlParams.get('brand') === 'hf';
-    var isAlford = _urlParams.get('brand') === 'alford';
-    var isStaffing = _urlParams.get('variant') === 'staffing';
-    var isDevelopmentAssessment = _urlParams.get('variant') === 'developmentassessment';
-    var isCampaignCounsel = _urlParams.get('variant') === 'campaigncounsel';
+    var _href = window.location.href;
+    function _brandIs(name, pathBit) {
+        var q = _urlParams.get('brand');
+        if (q) return q === name;
+        return _href.indexOf(pathBit) !== -1;
+    }
+    function _variantIs(name, pathBit) {
+        var q = _urlParams.get('variant');
+        if (q) return q === name;
+        return _href.indexOf(pathBit) !== -1;
+    }
+    var isSW = _brandIs('sw', 'getdatabasey.com/sw');
+    var isDatabasey = _brandIs('databasey', 'getdatabasey.com/analytics'); // also the default brand when nothing matches
+    var isHF = _brandIs('hf', 'getdatabasey.com/heyfundraiser');
+    var isAlford = _brandIs('alford', 'getdatabasey.com/alfordanalytics');
+    var isStaffing = _variantIs('staffing', 'getdatabasey.com/sw/staffing');
+    var isDevelopmentAssessment = _variantIs('developmentassessment', 'getdatabasey.com/sw/developmentassessment');
+    var isCampaignCounsel = _variantIs('campaigncounsel', 'getdatabasey.com/sw/campaigncounsel');
     var isSimpleFlow = isStaffing || isDevelopmentAssessment || isCampaignCounsel;
     // Databasey is the default/fallback brand; Alford now requires an explicit ?brand=alford match.
     // Kellogg has been retired (removed as a brand entirely).
