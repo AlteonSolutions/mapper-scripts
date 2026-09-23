@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-22 21:26 UTC';
-    var MAPPER_VERSION = '9.22.2026 FEATURE TEST b19';
+    var MAPPER_BUILD   = '2026-09-23 09:12 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b20';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -224,10 +224,24 @@
             dot.style.animation = pulsing ? 'mapperPulse 1.1s ease-in-out infinite' : 'none';
             dot.style.opacity = '1';
         }
+        // Most of these steps take milliseconds - only the compute and the POST take
+        // real time - so written straight to the page they would flash past unread
+        // and the line would look like it was glitching rather than progressing.
+        // Queue them and hold each one long enough to be read. This delays only the
+        // display; the work carries on underneath at full speed.
+        var MIN_DWELL = 650, queue = [], draining = false;
+        function pump() {
+            if (!queue.length) { draining = false; return; }
+            draining = true;
+            write(queue.shift(), true);
+            setTimeout(pump, MIN_DWELL);
+        }
         return {
-            set:  function(text) { write(text, true); },
-            done: function(text) { write(text, false); },
-            hide: function() { if (box) box.style.display = 'none'; }
+            set:  function(text) { queue.push(text); if (!draining) pump(); },
+            // The final state jumps the queue: it is followed by a redirect, and
+            // anything still waiting to be shown would be cut off by it anyway.
+            done: function(text) { queue = []; draining = false; write(text, false); },
+            hide: function() { queue = []; draining = false; if (box) box.style.display = 'none'; }
         };
     })();
 
@@ -1875,7 +1889,7 @@
 
                 setTimeout(function() {
                     MapperDiag.step('Building the data file', 'computing and packaging - the slow step on large files');
-                    MapperStatus.set('Reviewing Your Data');
+                    MapperStatus.set('Uploading Client Data File');
                     var blob;
                     try {
                         blob = generateExcelBlob();
@@ -1886,7 +1900,6 @@
                     }
                     if (!blob) { MapperDiag.fail('Mapping steps are incomplete', 'finish every mapping step, then submit'); btn.disabled = false; btn.innerHTML = originalHTML; return; }
                     MapperDiag.step('Data file built', (blob.size / 1048576).toFixed(1) + ' MB');
-                    MapperStatus.set('Packaging Your Analysis');
 
                     // HF runs through the same downstream pipeline/macro template as Databasey — only Alford and SW are distinct.
                     var formSource   = isSW ? 'SW' : (isAlford ? 'Alford' : 'Databasey');
@@ -1896,11 +1909,14 @@
                     if (logoFile) {
                         MapperDiag.step('Logo found', logoFile.name + ' — '
                             + Math.round(logoFile.size / 1024) + ' KB, via ' + logoLookup.how);
-                        MapperStatus.set('Adding Your Logo');
                     } else {
                         MapperDiag.warn('No logo attached', logoLookup.how
                             + ' — submitting without one');
                     }
+                    // Queued together so they read in sequence. The logo line is
+                    // skipped when there is no logo rather than claiming one was sent.
+                    if (logoFile) MapperStatus.set('Uploading Client Logo');
+                    MapperStatus.set('Reviewing Client Data File');
 
                     function submitPayload(logoBase64, logoFilename) {
                         var reader = new FileReader();
@@ -1926,7 +1942,7 @@
                                 logo_filename:             logoFilename || ''
                             };
                             MapperDiag.step('Uploading', 'sending to the processing service');
-                            MapperStatus.set('Uploading Client Data');
+                            MapperStatus.set('Formatting Client Data File');
                             fetch(PA_TRIGGER_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
