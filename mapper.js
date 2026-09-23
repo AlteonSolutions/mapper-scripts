@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 18:05 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s2';
+    var MAPPER_BUILD   = '2026-09-23 21:20 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s3';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1134,12 +1134,12 @@
                 var threshold   = parseFloat(threshRaw);
                 var boardMembers = (document.getElementById('mapper-board-members')          || {}).value || '';
 
-                // These values come from the brand form at the top of the page, not
-                // from anything on this card - so name what is missing and point back
-                // up there rather than asking for it again down here.
+                // These come from the panel at the top of the page, not from anything
+                // on this card - so name what is missing and point back up there.
                 var missing = [];
                 if (!clientName.trim())  missing.push('Client Name');
                 if (!firstName.trim() || !lastName.trim()) missing.push('First and Last Name');
+                if (!boardMembers.toString().trim()) missing.push('# of Board Members');
                 if (!email.trim() || email.indexOf('@') < 0) missing.push('Email');
                 if (!fyMonth)            missing.push('Fiscal Year Start Month');
                 if (isNaN(threshold) || threshold <= 0) missing.push('Major Giving Threshold');
@@ -2143,70 +2143,259 @@
 
     // The client details, rendered and owned by mapper.js. They used to be GHL form
     // fields that this file read, restyled and fought with; nothing on the page is a
-    // form control any more, which is what removes every class of bug that came from
-    // not owning the markup.
+    // form control we do not own any more.
+    //
+    // Laid out to match the form these replace: two titled sections, bold labels,
+    // an envelope in the email field and a $ in the threshold, and the month picker
+    // and logo box behaving the way the originals did rather than the way the
+    // browser's defaults do.
     //
     // Placement: the page marks the spot with <div id="mapperClientDetails"></div>.
-    // Without it the panel goes in above the upload box, which is where it belongs
-    // anyway - details first, then the file.
+    // Without it the panel goes in above the upload box.
+    function clientPanelStyles() {
+        return [
+        '#mapperClientPanel{max-width:760px;margin:0 auto 26px;text-align:left;}',
+        '#mapperClientPanel .mp-sec{font-size:15px;font-weight:500;color:#2c3345;margin:28px 0 14px;}',
+        '#mapperClientPanel .mp-sec:first-child{margin-top:0;}',
+        '#mapperClientPanel .mp-f{margin-bottom:16px;min-width:0;}',
+        '#mapperClientPanel label{display:block;font-size:13.5px;font-weight:700;color:#2c3345;margin-bottom:6px;}',
+        '#mapperClientPanel label i{color:#ef4444;font-style:normal;}',
+        '#mapperClientPanel .mp-row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}',
+        '@media(max-width:560px){#mapperClientPanel .mp-row2{grid-template-columns:1fr;}}',
+        '#mapperClientPanel input[type="text"],#mapperClientPanel input[type="email"],',
+        '#mapperClientPanel input[type="number"],#mapperClientPanel .mp-select{',
+        '  width:100%;box-sizing:border-box;padding:10px 14px;border:1px solid #d0d5dd;',
+        '  border-radius:8px;font-size:14px;font-family:inherit;line-height:1.45;color:#12181f;',
+        '  background:#fff;outline:none;transition:border-color .15s ease,box-shadow .15s ease;}',
+        '#mapperClientPanel input::placeholder{color:#98a2b3;opacity:1;}',
+        '#mapperClientPanel input:hover,#mapperClientPanel .mp-select:hover{border-color:#98a2b3;}',
+        '#mapperClientPanel input:focus,#mapperClientPanel .mp-select.mp-open{',
+        '  border-color:' + themeColor + ';box-shadow:0 0 0 3px ' + themeColorLight + ';}',
+        // Number fields carry a spinner that crowds the text; the value is typed.
+        '#mapperClientPanel input[type="number"]{-moz-appearance:textfield;}',
+        '#mapperClientPanel input[type="number"]::-webkit-outer-spin-button,',
+        '#mapperClientPanel input[type="number"]::-webkit-inner-spin-button{',
+        '  -webkit-appearance:none;margin:0;}',
+
+        '#mapperClientPanel .mp-holder{position:relative;}',
+        '#mapperClientPanel .mp-affix{position:absolute;left:13px;top:50%;transform:translateY(-50%);',
+        '  color:#98a2b3;display:flex;align-items:center;pointer-events:none;font-size:14px;}',
+        '#mapperClientPanel input.mp-pad{padding-left:38px;}',
+
+        // A dropdown of our own. A native <select> cannot colour its own option
+        // highlight, so the month list lost the brand colour the original had.
+        '#mapperClientPanel .mp-select{display:flex;align-items:center;justify-content:space-between;',
+        '  cursor:pointer;user-select:none;}',
+        '#mapperClientPanel .mp-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+        '#mapperClientPanel .mp-val.mp-ph{color:#98a2b3;}',
+        '#mapperClientPanel .mp-caret{flex:none;margin-left:8px;color:#98a2b3;display:flex;}',
+        '#mapperClientPanel .mp-options{position:absolute;z-index:60;left:0;right:0;top:calc(100% + 4px);',
+        '  background:#fff;border:1px solid #e5e7eb;border-radius:8px;',
+        '  box-shadow:0 10px 24px rgba(17,24,39,.10);max-height:220px;overflow-y:auto;display:none;}',
+        '#mapperClientPanel .mp-options.mp-open{display:block;}',
+        '#mapperClientPanel .mp-opt{padding:9px 14px;font-size:14px;cursor:pointer;color:#12181f;}',
+        '#mapperClientPanel .mp-opt:hover,#mapperClientPanel .mp-opt.mp-hi{',
+        '  background:' + themeColor + ';color:#fff;}',
+        '#mapperClientPanel select.mp-hidden{position:absolute;opacity:0;pointer-events:none;height:0;width:0;}',
+
+        // The logo box is the client-data upload box: same border, radius, height
+        // and icon, so the two read as one pair of controls.
+        '#mapperClientPanel #mapper-logo{display:none;}',
+        '#mapperClientPanel .mp-logo-box{border:1px solid #ccc;border-radius:4px;padding:20px;',
+        '  text-align:center;cursor:pointer;background:#fff;transition:all .2s;display:flex;',
+        '  flex-direction:column;align-items:center;justify-content:center;min-height:98px;',
+        '  width:100%;box-sizing:border-box;}',
+        '#mapperClientPanel .mp-logo-box:hover{border-color:#8f8f8f;background:#fafbfc;}',
+        '#mapperClientPanel .mp-logo-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;}',
+        '#mapperClientPanel .mp-logo-card img{width:56px;height:56px;object-fit:contain;flex:none;border-radius:4px;}',
+        '#mapperClientPanel .mp-logo-meta{min-width:0;flex:1;}',
+        '#mapperClientPanel .mp-logo-meta b{display:block;font-size:13px;font-weight:600;color:#12181f;',
+        '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+        '#mapperClientPanel .mp-logo-meta span{font-size:12px;color:#6b7280;}',
+        '#mapperClientPanel .mp-logo-clear{border:0;background:transparent;cursor:pointer;color:#9ca3af;',
+        '  padding:6px;line-height:0;flex:none;}',
+        '#mapperClientPanel .mp-logo-clear:hover{color:#b91c1c;}'
+        ].join('\n');
+    }
+
     function renderClientPanel() {
         if (document.getElementById('mapper-client-name')) return;   // already built
         var slot = document.getElementById('mapperClientDetails');
         var uploadBox = document.getElementById('uploadBox');
         if (!slot && !uploadBox) return;
 
-        var inp = 'width:100%;padding:11px 14px;border:1.5px solid #d1d5db;border-radius:10px;'
-                + 'font-size:0.95rem;line-height:1.4;color:#111827;background:#fff;'
-                + 'box-sizing:border-box;outline:none;font-family:inherit;';
-        var lbl = 'display:block;font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:6px;';
-        var req = '<span style="color:#ef4444;">*</span>';
+        var req = ' <i>*</i>';
+        var envelope = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            + 'stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect>'
+            + '<path d="m2 7 10 6 10-6"></path></svg>';
+        var caret = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            + 'stroke-width="2.4" aria-hidden="true"><path d="m5 8 7 8 7-8"></path></svg>';
+        var uploadIcon = '<svg width="1em" height="2em" viewBox="0 0 16 16" fill="currentColor" '
+            + 'xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000;">'
+            + '<path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path>'
+            + '<path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
         var months = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
-        var monthOpts = months.map(function(m) { return '<option value="' + m + '">' + m + '</option>'; }).join('');
 
         var panel = document.createElement('div');
         panel.id = 'mapperClientPanel';
-        panel.style.cssText = 'max-width:760px;margin:0 auto 26px;display:grid;gap:14px;text-align:left;';
         panel.innerHTML = ''
-            + '<div style="font-size:0.74rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;'
-            +   'color:' + themeColor + ';">Client Information</div>'
-            + '<div><label style="' + lbl + '">Client Name ' + req + '</label>'
-            +   '<input id="mapper-client-name" type="text" placeholder="e.g. Easttown Library" style="' + inp + '"></div>'
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
-            +   '<div><label style="' + lbl + '">First Name ' + req + '</label>'
-            +     '<input id="mapper-first-name" type="text" placeholder="Natalie" style="' + inp + '"></div>'
-            +   '<div><label style="' + lbl + '">Last Name ' + req + '</label>'
-            +     '<input id="mapper-last-name" type="text" placeholder="Isberg" style="' + inp + '"></div>'
+            + '<div class="mp-sec">Internal Contact Information</div>'
+            + '<div class="mp-row2">'
+            +   '<div class="mp-f"><label for="mapper-first-name">First Name' + req + '</label>'
+            +     '<input id="mapper-first-name" type="text" placeholder="Enter First Name"></div>'
+            +   '<div class="mp-f"><label for="mapper-last-name">Last Name' + req + '</label>'
+            +     '<input id="mapper-last-name" type="text" placeholder="Enter Last Name"></div>'
             + '</div>'
-            + '<div><label style="' + lbl + '">Email ' + req + '</label>'
-            +   '<input id="mapper-email" type="email" placeholder="you@organization.org" style="' + inp + '"></div>'
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
-            +   '<div><label style="' + lbl + '"># of Board Members</label>'
-            +     '<input id="mapper-board-members" type="number" min="0" placeholder="Optional" style="' + inp + '"></div>'
-            +   '<div><label style="' + lbl + '">Fiscal Year Start Month ' + req + '</label>'
-            +     '<select id="mapper-fy-start-month" style="' + inp + 'cursor:pointer;">'
-            +       '<option value="">Select month…</option>' + monthOpts + '</select></div>'
+            + '<div class="mp-f"><label for="mapper-email">Email' + req + '</label>'
+            +   '<div class="mp-holder"><span class="mp-affix">' + envelope + '</span>'
+            +   '<input id="mapper-email" type="email" class="mp-pad" placeholder="Enter Email"></div></div>'
+
+            + '<div class="mp-sec">Client Information</div>'
+            + '<div class="mp-f"><label for="mapper-client-name">Client Name' + req + '</label>'
+            +   '<input id="mapper-client-name" type="text" placeholder="Enter Client Name"></div>'
+            + '<div class="mp-row2">'
+            +   '<div class="mp-f"><label for="mapper-board-members"># of Board Members' + req + '</label>'
+            +     '<input id="mapper-board-members" type="number" min="0" placeholder="Enter # of Board Members"></div>'
+            +   '<div class="mp-f"><label id="mapper-fy-label">Fiscal Year Start Month' + req + '</label>'
+            +     '<div class="mp-holder">'
+            +       '<div class="mp-select" id="mapper-fy-display" tabindex="0" role="combobox"'
+            +         ' aria-expanded="false" aria-haspopup="listbox" aria-labelledby="mapper-fy-label">'
+            +         '<span class="mp-val mp-ph">Select Fiscal Year Start Month</span>'
+            +         '<span class="mp-caret">' + caret + '</span></div>'
+            +       '<div class="mp-options" id="mapper-fy-options" role="listbox">'
+            +         months.map(function(m) {
+                        return '<div class="mp-opt" role="option" data-v="' + m + '">' + m + '</div>'; }).join('')
+            +       '</div>'
+            +       '<select id="mapper-fy-start-month" class="mp-hidden" tabindex="-1" aria-hidden="true">'
+            +         '<option value=""></option>'
+            +         months.map(function(m) { return '<option value="' + m + '">' + m + '</option>'; }).join('')
+            +       '</select>'
+            +     '</div></div>'
             + '</div>'
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
-            +   '<div><label style="' + lbl + '">Major Giving Threshold ' + req + '</label>'
-            +     '<input id="mapper-major-giving-threshold" type="number" min="1" placeholder="10000" style="' + inp + '"></div>'
-            +   '<div><label style="' + lbl + '">Organization Logo</label>'
-            +     '<input id="mapper-logo" type="file" accept="image/png,image/jpeg,image/svg+xml" style="' + inp
-            +       'padding:9px 12px;cursor:pointer;"></div>'
-            + '</div>';
+            + '<div class="mp-row2">'
+            +   '<div class="mp-f"><label for="mapper-major-giving-threshold">Major Giving Threshold' + req + '</label>'
+            +     '<div class="mp-holder"><span class="mp-affix">$</span>'
+            +     '<input id="mapper-major-giving-threshold" type="number" min="1" class="mp-pad"'
+            +       ' placeholder="Enter Major Giving Threshold"></div></div>'
+            +   '<div></div>'
+            + '</div>'
+            + '<div class="mp-f"><label for="mapper-logo">Organization Logo File</label>'
+            +   '<input id="mapper-logo" type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml">'
+            +   '<div class="mp-logo-box" id="mapper-logo-box" role="button" tabindex="0">'
+            +     uploadIcon + '</div></div>';
 
         if (slot) slot.appendChild(panel);
         else uploadBox.parentNode.insertBefore(panel, uploadBox);
 
-        // A themed focus ring, the one thing inline styles cannot express.
         if (!document.getElementById('mapper-panel-style')) {
             var st = document.createElement('style');
             st.id = 'mapper-panel-style';
-            st.textContent = '#mapperClientPanel input:focus,#mapperClientPanel select:focus{'
-                + 'border-color:' + themeColor + ';box-shadow:0 0 0 3px ' + themeColorLight + ';}'
-                + '#mapperClientPanel input::placeholder{color:#9ca3af;}';
-            document.head.appendChild(st);
+            st.textContent = clientPanelStyles();
+            (document.head || document.documentElement).appendChild(st);
         }
+        wireMonthPicker();
+        wireLogoBox(uploadIcon);
+    }
+
+    // The visible list sets a real <select>, so everything downstream keeps reading
+    // one ordinary form value.
+    function wireMonthPicker() {
+        var display = document.getElementById('mapper-fy-display');
+        var list    = document.getElementById('mapper-fy-options');
+        var select  = document.getElementById('mapper-fy-start-month');
+        if (!display || !list || !select) return;
+        var val = display.querySelector('.mp-val');
+
+        function close() {
+            list.classList.remove('mp-open');
+            display.classList.remove('mp-open');
+            display.setAttribute('aria-expanded', 'false');
+        }
+        function open() {
+            list.classList.add('mp-open');
+            display.classList.add('mp-open');
+            display.setAttribute('aria-expanded', 'true');
+            var hi = list.querySelector('.mp-hi');
+            if (hi && hi.scrollIntoView) hi.scrollIntoView({ block: 'nearest' });
+        }
+        function choose(month) {
+            select.value = month;
+            val.textContent = month;
+            val.classList.remove('mp-ph');
+            var opts = list.querySelectorAll('.mp-opt');
+            for (var i = 0; i < opts.length; i++) {
+                opts[i].classList.toggle('mp-hi', opts[i].getAttribute('data-v') === month);
+            }
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            close();
+        }
+
+        display.addEventListener('click', function() {
+            list.classList.contains('mp-open') ? close() : open();
+        });
+        display.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); open(); }
+            else if (e.key === 'Escape') close();
+        });
+        list.addEventListener('click', function(e) {
+            var opt = e.target.closest('.mp-opt');
+            if (opt) choose(opt.getAttribute('data-v'));
+        });
+        document.addEventListener('click', function(e) {
+            if (!display.contains(e.target) && !list.contains(e.target)) close();
+        });
+    }
+
+    function wireLogoBox(uploadIcon) {
+        var input = document.getElementById('mapper-logo');
+        var box   = document.getElementById('mapper-logo-box');
+        if (!input || !box) return;
+
+        function reset() {
+            box.innerHTML = uploadIcon;
+            box.style.cursor = 'pointer';
+        }
+        function show(file) {
+            var size = file.size < 1048576
+                ? Math.round(file.size / 1024) + ' kB'
+                : (file.size / 1048576).toFixed(2) + ' MB';
+            var card = document.createElement('div');
+            card.className = 'mp-logo-card';
+            card.innerHTML = '<img alt="">'
+                + '<span class="mp-logo-meta"><b></b><span></span></span>'
+                + '<button type="button" class="mp-logo-clear" aria-label="Remove logo">'
+                +   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                +   'stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14"></path>'
+                +   '</svg></button>';
+            card.querySelector('b').textContent = file.name;
+            card.querySelector('.mp-logo-meta span').textContent = size;
+            // Read it here rather than at submit: the thumbnail is the confirmation
+            // that the right file was picked, and the file object is already in hand.
+            var reader = new FileReader();
+            reader.onload = function() { card.querySelector('img').src = reader.result; };
+            reader.readAsDataURL(file);
+            card.querySelector('.mp-logo-clear').addEventListener('click', function(e) {
+                e.stopPropagation();
+                input.value = '';
+                reset();
+            });
+            box.innerHTML = '';
+            box.appendChild(card);
+            box.style.cursor = 'default';
+        }
+
+        box.addEventListener('click', function(e) {
+            if (e.target.closest('.mp-logo-clear') || e.target.closest('.mp-logo-card')) return;
+            input.click();
+        });
+        box.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+        });
+        input.addEventListener('change', function() {
+            var f = input.files && input.files[0];
+            if (f) show(f); else reset();
+        });
     }
 
     function showAllDoneCard() {
