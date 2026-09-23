@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 09:12 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b20';
+    var MAPPER_BUILD   = '2026-09-23 10:05 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b21';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1143,8 +1143,14 @@
         + '.mp-select .multiselect__input,.mp-select .multiselect__single{border:0!important;padding:0!important;'
         +   'margin:0!important;background:transparent!important;box-shadow:none!important;'
         +   'font-size:0.95rem!important;color:#111827!important;line-height:1.4!important;}'
+        // The hint sits on the searchbox's own placeholder, not on
+        // .multiselect__placeholder, so sizing only the latter left it rendering a
+        // size larger than every other field's.
         + '.mp-select .multiselect__placeholder{margin:0!important;padding:0!important;color:#9ca3af!important;'
-        +   'font-size:0.95rem!important;}'
+        +   'font-size:0.95rem!important;line-height:1.4!important;}'
+        + '.mp-select .multiselect__input::placeholder{font-size:0.95rem!important;'
+        +   'line-height:1.4!important;color:#9ca3af!important;opacity:1!important;}'
+        + '.mp-select .multiselect__single{font-size:0.95rem!important;line-height:1.4!important;}'
         // overflow-y stays auto. Setting overflow:hidden here to clip the rounded
         // corners also cancelled vue-multiselect's own scrolling, so a twelve-month
         // list ran off the panel with no way to reach the bottom of it.
@@ -2152,7 +2158,7 @@
         uploadBox.style.cursor = 'default';
         uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px 0;">'
             + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid ' + themeColor + ';border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
-            + '<div style="margin-top:10px;font-size:13px;color:#666;font-weight:500;">Processing ' + file.name + '...</div>'
+            + '<div id="mapperReadStatus" style="margin-top:10px;font-size:13px;color:#666;font-weight:500;">Reading ' + file.name + '…</div>'
             + '</div>';
         // Inject spinner keyframes if not already present
         if (!document.getElementById('mapper-spinner-style')) {
@@ -2166,106 +2172,19 @@
 
         var reader = new FileReader();
         reader.onload = function(e) {
-            // Use setTimeout to let the spinner render before heavy parsing
-            setTimeout(function() {
-            try {
-                var data = new Uint8Array(e.target.result);
-                workbook = XLSX.read(data, {type: 'array'});
-                if (workbook.SheetNames.indexOf('Gift Data') === -1) { alert('Error: No Gift Data sheet found!'); return; }
-                if (workbook.SheetNames.indexOf('Constituent Data') === -1) { alert('Error: No Constituent Data sheet found!'); return; }
-                var giftJson = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
-                var ua = {};
-                for (var i = 0; i < giftJson.length; i++) { if (giftJson[i]['Gift Appeal']) ua[giftJson[i]['Gift Appeal']] = true; }
-                giftAppeals = Object.keys(ua).sort();
-                var constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
-
-                var valErrors = validateWorkbook(workbook, giftJson, constJson);
-                if (valErrors.length > 0) { showUploadValidationError(valErrors); return; }
-
-                var uc = {};
-                for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
-                var allConstituentTypeCount = Object.keys(uc).length;
-                constituentTypes = Object.keys(uc).sort().filter(function(ct) { return constituentCategories.indexOf(ct) === -1; });
-                constituentMappingSkipped = constituentTypes.length === 0;
-                if (isStaffing) {
-                    var uSol = {};
-                    for (var s = 0; s < constJson.length; s++) { var solVal = (constJson[s]['Solicitor'] || '').toString().trim(); if (solVal) uSol[solVal] = true; }
-                    solicitors = Object.keys(uSol).sort();
-                    selectedSolicitors = {};
-                    for (var si = 0; si < solicitors.length; si++) selectedSolicitors[solicitors[si]] = true;
-                }
-                if (isCampaignCounsel) {
-                    var uPS = {};
-                    for (var ps = 0; ps < giftJson.length; ps++) { var psVal = (giftJson[ps]['Status'] || '').toString().trim(); if (psVal) uPS[psVal] = true; }
-                    var psLabels = pledgeStatusCategories.map(function(c) { return c.label; });
-                    pledgeStatuses = Object.keys(uPS).sort().filter(function(s) { return psLabels.indexOf(s) === -1; });
-                    pledgeStatusMappingSkipped = pledgeStatuses.length === 0;
-                }
-                if (isDevelopmentAssessment) {
-                    appealCategories = [];
-                    if (workbook.SheetNames.indexOf('Appeals Data') !== -1) {
-                        var appealsJson = XLSX.utils.sheet_to_json(workbook.Sheets['Appeals Data'], { defval: '' });
-                        var uac = {};
-                        for (var ac = 0; ac < appealsJson.length; ac++) { var acVal = (appealsJson[ac]['Appeal Category'] || '').toString().trim(); if (acVal) uac[acVal] = true; }
-                        appealCategories = Object.keys(uac).sort();
-                    }
-                }
-                var ug = {};
-                for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
-                var allGiftTypeCount = Object.keys(ug).length;
-                giftTypes = Object.keys(ug).sort().filter(function(gt) { return giftTypeCategories.indexOf(gt) === -1; });
-                giftTypeMappingSkipped = giftTypes.length === 0;
-                var hasBlankGiftType = !giftTypeMappingSkipped && giftJson.some(function(row) { return !row['Gift Type']; });
-                if (hasBlankGiftType) giftTypes.push('__blank__');
-                if (spotlightConfig) {
-                    if (spotlightConfig.type === 'giftAppeal') spotlightSourceData = giftAppeals.slice();
-                    else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice();
-                }
-                if (!isSimpleFlow && giftAppeals.length === 0) {
-                    specialEventSkipped = true;
-                    spotlightSkipped = true;
-                }
-                initializeStepTracker(); updateStepTracker(0);
-                if (constituentMappingSkipped && giftTypeMappingSkipped) {
-                    ['solicitorDoneBtn','startConstituentFromPledgeBtn','startConstituentFromAppealBtn','startConstituentMappingBtn'].forEach(function(id) {
-                        var el = document.getElementById(id); if (el) el.textContent = 'Submit ➡';
-                    });
-                } else if (constituentMappingSkipped) {
-                    ['solicitorDoneBtn','startConstituentFromPledgeBtn','startConstituentFromAppealBtn','startConstituentMappingBtn'].forEach(function(id) {
-                        var el = document.getElementById(id); if (el) el.textContent = 'Continue to Gift Type Mapping ➡';
-                    });
-                }
-                if (giftTypeMappingSkipped) {
-                    var gtBtn = document.getElementById('startGiftTypeMappingBtn'); if (gtBtn) gtBtn.textContent = 'Submit ➡';
-                }
-                // Update upload box to show file info like GHL style
-                var uploadBox = document.getElementById('uploadBox');
-                uploadBox.innerHTML = uploadIconSvg
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 14px 10px;border-top:1px solid #eee;margin-top:8px;box-sizing:border-box;">'
-                    + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
-                    + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
-                    + '</div>';
-                document.getElementById('fileInfo').innerHTML = '';
-                var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
-                var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
-                // Notify outer shell page to scroll mappingBox into view
-                window.parent.postMessage({ type: 'mapperBoxReady' }, '*');
-                if (isSimpleFlow) {
-                    specialEventSkipped = true;
-                    if (isStaffing && solicitors.length > 0) { startSolicitorSelection(); }
-                    else if (isDevelopmentAssessment && appealCategories.length > 0) { startAppealCategoryMapping(); }
-                    else if (isCampaignCounsel && pledgeStatuses.length > 0) { startPledgeStatusMapping(); }
-                    else { startConstituentMapping(); }
-                } else {
-                    if (giftAppeals.length === 0) {
-                        startConstituentMapping();
-                    } else {
-                        document.getElementById('categorySetup').style.display = 'block';
-                    }
-                }
-
-            } catch (err) {
-                // Reset upload box on error
+            // Parsing a large workbook used to run as one synchronous stretch - read,
+            // two sheet_to_json passes, then validation - which is what produced
+            // Chrome's "page unresponsive" prompt. The work itself is unavoidable, but
+            // it does not have to happen without letting the page breathe. Each phase
+            // gets its own turn of the event loop, so the browser stays responsive and
+            // the line under the spinner keeps up with where things are.
+            var giftJson = null, constJson = null;
+            function say(text) {
+                var el = document.getElementById('mapperReadStatus');
+                if (el) el.textContent = text;
+            }
+            function bail(err) {
+                console.error('Mapper: reading the workbook failed —', err);
                 var uploadBox = document.getElementById('uploadBox');
                 uploadBox.style.cursor = 'pointer';
                 uploadBox.innerHTML = uploadIconSvg;
@@ -2273,7 +2192,125 @@
                 var dd = document.getElementById('download-container'); if (dd) dd.style.display = 'flex';
                 alert('Error reading file: ' + err.message);
             }
-            }, 50);
+            var phases = [
+                ['Reading ' + file.name, function() {
+                    var data = new Uint8Array(e.target.result);
+                    workbook = XLSX.read(data, { type: 'array', cellFormula: false, cellHTML: false, cellNF: false });
+                    if (workbook.SheetNames.indexOf('Gift Data') === -1) { alert('Error: No Gift Data sheet found!'); return false; }
+                    if (workbook.SheetNames.indexOf('Constituent Data') === -1) { alert('Error: No Constituent Data sheet found!'); return false; }
+                }],
+                ['Reading gift data', function() {
+                    giftJson = XLSX.utils.sheet_to_json(workbook.Sheets['Gift Data']);
+                    var ua = {};
+                    for (var i = 0; i < giftJson.length; i++) { if (giftJson[i]['Gift Appeal']) ua[giftJson[i]['Gift Appeal']] = true; }
+                    giftAppeals = Object.keys(ua).sort();
+                }],
+                ['Reading constituent data', function() {
+                    constJson = XLSX.utils.sheet_to_json(workbook.Sheets['Constituent Data'], { defval: '' });
+                }],
+                ['Checking your data', function() {
+                    var valErrors = validateWorkbook(workbook, giftJson, constJson);
+                    if (valErrors.length > 0) { showUploadValidationError(valErrors); return false; }
+                }],
+                ['Preparing your mapping', function() {
+
+                    var uc = {};
+                    for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
+                    var allConstituentTypeCount = Object.keys(uc).length;
+                    constituentTypes = Object.keys(uc).sort().filter(function(ct) { return constituentCategories.indexOf(ct) === -1; });
+                    constituentMappingSkipped = constituentTypes.length === 0;
+                    if (isStaffing) {
+                        var uSol = {};
+                        for (var s = 0; s < constJson.length; s++) { var solVal = (constJson[s]['Solicitor'] || '').toString().trim(); if (solVal) uSol[solVal] = true; }
+                        solicitors = Object.keys(uSol).sort();
+                        selectedSolicitors = {};
+                        for (var si = 0; si < solicitors.length; si++) selectedSolicitors[solicitors[si]] = true;
+                    }
+                    if (isCampaignCounsel) {
+                        var uPS = {};
+                        for (var ps = 0; ps < giftJson.length; ps++) { var psVal = (giftJson[ps]['Status'] || '').toString().trim(); if (psVal) uPS[psVal] = true; }
+                        var psLabels = pledgeStatusCategories.map(function(c) { return c.label; });
+                        pledgeStatuses = Object.keys(uPS).sort().filter(function(s) { return psLabels.indexOf(s) === -1; });
+                        pledgeStatusMappingSkipped = pledgeStatuses.length === 0;
+                    }
+                    if (isDevelopmentAssessment) {
+                        appealCategories = [];
+                        if (workbook.SheetNames.indexOf('Appeals Data') !== -1) {
+                            var appealsJson = XLSX.utils.sheet_to_json(workbook.Sheets['Appeals Data'], { defval: '' });
+                            var uac = {};
+                            for (var ac = 0; ac < appealsJson.length; ac++) { var acVal = (appealsJson[ac]['Appeal Category'] || '').toString().trim(); if (acVal) uac[acVal] = true; }
+                            appealCategories = Object.keys(uac).sort();
+                        }
+                    }
+                    var ug = {};
+                    for (var g = 0; g < giftJson.length; g++) { if (giftJson[g]['Gift Type']) ug[giftJson[g]['Gift Type']] = true; }
+                    var allGiftTypeCount = Object.keys(ug).length;
+                    giftTypes = Object.keys(ug).sort().filter(function(gt) { return giftTypeCategories.indexOf(gt) === -1; });
+                    giftTypeMappingSkipped = giftTypes.length === 0;
+                    var hasBlankGiftType = !giftTypeMappingSkipped && giftJson.some(function(row) { return !row['Gift Type']; });
+                    if (hasBlankGiftType) giftTypes.push('__blank__');
+                    if (spotlightConfig) {
+                        if (spotlightConfig.type === 'giftAppeal') spotlightSourceData = giftAppeals.slice();
+                        else if (spotlightConfig.type === 'constituentType') spotlightSourceData = constituentTypes.slice();
+                    }
+                    if (!isSimpleFlow && giftAppeals.length === 0) {
+                        specialEventSkipped = true;
+                        spotlightSkipped = true;
+                    }
+                    initializeStepTracker(); updateStepTracker(0);
+                    if (constituentMappingSkipped && giftTypeMappingSkipped) {
+                        ['solicitorDoneBtn','startConstituentFromPledgeBtn','startConstituentFromAppealBtn','startConstituentMappingBtn'].forEach(function(id) {
+                            var el = document.getElementById(id); if (el) el.textContent = 'Submit ➡';
+                        });
+                    } else if (constituentMappingSkipped) {
+                        ['solicitorDoneBtn','startConstituentFromPledgeBtn','startConstituentFromAppealBtn','startConstituentMappingBtn'].forEach(function(id) {
+                            var el = document.getElementById(id); if (el) el.textContent = 'Continue to Gift Type Mapping ➡';
+                        });
+                    }
+                    if (giftTypeMappingSkipped) {
+                        var gtBtn = document.getElementById('startGiftTypeMappingBtn'); if (gtBtn) gtBtn.textContent = 'Submit ➡';
+                    }
+                    // Update upload box to show file info like GHL style
+                    var uploadBox = document.getElementById('uploadBox');
+                    uploadBox.innerHTML = uploadIconSvg
+                        + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 14px 10px;border-top:1px solid #eee;margin-top:8px;box-sizing:border-box;">'
+                        + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
+                        + '<div style="text-align:center;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
+                        + '</div>';
+                    document.getElementById('fileInfo').innerHTML = '';
+                    var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
+                    var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
+                    // Notify outer shell page to scroll mappingBox into view
+                    window.parent.postMessage({ type: 'mapperBoxReady' }, '*');
+                    if (isSimpleFlow) {
+                        specialEventSkipped = true;
+                        if (isStaffing && solicitors.length > 0) { startSolicitorSelection(); }
+                        else if (isDevelopmentAssessment && appealCategories.length > 0) { startAppealCategoryMapping(); }
+                        else if (isCampaignCounsel && pledgeStatuses.length > 0) { startPledgeStatusMapping(); }
+                        else { startConstituentMapping(); }
+                    } else {
+                        if (giftAppeals.length === 0) {
+                            startConstituentMapping();
+                        } else {
+                            document.getElementById('categorySetup').style.display = 'block';
+                        }
+                    }
+
+                }]
+            ];
+            (function step(i) {
+                if (i >= phases.length) return;
+                say(phases[i][0] + '…');
+                // 16ms rather than 0, so the new label has actually painted before the
+                // next blocking stretch begins.
+                setTimeout(function() {
+                    var ok;
+                    try { ok = phases[i][1](); }
+                    catch (err) { bail(err); return; }
+                    if (ok === false) return;
+                    step(i + 1);
+                }, 16);
+            })(0);
         };
         reader.readAsArrayBuffer(file);
     }
