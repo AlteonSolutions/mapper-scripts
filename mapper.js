@@ -4,8 +4,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 11:08 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b23';
+    var MAPPER_BUILD   = '2026-09-23 11:31 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b24';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -848,6 +848,41 @@
         return null;
     }
 
+    // Names whatever is wider than the page. A horizontal scrollbar is caused by
+    // one element's right edge, and guessing which has already been wrong once -
+    // this reports it with its width and its ancestors, so the fix lands first time.
+    function reportOverflow(tag) {
+        try {
+            var limit = document.documentElement.clientWidth;
+            var all = document.querySelectorAll('body *'), hits = [];
+            for (var i = 0; i < all.length; i++) {
+                var r = all[i].getBoundingClientRect();
+                if (!r.width) continue;
+                if (r.right > limit + 1 || r.left < -1) {
+                    // Only the outermost offender in a chain; its children inherit the
+                    // problem and would bury it.
+                    var covered = false;
+                    for (var h = 0; h < hits.length; h++) if (hits[h].el.contains(all[i])) { covered = true; break; }
+                    if (!covered) hits.push({ el: all[i], r: r });
+                }
+            }
+            if (!hits.length) return;
+            console.warn('Mapper: %d element(s) wider than the page (%dpx) at "%s"', hits.length, limit, tag);
+            hits.slice(0, 6).forEach(function(h) {
+                var chain = [], n = h.el, k = 0;
+                while (n && n.tagName && k < 4) {
+                    chain.push(n.tagName.toLowerCase()
+                        + (typeof n.className === 'string' && n.className.trim()
+                           ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+                    n = n.parentNode; k++;
+                }
+                console.warn('   overflows by ' + Math.round(h.r.right - limit) + 'px  ['
+                    + Math.round(h.r.width) + 'px wide, left ' + Math.round(h.r.left) + ']  '
+                    + chain.join('  <  '));
+            });
+        } catch (e) {}
+    }
+
     // Prints what the page actually contains, once, so the shape of a widget
     // mapper.js does not own can be read off a screenshot instead of guessed at.
     // Two rounds of inferring GHL's uploader markup from a picture is enough.
@@ -1109,7 +1144,7 @@
         var fields = document.getElementById('allDoneFields');
         if (fields) fields.style.display = 'none';
         var heading = document.getElementById('allDoneHeading');
-        if (heading) heading.textContent = 'Mapping complete';
+        if (heading) heading.textContent = 'Mapping Complete';
         console.log('Mapper: carried over from the brand form [' + (taken.join(', ') || 'nothing')
                   + '] — ' + remaining + ' field(s) still shown');
         return remaining;
@@ -1844,7 +1879,7 @@
                 allDoneCard.innerHTML = ''
                     + '<div id="allDoneCheck" style="width:44px;height:44px;border-radius:50%;margin:0 auto 14px;'
                     +   'display:flex;align-items:center;justify-content:center;background:' + themeColor + ';">' + _chk + '</div>'
-                    + '<div id="allDoneHeading" style="font-size:1.12rem;font-weight:700;color:#111827;margin-bottom:5px;">Mapping complete</div>'
+                    + '<div id="allDoneHeading" style="font-size:1.12rem;font-weight:700;color:#111827;margin-bottom:5px;">Mapping Complete</div>'
                     + '<div id="allDoneSummary" style="font-size:0.87rem;color:#6b7280;margin-bottom:2px;"></div>'
                     + '<div id="allDoneError" style="display:none;margin-top:14px;padding:10px 14px;'
                     +   'background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#b91c1c;'
@@ -2257,6 +2292,7 @@
                     if (valErrors.length > 0) { showUploadValidationError(valErrors); return false; }
                 }],
                 ['Preparing Your Mapping', function() {
+                    setTimeout(function() { reportOverflow('after parse'); }, 400);
 
                     var uc = {};
                     for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
@@ -2677,7 +2713,21 @@
             // page - every mapping button above it is already themed.
             csBtn.style.setProperty('background', themeColor, 'important');
             csBtn.style.setProperty('border-color', themeColor, 'important');
-            if (csBtn.parentElement) csBtn.parentElement.style.display = '';
+            // Move it inside the card, centred at the foot of it, so the card reads as
+            // one object rather than a message with a button loose underneath. The
+            // status line and the diagnostics panel both anchor to this button, so
+            // they follow it in and sit inside the card too.
+            if (adc && !adc.contains(csBtn)) {
+                var wasIn = csBtn.parentElement;
+                var holder = document.createElement('div');
+                holder.id = 'allDoneSubmitHolder';
+                holder.style.cssText = 'margin-top:22px;text-align:center;';
+                adc.appendChild(holder);
+                holder.appendChild(csBtn);
+                if (wasIn && !wasIn.children.length) wasIn.style.display = 'none';
+            } else if (csBtn.parentElement) {
+                csBtn.parentElement.style.display = '';
+            }
         }
         updateStepTracker(99);
         setTimeout(function() { window.parent.postMessage({ type: 'scrollToMapperBottom' }, '*'); }, 100);
