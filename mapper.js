@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 14:10 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s1';
+    var MAPPER_BUILD   = '2026-09-23 18:05 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s2';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -866,6 +866,7 @@
     }
 
     function init() {
+        renderShell();
         // Check URL params on load - if industry param exists, detect and set field
         var urlParams = new URLSearchParams(window.location.search);
         var industryParam = urlParams.get('industry');
@@ -1876,6 +1877,268 @@
         if (message) {
             try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
         }
+    }
+
+    // ── THE MAPPER'S OWN UI ───────────────────────────────────────────────────
+    // This markup used to live in a custom-code block inside each brand's GHL form,
+    // which meant one copy per brand and per variant, each free to drift - the
+    // theme colour in them was a hard-coded literal rather than the brand's. It is
+    // rendered here instead, so there is one copy and it is version-controlled.
+    //
+    // Rendering is skipped when the page already carries the shell, so this file
+    // works unchanged on the existing GHL-form pages and on a standalone page.
+    function shellStyles() {
+        return [
+        '#mapper-container{--theme-color:' + themeColor + ';--theme-color-hover:' + themeColorHover + ';',
+        '  font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;padding:0 20px;',
+        '  color:var(--theme-color);max-width:1200px;margin:0 auto;}',
+        '#mapper-container *{margin:0;padding:0;box-sizing:border-box;}',
+        '#customSubmitBtn{display:none;}',
+
+        '#mapper-container .step-progress{display:none;padding:20px;margin:20px 0;}',
+        '#mapper-container .step-tracker{display:flex;flex-direction:row;justify-content:center;',
+        '  align-items:flex-start;max-width:560px;margin:0 auto;}',
+        '#mapper-container .step-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}',
+        '#mapper-container .step-circle{width:40px;height:40px;border-radius:50%;background:#e0e0e0;',
+        '  border:3px solid #e0e0e0;display:flex;align-items:center;justify-content:center;font-weight:bold;',
+        '  font-size:1em;color:#999;transition:all .3s ease;z-index:2;position:relative;flex-shrink:0;}',
+        '#mapper-container .step-circle.active{background:var(--theme-color);border-color:var(--theme-color);',
+        '  color:#fff;box-shadow:0 2px 8px ' + themeColorShadow + ';}',
+        '#mapper-container .step-circle.completed{background:var(--theme-color);border-color:var(--theme-color);color:#fff;}',
+        '#mapper-container .step-label{margin-top:8px;font-size:.75em;text-align:center;color:#666;',
+        '  font-weight:600;line-height:1.2;word-break:break-word;}',
+        '#mapper-container .step-item.active .step-label{color:var(--theme-color);font-weight:700;}',
+        '#mapper-container .step-connector{flex:1;height:3px;background:#e0e0e0;margin-top:20px;min-width:10px;}',
+        '@media (max-width:500px){',
+        '  #mapper-container .step-tracker{flex-direction:column;align-items:flex-start;max-width:200px;padding-left:4px;}',
+        '  #mapper-container .step-item{flex-direction:row;align-items:center;flex:none;width:100%;gap:12px;padding:4px 0;}',
+        '  #mapper-container .step-label{margin-top:0;text-align:left;}',
+        '  #mapper-container .step-connector{width:3px;height:24px;min-width:unset;margin-top:0;margin-left:18px;flex:none;}}',
+
+        '#mapper-container .upload-section{text-align:center;padding:0;margin:0;}',
+        '#mapper-container .upload-section h2{margin-top:30px;}',
+        '#mapper-container .upload-section input[type="file"]{display:none;}',
+        '#mapper-container .upload-btn{background:var(--theme-color);color:#fff;padding:15px 40px;font-size:1.1em;',
+        '  border:none;border-radius:6px;cursor:pointer;transition:all .2s;font-weight:600;}',
+        '#mapper-container .upload-btn:hover{background:var(--theme-color-hover);}',
+        '#mapper-container .file-info{margin-top:15px;color:var(--theme-color);font-weight:600;}',
+        '#mapper-container .upload-note{margin:10px auto 0;max-width:400px;color:#666;font-size:.9em;text-align:center;}',
+        '#mapper-container .upload-note strong{font-weight:700;color:#333;}',
+
+        '#mapper-container .category-setup{display:none;animation:mapperFadeIn .5s ease;margin-bottom:20px;padding:0;}',
+        '@keyframes mapperFadeIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}',
+        '#mapper-container .category-input{display:flex;gap:10px;margin-bottom:20px;}',
+        '#mapper-container .category-input input{flex:1;padding:12px;border:2px solid #e0e0e0;border-radius:6px;font-size:1em;}',
+        '#mapper-container .category-input button{padding:12px 25px;background:var(--theme-color);color:#fff;',
+        '  border:none;border-radius:6px;cursor:pointer;font-weight:600;transition:background .2s;}',
+        '#mapper-container .category-input button:hover{background:var(--theme-color-hover);}',
+        '#mapper-container .category-input button:disabled{background:#999;cursor:not-allowed;}',
+        '#mapper-container .categories-list{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;}',
+        '#mapper-container .category-tag{background:var(--theme-color);color:#fff;padding:8px 15px;border-radius:20px;',
+        '  display:flex;align-items:center;gap:8px;font-weight:500;}',
+        '#mapper-container .category-tag button{background:rgba(255,255,255,.3);border:none;color:#fff;',
+        '  border-radius:50%;width:20px;height:20px;cursor:pointer;font-weight:bold;line-height:1;}',
+        '#mapper-container .continue-button-wrapper{display:flex;justify-content:center;align-items:center;',
+        '  gap:12px;margin-top:20px;flex-wrap:wrap;}',
+        '#mapper-container .skip-btn{background:transparent;color:#999;border:2px solid #ddd;border-radius:8px;',
+        '  padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:color .2s,border-color .2s;}',
+        '#mapper-container .skip-btn:hover{color:#666;border-color:#bbb;}',
+
+        '#mapper-container .mapping-section,#mapper-container .spotlight-mapping-section,',
+        '#mapper-container .constituent-mapping-section,#mapper-container .gift-type-mapping-section,',
+        '#mapper-container .pledge-status-mapping-section,#mapper-container .appeal-category-mapping-section,',
+        '#mapper-container .solicitor-selection-section{display:none;animation:mapperFadeIn .5s ease;}',
+
+        '#mapper-container .progress-container{margin-bottom:20px;}',
+        '#mapper-container .progress-bar-wrapper{background:#e0e0e0;border-radius:50px;height:30px;overflow:hidden;',
+        '  margin-bottom:10px;box-shadow:inset 0 2px 4px rgba(0,0,0,.1);}',
+        '#mapper-container .progress-bar-fill{height:100%;background:var(--theme-color);border-radius:50px;',
+        '  transition:width .3s ease;display:flex;align-items:center;justify-content:center;color:#fff;',
+        '  font-weight:600;font-size:.9em;}',
+        '#mapper-container .progress-text{text-align:center;color:var(--theme-color);font-weight:600;font-size:1.1em;}',
+
+        '#mapper-container .mapping-card{background:#f8f9fa;padding:30px;border-radius:12px;margin-bottom:20px;',
+        '  border:2px solid var(--theme-color);box-shadow:0 2px 8px ' + themeColorLight + ';}',
+        '#mapper-container .appeal-label{font-size:.9em;color:#666;margin-bottom:10px;text-transform:uppercase;',
+        '  letter-spacing:1px;font-weight:600;}',
+        '#mapper-container .appeal-name{font-size:1.8em;font-weight:700;color:#333;margin-bottom:20px;',
+        '  text-align:center;padding:15px;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.05);}',
+        '#mapper-container .category-buttons{display:flex;justify-content:center;gap:15px;margin-top:15px;',
+        '  align-items:stretch;flex-wrap:nowrap;}',
+        '#mapper-container .category-buttons.allow-wrap{flex-wrap:wrap;justify-content:center;}',
+        '#mapper-container .category-btn{padding:15px;font-size:1em;border:2px solid var(--theme-color);',
+        '  border-radius:6px;cursor:pointer;font-weight:600;transition:all .2s ease;background:#fff;',
+        '  color:var(--theme-color);flex:1 1 0;}',
+        '#mapper-container .category-buttons.allow-wrap .category-btn{flex:0 1 auto;min-width:180px;max-width:200px;}',
+        '#mapper-container .category-btn.non-event-btn{border-color:#999;color:#666;flex:0 0 auto;width:auto;padding:15px 30px;}',
+        '#mapper-container .category-btn.non-event-btn:hover{background:#999;color:#fff;border-color:#999;}',
+        '#mapper-container .category-btn:hover{background:var(--theme-color);color:#fff;transform:translateY(-2px);',
+        '  box-shadow:0 4px 12px ' + themeColorShadow + ';}',
+        '#mapper-container .category-btn:active{transform:translateY(0);}',
+
+        '#mapper-container .navigation-buttons{display:flex;justify-content:space-between;margin-top:20px;gap:10px;}',
+        '#mapper-container .nav-btn{padding:12px 25px;border:2px solid var(--theme-color);border-radius:6px;',
+        '  cursor:pointer;font-weight:600;transition:all .2s;background:#fff;color:var(--theme-color);font-size:1em;}',
+        '#mapper-container .nav-btn:hover:not(:disabled){background:var(--theme-color);color:#fff;}',
+        '#mapper-container .nav-btn:disabled{opacity:.3;cursor:not-allowed;}',
+
+        '#mapper-container .completion-card{display:none;background:#fff;color:var(--theme-color);padding:40px;',
+        '  border-radius:12px;text-align:center;margin-bottom:20px;border:2px solid var(--theme-color);}',
+        '#mapper-container .completion-card h2{font-size:2.5em;margin-bottom:15px;}',
+        '#mapper-container .completion-card p{font-size:1.2em;color:#666;}',
+
+        '@media (max-width:768px){',
+        '  #mapper-container .category-input{flex-direction:column;}',
+        '  #mapper-container .category-buttons{flex-wrap:wrap;}',
+        '  #mapper-container .step-tracker{flex-direction:column;gap:20px;}',
+        '  #mapper-container .step-connector{display:none;}}'
+        ].join('\n');
+    }
+
+    // One mapping stage. Every flow below is the same four parts - a heading, a
+    // progress bar, a completion card and a container - so they are built from one
+    // description rather than six near-identical blocks of markup.
+    function shellStage(o) {
+        return ''
+        + '<div class="' + o.cls + '" id="' + o.id + '">'
+        +   '<h2 style="margin-bottom:20px;color:var(--theme-color);"' + (o.titleId ? ' id="' + o.titleId + '"' : '') + '>'
+        +     (o.title || '') + '</h2>'
+        +   '<div class="progress-container"><div class="progress-bar-wrapper">'
+        +     '<div class="progress-bar-fill" id="' + o.bar + '" style="width:0%;">'
+        +       '<span id="' + o.barText + '"></span></div></div>'
+        +     '<div class="progress-text" id="' + o.text + '">0 of 0 mapped</div></div>'
+        +   '<div class="completion-card" id="' + o.card + '">'
+        +     '<h2>🎉 ' + o.cardTitle + '</h2>'
+        +     '<p' + (o.cardTextId ? ' id="' + o.cardTextId + '"' : '') + '>' + (o.cardText || '') + '</p>'
+        +     (o.cardNextId ? '<p style="margin-top:10px;" id="' + o.cardNextId + '"></p>' : '')
+        +     (o.cardNote ? '<p style="margin-top:10px;">' + o.cardNote + '</p>' : '')
+        +     (o.btnId ? '<div class="continue-button-wrapper" style="margin-top:20px;">'
+        +                  '<button class="upload-btn" id="' + o.btnId + '">' + o.btnText + '</button></div>' : '')
+        +   '</div>'
+        +   '<div id="' + o.container + '"></div>'
+        +   (o.skipId ? '<div id="' + o.skipWrapId + '" style="text-align:center;margin-top:16px;display:none;">'
+        +                 '<button class="skip-btn" id="' + o.skipId + '">Skip Mapping</button></div>' : '')
+        + '</div>';
+    }
+
+    function shellMarkup() {
+        var uploadIcon = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" '
+            + 'xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000;">'
+            + '<path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path>'
+            + '<path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
+
+        return ''
+        + '<div id="mapperClientDetails"></div>'
+
+        + '<div class="upload-section" id="uploadSection" style="text-align:left;padding:0;margin:0;">'
+        +   '<h2 id="uploadTitle" style="margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;'
+        +     'font-family:Inter,sans-serif;font-size:14px;font-weight:500;">Client Data File Upload</h2>'
+        +   '<input type="file" id="fileInput" accept=".xlsx,.xls">'
+        +   '<div id="uploadBox" style="border:1px solid #ccc;border-radius:4px;padding:20px;text-align:center;'
+        +     'cursor:pointer;background:#fff;transition:all .2s;display:flex;flex-direction:column;'
+        +     'align-items:center;justify-content:center;min-height:98px;width:100%;box-sizing:border-box;">'
+        +     uploadIcon + '</div>'
+        +   '<div class="file-info" id="fileInfo"></div>'
+        +   '<div class="upload-note" id="uploadNote">Note: the Client Data file <strong>must</strong> use the '
+        +     'designated template.<br>Click the link at the top of the page to download the template.</div>'
+        + '</div>'
+
+        + '<div class="category-setup" id="categorySetup">'
+        +   '<h2 style="margin-bottom:5px;color:var(--theme-color);text-align:center;">Define Your Special Events</h2>'
+        +   '<div style="text-align:center;color:#999;font-size:.85em;margin-bottom:20px;">(Maximum 3)</div>'
+        +   '<div class="category-input">'
+        +     '<input type="text" id="categoryInput" placeholder="Enter event name (e.g., Gala, Golf Tournament, Annual Auction)">'
+        +     '<button id="addCategoryBtn">+ Add Event</button></div>'
+        +   '<div class="categories-list" id="categoriesList"></div>'
+        +   '<div class="continue-button-wrapper">'
+        +     '<button class="upload-btn" id="startMappingBtn">Continue to Mapping ➝</button></div>'
+        +   '<div id="specialEventSkipWrapper" style="text-align:center;margin-top:16px;">'
+        +     '<button class="skip-btn" id="skipSpecialEventBtn">Skip Mapping</button></div>'
+        + '</div>'
+
+        + shellStage({ cls:'mapping-section', id:'mappingSection', title:'Map Gift Appeals to Events',
+            bar:'progressBar', barText:'progressBarText', text:'progressText',
+            card:'completionCard', cardTitle:'Step 1 Complete!',
+            cardText:"You've successfully mapped all Gift Appeals to events.",
+            cardNextId:'completionNextStep', btnId:'completionNextButton', btnText:'Continue ➝',
+            container:'mappingContainer' })
+
+        + shellStage({ cls:'spotlight-mapping-section', id:'spotlightMappingSection', titleId:'spotlightMappingTitle',
+            bar:'spotlightProgressBar', barText:'spotlightProgressBarText', text:'spotlightProgressText',
+            card:'spotlightCompletionCard', cardTitle:'Step 2 Complete!', cardTextId:'spotlightCompletionText',
+            cardNote:'Click below to continue to Constituent Type mapping.',
+            btnId:'startConstituentMappingBtn', btnText:'Continue to Constituent Mapping ➝',
+            container:'spotlightMappingContainer', skipId:'skipSpotlightBtn', skipWrapId:'spotlightSkipWrapper' })
+
+        + shellStage({ cls:'pledge-status-mapping-section', id:'pledgeStatusMappingSection', title:'Map Pledge Statuses',
+            bar:'pledgeStatusProgressBar', barText:'pledgeStatusProgressBarText', text:'pledgeStatusProgressText',
+            card:'pledgeStatusCompletionCard', cardTitle:'Pledge Status Mapping Complete!',
+            cardText:"You've successfully mapped all Pledge Statuses.",
+            cardNote:'Click below to continue to Constituent Type mapping.',
+            btnId:'startConstituentFromPledgeBtn', btnText:'Continue to Constituent Mapping ➝',
+            container:'pledgeStatusMappingContainer' })
+
+        + shellStage({ cls:'appeal-category-mapping-section', id:'appealCategoryMappingSection', title:'Map Appeal Categories',
+            bar:'appealCategoryProgressBar', barText:'appealCategoryProgressBarText', text:'appealCategoryProgressText',
+            card:'appealCategoryCompletionCard', cardTitle:'Appeals Mapping Complete!',
+            cardText:"You've successfully mapped all Appeal Categories.",
+            cardNote:'Click below to continue to Constituent Type mapping.',
+            btnId:'startConstituentFromAppealBtn', btnText:'Continue to Constituent Mapping ➝',
+            container:'appealCategoryMappingContainer' })
+
+        + '<div class="solicitor-selection-section" id="solicitorSelectionSection">'
+        +   '<h2 style="margin-bottom:20px;color:var(--theme-color);">Select Solicitors</h2>'
+        +   '<div id="solicitorButtonsContainer"></div>'
+        +   '<div class="continue-button-wrapper">'
+        +     '<button class="upload-btn" id="solicitorDoneBtn">Continue ➝</button></div>'
+        + '</div>'
+
+        + shellStage({ cls:'constituent-mapping-section', id:'constituentMappingSection', title:'Map Constituent Types',
+            bar:'constituentProgressBar', barText:'constituentProgressBarText', text:'constituentProgressText',
+            card:'constituentCompletionCard', cardTitle:'Constituent Mapping Complete!',
+            cardText:"You've successfully mapped all Constituent Types.",
+            cardNote:'Click below to continue to Gift Type mapping.',
+            btnId:'startGiftTypeMappingBtn', btnText:'Continue to Gift Type Mapping ➝',
+            container:'constituentMappingContainer' })
+
+        + shellStage({ cls:'gift-type-mapping-section', id:'giftTypeMappingSection', title:'Map Gift Types',
+            bar:'giftTypeProgressBar', barText:'giftTypeProgressBarText', text:'giftTypeProgressText',
+            card:'giftTypeCompletionCard', cardTitle:'All Done!',
+            cardText:"You've successfully mapped all Gift Types.",
+            cardNote:'Your data is ready to submit.',
+            container:'giftTypeMappingContainer' })
+
+        + '<div class="step-progress" id="stepProgress"><div class="step-tracker" id="stepTracker"></div></div>'
+
+        + '<div style="text-align:center;margin-top:20px;">'
+        +   '<button type="button" id="customSubmitBtn" style="background:' + themeColor + ';color:#fff;'
+        +     'padding:15px 40px;font-size:1.1em;border:none;border-radius:6px;cursor:pointer;font-weight:600;'
+        +     'width:50%;margin:0 auto;display:inline-block;">Submit</button></div>';
+    }
+
+    function renderShell() {
+        // The GHL-form pages already carry this markup in a custom-code block.
+        // Leave them alone; only build it where it is missing.
+        if (document.getElementById('uploadBox')) return false;
+
+        var root = document.getElementById('mapper-root')
+                || document.getElementById('mapper-container');
+        if (!root) {
+            root = document.createElement('div');
+            root.id = 'mapper-container';
+            document.body.appendChild(root);
+        }
+        root.id = 'mapper-container';
+
+        if (!document.getElementById('mapper-shell-style')) {
+            var st = document.createElement('style');
+            st.id = 'mapper-shell-style';
+            st.textContent = shellStyles();
+            (document.head || document.documentElement).appendChild(st);
+        }
+        root.innerHTML = shellMarkup();
+        console.log('Mapper.js: rendered its own UI shell');
+        return true;
     }
 
     // The client details, rendered and owned by mapper.js. They used to be GHL form
