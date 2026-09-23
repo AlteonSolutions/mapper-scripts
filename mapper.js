@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 22:36 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s5';
+    var MAPPER_BUILD   = '2026-09-23 23:02 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s6';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -901,6 +901,7 @@
         waitForElement('#uploadBox', function(el) {
             renderClientPanel();
             el.style.cssText += ';' + UPLOAD_BOX_CSS;
+            if (el.className.indexOf('mp-upload-box') === -1) el.className += ' mp-upload-box';
             dressUploadBox(el);
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
@@ -1550,6 +1551,7 @@
                         + '<div style="text-align:right;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
                         + '</div>';
                     uploadBox.style.cursor = 'default';
+                    uploadBox.classList.add('mp-has-file');
                     document.getElementById('fileInfo').innerHTML = '';
                     var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                     var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
@@ -1911,6 +1913,11 @@
         '  #mapper-container .step-label{margin-top:0;text-align:left;}',
         '  #mapper-container .step-connector{width:3px;height:24px;min-width:unset;margin-top:0;margin-left:18px;flex:none;}}',
 
+        // Both upload boxes carry .mp-upload-box, so they hover the same way: the
+        // edge darkens and nothing fills. A tint on one of a matched pair was the
+        // difference showing.
+        '.mp-upload-box:hover{border-color:#8f8f8f;}',
+        '.mp-upload-box.mp-has-file:hover{border-color:#ACACACFF;}',
         '#mapper-container .upload-section{text-align:center;padding:0;margin:0;}',
         '#mapper-container .upload-section h2{margin-top:30px;}',
         '#mapper-container .upload-section input[type="file"]{display:none;}',
@@ -2025,7 +2032,7 @@
         +   '<h2 id="uploadTitle" style="margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;'
         +     'font-family:Inter,sans-serif;font-size:14px;font-weight:500;">Client Data File Upload</h2>'
         +   '<input type="file" id="fileInput" accept=".xlsx,.xls">'
-        +   '<div id="uploadBox" style="' + UPLOAD_BOX_CSS + '"></div>'
+        +   '<div id="uploadBox" class="mp-upload-box" style="' + UPLOAD_BOX_CSS + '"></div>'
         +   '<div class="file-info" id="fileInfo"></div>'
         +   '<div class="upload-note" id="uploadNote">Note: the Client Data file <strong>must</strong> use the '
         +     'designated template.<br>Click the link at the top of the page to download the template.</div>'
@@ -2167,7 +2174,7 @@
         '#mapperClientPanel .mp-sec:first-child{margin-top:0;}',
         '#mapperClientPanel .mp-f{margin-bottom:16px;min-width:0;}',
         '#mapperClientPanel label{display:block;font-size:13.5px;font-weight:700;color:#2c3345;margin-bottom:6px;}',
-        '#mapperClientPanel label i{color:#ef4444;font-style:normal;}',
+        '#mapperClientPanel label i{color:#b0b7c2;font-style:normal;font-weight:600;}',
         '#mapperClientPanel .mp-row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}',
         '@media(max-width:560px){#mapperClientPanel .mp-row2{grid-template-columns:1fr;}}',
         '#mapperClientPanel input[type="text"],#mapperClientPanel input[type="email"],',
@@ -2210,9 +2217,7 @@
         // and icon, so the two read as one pair of controls.
         '#mapperClientPanel #mapper-logo{display:none;}',
         '#mapperClientPanel .mp-logo-box{' + UPLOAD_BOX_CSS + '}',
-        '#mapperClientPanel .mp-logo-box:hover{border-color:#8f8f8f;background:#fafbfc;}',
         '#mapperClientPanel .mp-logo-box.mp-has-file{cursor:default;padding:14px 16px;}',
-        '#mapperClientPanel .mp-logo-box.mp-has-file:hover{border-color:#ACACACFF;background:#fff;}',
         // The client-data box sits in this section too, so its own heading becomes a
         // field label like the logo's and the two read as one pair.
         '#mapperClientPanel #uploadSection{margin:0;}',
@@ -2237,7 +2242,7 @@
         var uploadBox = document.getElementById('uploadBox');
         if (!slot && !uploadBox) return;
 
-        var req = '';
+        var req = ' <i>*</i>';
         var envelope = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
             + 'stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect>'
             + '<path d="m2 7 10 6 10-6"></path></svg>';
@@ -2292,7 +2297,7 @@
             + '<div class="mp-sec">File Uploads</div>'
             + '<div class="mp-f"><label for="mapper-logo">Organization Logo File</label>'
             +   '<input id="mapper-logo" type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml">'
-            +   '<div class="mp-logo-box" id="mapper-logo-box" role="button" tabindex="0"></div></div>';
+            +   '<div class="mp-logo-box mp-upload-box" id="mapper-logo-box" role="button" tabindex="0"></div></div>';
 
         if (slot) slot.appendChild(panel);
         else uploadBox.parentNode.insertBefore(panel, uploadBox);
