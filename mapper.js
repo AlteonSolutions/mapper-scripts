@@ -1,11 +1,19 @@
 /* APPROVED */
 (function() {
     'use strict';
+    // The console showed the whole script initialising twice in one document, which
+    // means two MutationObservers, two change listeners and two of every timer
+    // working the same DOM. Whichever copy gets here first does the work.
+    if (window.__mapperLoaded) {
+        console.warn('mapper.js: already loaded in this document — second copy stood down');
+        return;
+    }
+    window.__mapperLoaded = true;
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 11:56 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b25';
+    var MAPPER_BUILD   = '2026-09-23 12:28 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b26';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -854,8 +862,21 @@
     var _lastOverflow = '';
     function reportOverflow(tag) {
         try {
-            var limit = document.documentElement.clientWidth;
-            var all = document.querySelectorAll('body *'), hits = [];
+            // The mapper shares the form page's document, but that page may itself be
+            // framed - and a bar drawn by the page above is invisible from in here.
+            var docs = [document];
+            [window.parent, window.top].forEach(function(w) {
+                try {
+                    if (w && w !== window && w.document && docs.indexOf(w.document) === -1) docs.push(w.document);
+                } catch (e) { /* cross-origin: nothing to measure */ }
+            });
+            var limit = 0, all = [];
+            docs.forEach(function(dd) {
+                limit = Math.max(limit, dd.documentElement.clientWidth);
+                var found = dd.querySelectorAll('body *');
+                for (var q = 0; q < found.length; q++) all.push(found[q]);
+            });
+            var hits = [];
             for (var i = 0; i < all.length; i++) {
                 var r = all[i].getBoundingClientRect();
                 if (!r.width) continue;
@@ -875,7 +896,8 @@
             if (sig === _lastOverflow) return;
             _lastOverflow = sig;
             if (!hits.length) { console.log('Mapper: nothing overflows any more (%s)', tag); return; }
-            console.warn('Mapper: %d element(s) wider than the page (%dpx) at "%s"', hits.length, limit, tag);
+            console.warn('Mapper: %d element(s) wider than the page (%dpx, %d document(s)) at "%s"',
+                         hits.length, limit, docs.length, tag);
             hits.slice(0, 6).forEach(function(h) {
                 var chain = [], n = h.el, k = 0;
                 while (n && n.tagName && k < 4) {
