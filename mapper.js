@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 12:52 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b27';
+    var MAPPER_BUILD   = '2026-09-23 14:10 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s1';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -59,7 +59,7 @@
 
     // ---- Submission diagnostics ------------------------------------------------
     // The submit button spins until the page navigates away, so a stall anywhere in
-    // build -> attach -> hand off to the GHL form looks identical to "still working".
+    // build -> encode -> POST looks identical to "still working".
     // This records each step with timings and surfaces errors that are otherwise only
     // visible in the console. Counts, sizes and timings only - never donor data or
     // file contents, so the report is safe for a client to paste into an email.
@@ -729,845 +729,31 @@
         return null;
     }
 
-    function setIndustryTypeField(industryLabel) {
-        if (!industryLabel) return;
-        console.log('Setting IndustryType field to:', industryLabel);
-        
-        function trySetField() {
-            var industryField = null;
-            var labels = document.querySelectorAll('label');
-            for (var i = 0; i < labels.length; i++) {
-                var txt = labels[i].textContent;
-                if (txt.indexOf('IndustryType') !== -1 || txt.indexOf('Industry Type') !== -1 || txt.indexOf('industry_type') !== -1) {
-                    var container = labels[i].closest('div');
-                    if (container) industryField = container.querySelector('input');
-                    break;
-                }
-            }
-            if (!industryField) industryField = document.querySelector('input[name*="industry_type"]');
-            if (!industryField) industryField = document.querySelector('input[name*="IndustryType"]');
-            
-            if (industryField) {
-                industryField.value = industryLabel;
-                industryField.dispatchEvent(new Event('input', { bubbles: true }));
-                industryField.dispatchEvent(new Event('change', { bubbles: true }));
-                console.log('✓ IndustryType set to:', industryLabel);
-                return true;
-            }
-            return false;
-        }
-        
-        if (!trySetField()) {
-            var attempts = 0;
-            var retry = setInterval(function() {
-                attempts++;
-                if (trySetField() || attempts >= 30) {
-                    clearInterval(retry);
-                    if (attempts >= 30) console.log('✗ IndustryType field not found after retries');
-                }
-            }, 500);
-        }
-    }
 
-    // Finds a page-provided file input for the organization logo. mapper.js is
-    // injected into the host form's document, so the logo input belongs to the
-    // surrounding page rather than to anything mapper.js builds - the only handle
-    // on it is whatever the form author named it. Mirrors setIndustryTypeField's
-    // DOM-search pattern above for the same reason.
-    //
-    // On the GHL path the form itself carried the upload, so failing to find the
-    // input here was invisible. On the direct path the logo only reaches Power
-    // Automate if this finds it, so it searches several ways and reports which
-    // one hit - see the "Logo" line in the submission diagnostics.
+    // A logo larger than this is almost certainly the wrong file.
     var LOGO_MAX_BYTES = 12 * 1024 * 1024;
 
-    // Every file input mapper.js can reach, minus its own data-file upload.
-    // Same-origin ancestor frames are included; cross-origin ones throw and are
-    // skipped, which is the correct outcome - their files are unreachable anyway.
-    function logoCandidateInputs() {
-        var docs = [document];
-        [window.parent, window.top].forEach(function(w) {
-            try {
-                if (w && w !== window && w.document && docs.indexOf(w.document) === -1) docs.push(w.document);
-            } catch (e) { /* cross-origin */ }
-        });
-        var out = [];
-        docs.forEach(function(d) {
-            var inputs = d.querySelectorAll('input[type="file"]');
-            for (var i = 0; i < inputs.length; i++) {
-                if (inputs[i].id === 'fileInput') continue;   // the mapper's own client-data upload
-                out.push(inputs[i]);
-            }
-        });
-        return out;
-    }
 
-    // What a field calls itself: its own attributes, plus a label that points at
-    // it explicitly. Nothing here can belong to a neighbouring field, so this is
-    // the safe pass. GHL puts the field's label in the name attribute and repeats
-    // it in the placeholder ("Enter Client Name"), which between them identify
-    // every field on the brand form.
-    function directHints(el) {
-        var bits = [el.name, el.id, el.getAttribute('aria-label'),
-                    el.getAttribute('placeholder'), el.getAttribute('title'),
-                    el.getAttribute('data-q')];
-        try {
-            var wrapping = el.closest('label');
-            if (wrapping) bits.push(wrapping.textContent);
-            if (el.id) {
-                var forLbl = el.ownerDocument.querySelector('label[for="' + el.id.replace(/"/g, '\\"') + '"]');
-                if (forLbl) bits.push(forLbl.textContent);
-            }
-        } catch (e) {}
-        return bits.filter(Boolean).join(' ').toLowerCase();
-    }
-
-    // Adds the nearest label found in an ancestor container. Forms that label by
-    // position rather than by "for" need this, but a tightly packed layout can
-    // hand back the neighbour's label - so it is only ever a second pass.
-    //
-    // The hop limit is generous because GHL's file uploader nests the input
-    // several wrappers below the field container the label sits in; four levels
-    // stopped short of it and the logo field went unstyled and unread.
-    function inputHints(el) {
-        var bits = [directHints(el)];
-        var node = el.parentNode, hops = 0;
-        while (node && node.querySelector && hops < 8) {
-            var near = node.querySelector('label');
-            if (near) { bits.push(near.textContent.toLowerCase()); break; }
-            // Not every form titles its fields with a <label>; GHL's uploader uses
-            // a plain div, which is why searching for label elements alone never
-            // found the logo field. Fall back to the container's own text once it
-            // is short enough to be one field's worth rather than the whole form's.
-            var txt = (node.textContent || '').replace(/\s+/g, ' ').trim();
-            if (txt && txt.length <= 120) { bits.push(txt.toLowerCase()); break; }
-            node = node.parentNode; hops++;
-        }
-        return bits.join(' ');
-    }
-
-    // Finds the element that actually paints the box the user sees. Class names
-    // have been the wrong handle three times running, but a drawn border is a
-    // drawn border whatever GHL calls it - so walk up from the input and take the
-    // first ancestor with a visible one.
-    function drawnBox(el, maxHops) {
-        var node = el.parentNode, hops = 0;
-        while (node && node.nodeType === 1 && hops < (maxHops || 6)) {
-            try {
-                var cs = window.getComputedStyle(node);
-                var w = parseFloat(cs.borderTopWidth) || 0;
-                var style = cs.borderTopStyle;
-                if (w > 0 && style && style !== 'none' && style !== 'hidden') return node;
-            } catch (e) {}
-            node = node.parentNode; hops++;
-        }
-        return null;
-    }
-
-    // Names whatever is wider than the page. A horizontal scrollbar is caused by
-    // one element's right edge, and guessing which has already been wrong once -
-    // this reports it with its width and its ancestors, so the fix lands first time.
-    var _lastOverflow = '';
-    function reportOverflow(tag) {
-        try {
-            // The mapper shares the form page's document, but that page may itself be
-            // framed - and a bar drawn by the page above is invisible from in here.
-            var docs = [document];
-            [window.parent, window.top].forEach(function(w) {
-                try {
-                    if (w && w !== window && w.document && docs.indexOf(w.document) === -1) docs.push(w.document);
-                } catch (e) { /* cross-origin: nothing to measure */ }
-            });
-            var limit = 0, all = [];
-            docs.forEach(function(dd) {
-                limit = Math.max(limit, dd.documentElement.clientWidth);
-                var found = dd.querySelectorAll('body *');
-                for (var q = 0; q < found.length; q++) all.push(found[q]);
-            });
-            var hits = [];
-            for (var i = 0; i < all.length; i++) {
-                var r = all[i].getBoundingClientRect();
-                if (!r.width) continue;
-                if (r.right > limit + 1 || r.left < -1) {
-                    // Only the outermost offender in a chain; its children inherit the
-                    // problem and would bury it.
-                    var covered = false;
-                    for (var h = 0; h < hits.length; h++) if (hits[h].el.contains(all[i])) { covered = true; break; }
-                    if (!covered) hits.push({ el: all[i], r: r });
-                }
-            }
-            // Only speak when the picture changes, so a watcher can run often
-            // without burying the moment the bar actually appears.
-            var sig = hits.map(function(h) {
-                return (h.el.tagName + '.' + h.el.className + '@' + Math.round(h.r.right));
-            }).join('|');
-            var scrolling = [];
-            docs.forEach(function(dd, di) {
-                var de = dd.documentElement;
-                if (de.scrollWidth > de.clientWidth + 1) {
-                    scrolling.push('doc' + di + ' scrolls ' + de.scrollWidth + ' in ' + de.clientWidth
-                        + 'px (' + (de.scrollWidth - de.clientWidth) + 'px over)');
-                }
-            });
-            if (scrolling.length) sig += '||' + scrolling.join(';');
-            if (sig === _lastOverflow) return;
-            _lastOverflow = sig;
-            if (scrolling.length) console.warn('Mapper: horizontal scroll — ' + scrolling.join('  |  ')
-                + '  [' + _frameTag + ', ' + tag + ']');
-            if (!hits.length) {
-                if (!scrolling.length) console.log('Mapper: nothing overflows any more (%s)', tag);
-                else console.warn('Mapper: …but no single element overhangs — margin, transform or the frame itself');
-                return;
-            }
-            console.warn('Mapper: %d element(s) wider than the page (%dpx, %d document(s)) at "%s"',
-                         hits.length, limit, docs.length, tag);
-            hits.slice(0, 6).forEach(function(h) {
-                var chain = [], n = h.el, k = 0;
-                while (n && n.tagName && k < 4) {
-                    chain.push(n.tagName.toLowerCase()
-                        + (typeof n.className === 'string' && n.className.trim()
-                           ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
-                    n = n.parentNode; k++;
-                }
-                console.warn('   overflows by ' + Math.round(h.r.right - limit) + 'px  ['
-                    + Math.round(h.r.width) + 'px wide, left ' + Math.round(h.r.left) + ']  '
-                    + chain.join('  <  '));
-            });
-        } catch (e) {}
-    }
-
-    // Prints what the page actually contains, once, so the shape of a widget
-    // mapper.js does not own can be read off a screenshot instead of guessed at.
-    // Two rounds of inferring GHL's uploader markup from a picture is enough.
-    var _domReported = false;
-    function reportHostDom() {
-        if (_domReported) return;
-        _domReported = true;
-        try {
-            var files = document.querySelectorAll('input[type="file"]');
-            if (!files.length) { console.log('Mapper DOM: no file inputs on the page yet'); return; }
-            var rows = [];
-            for (var i = 0; i < files.length; i++) {
-                var el = files[i], chain = [], node = el.parentNode, h = 0;
-                while (node && node.tagName && h < 6) {
-                    chain.push(node.tagName.toLowerCase()
-                        + (node.className && typeof node.className === 'string' && node.className.trim()
-                           ? '.' + node.className.trim().split(/\s+/).join('.') : ''));
-                    node = node.parentNode; h++;
-                }
-                rows.push({
-                    name: el.name || '', id: el.id || '', cls: el.className || '',
-                    accept: el.accept || '', hasFile: !!(el.files && el.files[0]),
-                    file: el.files && el.files[0] ? el.files[0].name : '',
-                    hints: inputHints(el).slice(0, 120),
-                    ancestors: chain.join('  <  ')
-                });
-            }
-            console.log('Mapper DOM: %d file input(s)', files.length);
-            rows.forEach(function(r, i) { console.log('  [' + i + ']', JSON.stringify(r, null, 1)); });
-        } catch (e) { console.warn('Mapper DOM report failed —', e && e.message); }
-    }
-
-    // Uses the field's own naming only. The ancestor walk in inputHints can pick
-    // up a neighbour's label - on a flat form every input sees the first label in
-    // it - and mistaking the logo for the data file would skip it entirely.
-    function looksLikeDataFile(input) {
-        var h = directHints(input);
-        return h.indexOf('client data') !== -1 || h.indexOf('gift') !== -1 || h.indexOf('constituent') !== -1;
-    }
-
-    // An uploader that ships the file to its own storage on selection is free to
-    // clear input.files afterwards, and GHL's does exactly that often enough that
-    // reading .files at submit time cannot be relied on - by then there may be
-    // nothing left to read, however good the selector.
-    //
-    // So take a reference the moment the file is chosen. The change event fires
-    // before the uploader gets to it, the File object stays valid once captured,
-    // and a listener on the document in capture phase also catches inputs GHL
-    // renders after this runs.
-    var _pickedFiles = [];
-    document.addEventListener('change', function(e) {
-        var el = e.target;
-        if (!el || el.type !== 'file' || el.id === 'fileInput') return;
-        if (!el.files || !el.files[0]) return;
-        for (var i = 0; i < _pickedFiles.length; i++) {
-            if (_pickedFiles[i].el === el) { _pickedFiles[i].file = el.files[0]; return; }
-        }
-        _pickedFiles.push({ el: el, file: el.files[0] });
-        console.log('Mapper: file selected on a host input —', el.files[0].name,
-                    '(' + Math.round(el.files[0].size / 1024) + ' KB)');
-        // Swap the drop zone for the thumbnail card straight away rather than
-        // waiting for the observer to notice GHL building it.
-        setTimeout(function() { try { styleHostForm(); } catch (e) {} }, 60);
-    }, true);
-
-    // Returns { file, how } - file is null when nothing qualified, and how always
-    // explains the outcome so the diagnostics panel can show it.
+    // The logo now comes from an input mapper.js renders and owns, so there is
+    // nothing to hunt for: read it, or say plainly that none was chosen. The
+    // capture-on-change listener is gone with it - our input is never cleared out
+    // from under us the way GHL's uploader cleared its own.
     function getLogoFile() {
-        var inputs = logoCandidateInputs();
-
-        // Pair every reachable input with its file, preferring what the input still
-        // holds and falling back to what was captured when it was chosen.
-        var pairs = [];
-        inputs.forEach(function(el) {
-            if (el.files && el.files[0]) { pairs.push({ el: el, file: el.files[0], live: true }); return; }
-            for (var i = 0; i < _pickedFiles.length; i++) {
-                if (_pickedFiles[i].el === el) { pairs.push({ el: el, file: _pickedFiles[i].file, live: false }); return; }
-            }
-        });
-        // A capture whose input has since been removed from the page still counts.
-        _pickedFiles.forEach(function(p) {
-            for (var i = 0; i < pairs.length; i++) if (pairs[i].el === p.el) return;
-            if (p.el.id !== 'fileInput') pairs.push({ el: p.el, file: p.file, live: false });
-        });
-
-        var live = pairs.filter(function(p) { return p.live; }).length;
-
-        function firstUsable(list, how) {
-            for (var i = 0; i < list.length; i++) {
-                if (list[i].file.size <= LOGO_MAX_BYTES) {
-                    return { file: list[i].file, how: how + (list[i].live ? '' : ', recovered from selection') };
-                }
-            }
-            return null;
+        var input = document.getElementById('mapper-logo');
+        var file = input && input.files && input.files[0];
+        if (!file) return { file: null, how: 'no logo was chosen' };
+        if (file.size > LOGO_MAX_BYTES) {
+            return { file: null, how: 'the chosen file is ' + Math.round(file.size / 1048576) + ' MB, too large for a logo' };
         }
-
-        var hit = firstUsable(pairs.filter(function(p) {
-            return inputHints(p.el).indexOf('logo') !== -1;
-        }), 'field named "logo"');
-        if (hit) return hit;
-
-        hit = firstUsable(pairs.filter(function(p) {
-            return !looksLikeDataFile(p.el)
-                && ((p.el.accept || '').toLowerCase().indexOf('image') !== -1
-                    || /^image\//.test(p.file.type || ''));
-        }), 'image upload');
-        if (hit) return hit;
-
-        var other = pairs.filter(function(p) { return !looksLikeDataFile(p.el); });
-        if (other.length === 1) {
-            hit = firstUsable(other, 'only other upload on the page');
-            if (hit) return hit;
-        }
-
-        // Say which of the two cases this is, since they need different answers:
-        // nothing was ever chosen, or something was chosen and could not be used.
-        var how;
-        if (!pairs.length) {
-            how = 'no file was chosen on any of the ' + inputs.length + ' upload field(s) on this page';
-        } else {
-            how = pairs.length + ' file(s) found (' + live + ' still on the input) but none qualified as a logo';
-        }
-        return { file: null, how: how };
+        return { file: file, how: 'from the logo field' };
     }
 
-    // The brand page's "Client Information" block collects all of this before the
-    // upload step, so asking for it again once the mapping is done is redundant.
-    // Read it off the host form instead.
-    //
-    // Matching is on text mapper.js does not own, so any lookup can miss. That is
-    // why this fills the mapper's own inputs rather than bypassing them: a field
-    // that is found gets filled and hidden, a field that is missed stays visible
-    // and goes through exactly the validation it always did. Nothing can be
-    // submitted blank because a label was renamed.
-    var HOST_FIELD_HINTS = {
-        'mapper-client-name':            ['client name', 'organization name'],
-        'mapper-email':                  ['email'],
-        'mapper-fy-start-month':         ['fiscal year start month', 'fiscal year start'],
-        'mapper-major-giving-threshold': ['major giving threshold'],
-        'mapper-board-members':          ['# of board members', 'number of board members', 'board members']
-    };
-    // The host form splits the contact across two fields; the mapper has one.
-    var HOST_FIRST_NAME = ['first name'];
-    var HOST_LAST_NAME  = ['last name'];
-
-    function hostFormControls() {
-        var docs = [document];
-        [window.parent, window.top].forEach(function(w) {
-            try {
-                if (w && w !== window && w.document && docs.indexOf(w.document) === -1) docs.push(w.document);
-            } catch (e) { /* cross-origin */ }
-        });
-        var out = [];
-        docs.forEach(function(d) {
-            var els = d.querySelectorAll('input, select, textarea');
-            for (var i = 0; i < els.length; i++) {
-                var el = els[i];
-                if (el.type === 'file' || el.type === 'hidden') continue;
-                if (el.id && el.id.indexOf('mapper-') === 0) continue;  // the mapper's own copy of the field
-                out.push(el);
-            }
-        });
-        return out;
-    }
-
-    // A custom dropdown keeps its value out of the input that carries the label.
-    // GHL builds these with vue-multiselect, whose multiselect__input is only the
-    // type-to-filter box - zero width, value always "" - while the chosen option
-    // is the text of the .multiselect__single beside it. Read the widget's
-    // rendered selection when the matched control itself comes back empty.
-    function readWidgetSelection(el) {
-        var node = el.parentNode, hops = 0;
-        while (node && node.querySelector && hops < 4) {
-            var shown = node.querySelector('.multiselect__single, [class*="__single"]')
-                     || node.querySelector('.multiselect__option--selected, [aria-selected="true"]');
-            if (shown) {
-                var txt = (shown.textContent || '').replace(/\s+/g, ' ').trim();
-                if (txt) return txt;
-            }
-            node = node.parentNode; hops++;
-        }
-        return '';
-    }
-
-    function readHostField(needles) {
-        var els = hostFormControls();
-        function scan(hintsOf) {
-            for (var i = 0; i < els.length; i++) {
-                var h = hintsOf(els[i]);
-                for (var j = 0; j < needles.length; j++) {
-                    if (h.indexOf(needles[j]) !== -1) {
-                        var v = (els[i].value == null ? '' : String(els[i].value)).trim();
-                        if (!v) v = readWidgetSelection(els[i]);
-                        if (v) return v;
-                    }
-                }
-            }
-            return '';
-        }
-        return scan(directHints) || scan(inputHints);
-    }
-
-    // Resolves a host value to an option the select already offers, tolerating
-    // case and the abbreviations some forms use ("Jan" for January). Never
-    // invents a value - anything unrecognised returns empty and leaves the
-    // field on screen.
-    function matchSelectOption(sel, value) {
-        var want = value.toLowerCase(), opts = sel.options || [], i;
-        for (i = 0; i < opts.length; i++) if (String(opts[i].value).toLowerCase() === want) return opts[i].value;
-        for (i = 0; i < opts.length; i++) if (String(opts[i].text).trim().toLowerCase() === want) return opts[i].value;
-        for (i = 0; i < opts.length; i++) {
-            var ov = String(opts[i].value).toLowerCase();
-            if (ov && want.length >= 3 && ov.indexOf(want) === 0) return opts[i].value;
-        }
-        return '';
-    }
-
-    // Fills and hides every field the brand form already answered. Returns the
-    // number of fields still left on screen for the client to complete.
-    function prefillFromHostForm() {
-        var card = document.getElementById('allDoneCard');
-        if (!card) return -1;
-        var remaining = 0, taken = [];
-
-        function apply(id, value) {
-            var el = document.getElementById(id);
-            if (!el) return;
-            if (value && el.tagName === 'SELECT') value = matchSelectOption(el, value);
-            if (value) {
-                el.value = value;
-                // A <select> silently ignores a value with no matching option, and
-                // hiding an empty required field is worse than showing a filled one.
-                // Only hide what actually took.
-                if (String(el.value).trim()) {
-                    el.dispatchEvent(new Event('input',  { bubbles: true }));
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                    if (el.parentNode && el.parentNode !== card) el.parentNode.style.display = 'none';
-                    taken.push(id.replace('mapper-', ''));
-                    return;
-                }
-                el.value = '';
-            }
-            remaining++;
-        }
-
-        for (var id in HOST_FIELD_HINTS) {
-            if (HOST_FIELD_HINTS.hasOwnProperty(id)) apply(id, readHostField(HOST_FIELD_HINTS[id]));
-        }
-        apply('mapper-contact-name', (readHostField(HOST_FIRST_NAME) + ' ' + readHostField(HOST_LAST_NAME)).trim());
-
-        // Collapse a two-column row once both of its fields are gone.
-        var rows = card.querySelectorAll('div[style*="grid-template-columns"]');
-        for (var r = 0; r < rows.length; r++) {
-            var kids = rows[r].children, anyVisible = false;
-            for (var k = 0; k < kids.length; k++) if (kids[k].style.display !== 'none') anyVisible = true;
-            if (!anyVisible) rows[r].style.display = 'none';
-        }
-
-        var fields = document.getElementById('allDoneFields');
-        if (fields) fields.style.display = 'none';
-        var heading = document.getElementById('allDoneHeading');
-        if (heading) heading.textContent = 'Mapping Complete';
-        console.log('Mapper: carried over from the brand form [' + (taken.join(', ') || 'nothing')
-                  + '] — ' + remaining + ' field(s) still shown');
-        return remaining;
-    }
-
-    // The brand page's own fields are stock GHL form controls, which do not match
-    // the mapper sitting directly beneath them. Restyle them in place: appearance
-    // only - borders, spacing, type, focus - never layout or behaviour, so GHL's
-    // own validation and its uploader keep working. Everything is applied by
-    // class through one injected stylesheet rather than inline, so :focus and
-    // ::placeholder come along too.
-    function hostFormStyleSheet() {
-        return ''
-        + '.mp-field{width:100%!important;padding:11px 14px!important;border:1.5px solid #d1d5db!important;'
-        +   'border-radius:10px!important;font-size:0.95rem!important;line-height:1.4!important;'
-        +   'color:#111827!important;background:#fff!important;box-shadow:none!important;'
-        +   'box-sizing:border-box!important;transition:border-color .15s ease,box-shadow .15s ease!important;}'
-        + '.mp-field::placeholder{color:#9ca3af!important;opacity:1!important;}'
-        + '.mp-field:hover{border-color:#9ca3af!important;}'
-        + '.mp-field:focus,.mp-field:focus-visible{border-color:' + themeColor + '!important;'
-        +   'box-shadow:0 0 0 3px ' + themeColorLight + '!important;outline:none!important;}'
-        + '.mp-label{display:block!important;font-size:0.82rem!important;font-weight:600!important;'
-        +   'color:#374151!important;margin-bottom:6px!important;}'
-        // vue-multiselect draws its box on .multiselect__tags, not on the input,
-        // so the field styling has to land there instead.
-        + '.mp-select .multiselect__tags{padding:11px 14px!important;border:1.5px solid #d1d5db!important;'
-        +   'border-radius:10px!important;background:#fff!important;min-height:0!important;'
-        +   'font-size:0.95rem!important;transition:border-color .15s ease,box-shadow .15s ease!important;}'
-        + '.mp-select:hover .multiselect__tags{border-color:#9ca3af!important;}'
-        + '.mp-select.multiselect--active .multiselect__tags{border-color:' + themeColor + '!important;'
-        +   'box-shadow:0 0 0 3px ' + themeColorLight + '!important;}'
-        + '.mp-select .multiselect__input,.mp-select .multiselect__single{border:0!important;padding:0!important;'
-        +   'margin:0!important;background:transparent!important;box-shadow:none!important;'
-        +   'font-size:0.95rem!important;color:#111827!important;line-height:1.4!important;}'
-        // The hint sits on the searchbox's own placeholder, not on
-        // .multiselect__placeholder, so sizing only the latter left it rendering a
-        // size larger than every other field's.
-        + '.mp-select .multiselect__placeholder{margin:0!important;padding:0!important;color:#9ca3af!important;'
-        +   'font-size:0.95rem!important;line-height:1.4!important;}'
-        + '.mp-select .multiselect__input::placeholder{font-size:0.95rem!important;'
-        +   'line-height:1.4!important;color:#9ca3af!important;opacity:1!important;}'
-        + '.mp-select .multiselect__single{font-size:0.95rem!important;line-height:1.4!important;}'
-        // overflow-y stays auto. Setting overflow:hidden here to clip the rounded
-        // corners also cancelled vue-multiselect's own scrolling, so a twelve-month
-        // list ran off the panel with no way to reach the bottom of it.
-        + '.mp-select .multiselect__content-wrapper{border:1px solid #e5e7eb!important;border-radius:10px!important;'
-        +   'box-shadow:0 10px 24px rgba(17,24,39,.10)!important;margin-top:4px!important;'
-        +   'max-height:190px!important;overflow-y:auto!important;overflow-x:hidden!important;'
-        +   'width:100%!important;box-sizing:border-box!important;}'
-        + '.mp-select .multiselect__option--highlight{background:' + themeColor + '!important;color:#fff!important;}'
-        + '.mp-select .multiselect__option--highlight:after{background:transparent!important;color:#fff!important;}'
-        // The logo drop zone, matched to the client-data upload box above it.
-        // border-style is called out separately: GHL draws this box dashed, and a
-        // shorthand alone has lost to it before. Border, radius and height are set
-        // inline from the client-data box's own computed style - see matchUploadBox
-        // - so the two are identical rather than merely similar.
-        + '.mp-drop{border-style:solid!important;box-sizing:border-box!important;'
-        +   'height:auto!important;padding:0!important;display:block!important;'
-        +   'position:relative!important;cursor:pointer!important;'
-        +   'transition:border-color .15s ease,background .15s ease!important;}'
-        // A grey hover, not the brand colour - the client-data box this is matching
-        // has no coloured state, and a navy edge here reads as a different control.
-        + '.mp-drop:hover{border-color:#8f8f8f!important;background:#fafbfc!important;}'
-        // Centred by taking the badge out of flow entirely. Laying the zone out as a
-        // flex row let GHL's own children take the space and pinned the badge left.
-        + '.mp-drop .mp-drop-icon{position:absolute!important;top:0!important;right:0!important;'
-        +   'bottom:0!important;left:0!important;margin:0!important;padding:0!important;'
-        +   'display:flex!important;align-items:center!important;justify-content:center!important;'
-        +   'pointer-events:none!important;}'
-        + '.mp-drop-hide{display:none!important;}'
-        // With a file chosen the badge goes and the card, moved inside, sets the height.
-        + '.mp-drop.mp-has-file{cursor:default!important;padding:10px!important;}'
-        + '.mp-drop.mp-has-file .mp-drop-icon{display:none!important;}'
-        // The label is keyboard-focusable, and GHL paints a heavy dark border on
-        // focus. Suppress that but keep a visible ring, or tabbing through the form
-        // lands somewhere with no indication.
-        + '.mp-drop:focus,.mp-drop:focus-visible{outline:none!important;}'
-        + '.mp-drop:focus-visible{box-shadow:0 0 0 3px ' + themeColorLight + '!important;}'
-        + '.mp-hide{display:none!important;}'
-        // The card keeps GHL's own layout - thumbnail, name, size, progress bar - but
-        // loses its grey fill and edge: it now sits inside the drop zone, so its own
-        // background reads as a second panel within the box.
-        + '.mp-preview{background:transparent!important;background-color:transparent!important;'
-        +   'border:0!important;box-shadow:none!important;margin:0!important;}';
-    }
-
-    // Walks up from a control looking for the element that draws the widget.
-    function closestMatching(el, re, maxHops) {
-        var node = el, hops = 0;
-        while (node && hops <= (maxHops || 5)) {
-            var cls = (node.className && node.className.baseVal !== undefined)
-                    ? node.className.baseVal : String(node.className || '');
-            if (re.test(cls)) return node;
-            node = node.parentNode; hops++;
-        }
-        return null;
-    }
-
-    // Copies the client-data box's own measurements onto the logo box. Asked to make
-    // one control look exactly like another, read the one you are matching rather
-    // than hard-coding numbers off a screenshot - #uploadBox is styled a few hundred
-    // lines above and would otherwise drift out of step with this.
-    // The month control has now been a size larger and a few pixels taller than its
-    // neighbours through three rounds of naming its parts, so stop naming parts.
-    // Read what a real field renders at and force it onto the box and onto every
-    // element inside it, whichever one happens to hold the text.
-    function matchFieldType(select) {
-        var ref = document.querySelector('input.mp-field');
-        if (!ref) return;
-        try {
-            var cs = window.getComputedStyle(ref);
-            var h = parseFloat(cs.height) || 0;
-            if (h < 20) return;                     // not laid out yet
-
-            var tags = select.querySelector('.multiselect__tags');
-            if (tags) {
-                tags.style.setProperty('min-height', Math.round(h) + 'px', 'important');
-                tags.style.setProperty('height', Math.round(h) + 'px', 'important');
-                tags.style.setProperty('padding-top', '0', 'important');
-                tags.style.setProperty('padding-bottom', '0', 'important');
-                tags.style.setProperty('padding-left', cs.paddingLeft, 'important');
-                tags.style.setProperty('padding-right', '34px', 'important');   // room for the caret
-                tags.style.setProperty('display', 'flex', 'important');
-                tags.style.setProperty('align-items', 'center', 'important');
-                tags.style.setProperty('box-sizing', 'border-box', 'important');
-            }
-            var bits = select.querySelectorAll('*');
-            for (var i = 0; i < bits.length; i++) {
-                if (typeof bits[i].className !== 'string') continue;   // leave svg alone
-                bits[i].style.setProperty('font-size', cs.fontSize, 'important');
-                bits[i].style.setProperty('line-height', cs.lineHeight, 'important');
-                bits[i].style.setProperty('font-family', cs.fontFamily, 'important');
-            }
-            // vue-multiselect gives the text a bottom margin, which is most of the
-            // extra height - the box was taller than its neighbour by about that much.
-            ['.multiselect__single', '.multiselect__placeholder', '.multiselect__input'].forEach(function(sel) {
-                var el = select.querySelector(sel);
-                if (!el) return;
-                el.style.setProperty('margin', '0', 'important');
-                el.style.setProperty('padding', '0', 'important');
-                el.style.setProperty('min-height', '0', 'important');
-            });
-        } catch (e) {}
-    }
-
-    function matchUploadBox(zone) {
-        var src = document.getElementById('uploadBox');
-        if (!src) return;
-        try {
-            var cs = window.getComputedStyle(src);
-            var h = parseFloat(cs.height) || 0;
-            if (h < 40) return;   // not laid out yet
-            zone.style.setProperty('min-height', Math.round(h) + 'px', 'important');
-            zone.style.setProperty('border-width', cs.borderTopWidth, 'important');
-            zone.style.setProperty('border-color', cs.borderTopColor, 'important');
-            if ((parseFloat(cs.borderTopLeftRadius) || 0) > 0) {
-                zone.style.setProperty('border-radius', cs.borderTopLeftRadius, 'important');
-            }
-            zone.style.setProperty('background-color', cs.backgroundColor, 'important');
-        } catch (e) {}
-    }
-
-    function styleHostForm() {
-        var tagged = { fields: 0, selects: 0, labels: 0, drop: 0, preview: 0 };
-        try {
-            reportHostDom();
-            if (!document.getElementById('mapperHostFormStyle')) {
-                var st = document.createElement('style');
-                st.id = 'mapperHostFormStyle';
-                st.textContent = hostFormStyleSheet();
-                (document.head || document.documentElement).appendChild(st);
-            }
-
-            hostFormControls().forEach(function(el) {
-                // The wrapper's class is exactly "multiselect"; its children are
-                // "multiselect__input" and "multiselect__tags", which a loose match
-                // would catch first - and the styling has to land on the wrapper.
-                var ms = closestMatching(el, /(^|\s)multiselect(\s|$)/, 4);
-                if (ms) {
-                    if (ms.className.indexOf('mp-select') === -1) { ms.className += ' mp-select'; tagged.selects++; }
-                    matchFieldType(ms);
-                } else if (el.className.indexOf('mp-field') === -1) {
-                    el.className += ' mp-field'; tagged.fields++;
-                }
-                // Label the field owns, or the nearest one above it.
-                var lbl = null;
-                try {
-                    if (el.id) lbl = document.querySelector('label[for="' + el.id.replace(/"/g, '\\"') + '"]');
-                } catch (e) {}
-                if (!lbl) {
-                    var node = (ms || el).parentNode, hops = 0;
-                    while (node && node.querySelector && hops < 3) {
-                        lbl = node.querySelector('label');
-                        if (lbl) break;
-                        node = node.parentNode; hops++;
-                    }
-                }
-                if (lbl && lbl.className.indexOf('mp-label') === -1) { lbl.className += ' mp-label'; tagged.labels++; }
-            });
-
-            // The logo uploader: style its drop zone like the client-data box and
-            // swap GHL's icon for the mapper's, leaving the preview card - the part
-            // that shows the logo thumbnail - in place.
-            logoCandidateInputs().forEach(function(input) {
-                if (inputHints(input).indexOf('logo') === -1) return;
-
-                // The field's own wrapper: the nearest ancestor whose text names it.
-                // Everything below is scoped to this, so nothing here can reach a
-                // neighbouring field.
-                var field = null, node = input.parentNode, hops = 0;
-                while (node && node.nodeType === 1 && hops < 8) {
-                    var t = (node.textContent || '').replace(/\s+/g, ' ').trim();
-                    if (t.toLowerCase().indexOf('logo') !== -1 && t.length <= 400) { field = node; break; }
-                    node = node.parentNode; hops++;
-                }
-                if (!field) return;
-
-                // Once a zone has been chosen, keep it. The search below identifies the
-                // box by its dashed border, and .mp-drop replaces that with a solid
-                // one - so on the next pass the search missed the label it had just
-                // styled, fell through to the class-name fallback and tagged
-                // div.file-upload, an ancestor. That second box was the stray border
-                // around the whole field.
-                var zone = field.querySelector('.mp-drop');
-                if (!zone) {
-                    // GHL draws the drop area dashed and draws nothing else that way.
-                    // It is a descendant of the field, not an ancestor of the input -
-                    // walking up from the input lands on the wrapper holding the title
-                    // as well, which is how the label ended up inside the box.
-                    var all = field.querySelectorAll('*');
-                    for (var z = 0; z < all.length; z++) {
-                        try {
-                            var zs = window.getComputedStyle(all[z]);
-                            if (zs.borderTopStyle === 'dashed' && (parseFloat(zs.borderTopWidth) || 0) > 0) { zone = all[z]; break; }
-                        } catch (e) {}
-                    }
-                    if (!zone) zone = closestMatching(input, /drop|upload|dropzone/i, 4);
-                }
-                if (!zone) return;
-
-                // Tagging and the icon happen once; the chosen/not-chosen state has to
-                // be re-evaluated on every pass. Returning early when the class was
-                // already present meant the state below never ran after the first
-                // paint, so the box stayed put once a file was picked.
-                if (String(zone.className).indexOf('mp-drop') === -1) {
-                    console.log('Mapper: logo drop zone →', zone.tagName.toLowerCase()
-                              + '.' + (String(zone.className).trim().split(/\s+/).join('.') || '(no class)'));
-                    zone.className += ' mp-drop';
-                    tagged.drop++;
-                }
-
-                // The card GHL builds for the chosen file - the one holding the
-                // thumbnail. Identified by the image rather than by class, and kept
-                // out of everything that follows.
-                // The whole card, not just the thumbnail's own container: it has to be
-                // identified before the icon sweep below, because once the card has
-                // been moved inside the zone the sweep would otherwise hide its delete
-                // button along with GHL's decoration. The climb stops at the last
-                // ancestor that is still purely the card, and gives the same answer
-                // whether the card is still a sibling of the box or already inside it.
-                var thumb = field.querySelector('img');
-                // GHL names the card section.upload-card, which beats inferring it from
-                // the thumbnail: the card is built progressively during the upload, so
-                // a pass that runs mid-render can latch onto a part of it and - being
-                // cached from then on - never correct itself.
-                var preview = field.querySelector('[class*="upload-card"]');
-                if (preview) {
-                    var stale = field.querySelectorAll('.mp-preview');
-                    for (var s = 0; s < stale.length; s++) {
-                        if (stale[s] !== preview) stale[s].classList.remove('mp-preview');
-                    }
-                } else {
-                    preview = field.querySelector('.mp-preview');
-                }
-                if (!preview && thumb) {
-                    // Climb to the card, and no further. Two stop conditions, because
-                    // GHL renders the card beside the box in some states and inside it
-                    // in others: stop at the block sitting next to the box, or - once
-                    // already inside it - as soon as the node has the card's own
-                    // several children. Over-climbing swallowed the "1 file selected"
-                    // counter, which then escaped being hidden.
-                    preview = thumb;
-                    while (preview.parentNode && preview.parentNode !== field
-                           && !preview.parentNode.contains(zone)) {
-                        if (zone.contains(preview) && preview.children && preview.children.length > 1) break;
-                        preview = preview.parentNode;
-                    }
-                    if (preview === zone || preview.contains(zone)) preview = thumb.parentNode;
-                }
-                if (preview && preview !== zone && String(preview.className).indexOf('mp-preview') === -1) {
-                    preview.className += ' mp-preview'; tagged.preview++;
-                }
-
-                // Skip the badge's own svg. This loop runs on every pass, so once the
-                // badge had been inserted the next pass hid it along with GHL's and
-                // left an empty box.
-                var svgs = zone.querySelectorAll('svg');
-                for (var i = 0; i < svgs.length; i++) {
-                    // Skip the badge's own svg: this loop runs on every pass, so once
-                    // the badge was inserted the next pass hid it along with GHL's and
-                    // left an empty box.
-                    if (svgs[i].closest && svgs[i].closest('.mp-drop-icon')) continue;
-                    // And skip the card's, which sits inside the zone too - its delete
-                    // button is the only way to swap the logo out.
-                    if (preview && preview.contains(svgs[i])) continue;
-                    if (svgs[i].closest && svgs[i].closest('[class*="placeholder"]')) continue;
-                    svgs[i].classList.add('mp-drop-hide');
-                }
-                if (!zone.querySelector('.mp-drop-icon')) {
-                    var icon = document.createElement('div');
-                    icon.className = 'mp-drop-icon';
-                    icon.innerHTML = uploadIconSvg;
-                    zone.insertBefore(icon, zone.firstChild);
-                }
-
-                matchUploadBox(zone);
-
-                // GHL renders the chosen file's card as a sibling below the box. Move
-                // it inside, so the logo sits in its own field the way the client-data
-                // file does rather than floating underneath it.
-                if (preview && !zone.contains(preview) && !preview.contains(zone)) zone.appendChild(preview);
-                zone.classList.toggle('mp-has-file', !!thumb);
-
-                // GHL's "File selected / 1 file selected" counter goes regardless of
-                // state - it restates what the card below it already shows, and the
-                // card shows it better.
-                var kids = field.querySelectorAll('div,span,p');
-                for (var k = 0; k < kids.length; k++) {
-                    var el = kids[k];
-                    if (el === preview || (preview && preview.contains(el))) continue;
-                    var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
-                    if (/file selected/i.test(txt) && txt.length <= 60) el.classList.add('mp-hide');
-                }
-            });
-
-            // The thumbnail card is tagged inside the logo block above, by the image it
-            // contains. A page-wide sweep for "preview"/"uploaded" class names used to
-            // do it here and matched one of GHL's outer wrappers, which is where the
-            // second border around the whole field came from.
-        } catch (e) {
-            console.warn('Mapper: could not restyle the brand form —', e && e.message);
-        }
-        // Only when something was tagged, so the DOM-change re-runs stay quiet.
-        if (tagged.fields || tagged.selects || tagged.labels || tagged.drop || tagged.preview) {
-            console.log('Mapper: restyled ' + tagged.fields + ' field(s), ' + tagged.selects + ' dropdown(s), '
-                      + tagged.labels + ' label(s), ' + tagged.drop + ' drop zone(s), '
-                      + tagged.preview + ' preview(s)');
-            // Name every element carrying a class of ours. A border appearing where
-            // none was asked for is otherwise a guessing game about which rule found
-            // which wrapper.
-            try {
-                var mine = document.querySelectorAll('.mp-field,.mp-select,.mp-drop,.mp-preview');
-                for (var m = 0; m < mine.length; m++) {
-                    var t = mine[m];
-                    console.log('  tagged →', t.tagName.toLowerCase()
-                        + '.' + String(t.className).trim().split(/\s+/).join('.')
-                        + '  [' + Math.round(t.getBoundingClientRect().width) + '×'
-                        + Math.round(t.getBoundingClientRect().height) + ']');
-                }
-            } catch (e) {}
-        }
-        return tagged;
-    }
 
     window.addEventListener('message', function(event) {
         var data = event.data;
         if (data && data.type === 'setIndustryType' && data.value) {
             console.log('Received industry via postMessage:', data.value);
             selectedIndustryType = data.value;
-            setIndustryTypeField(data.value);
         }
         // Respond with mappingBoxLabel position for outer page scroll
         if (data && data.type === 'getMapperBoxTop') {
@@ -1673,7 +859,6 @@
             var detected = industryParamMap[industryParam];
             selectedIndustryType = industryDisplayLabels[detected] || null;
             console.log('✓ Industry from URL on init:', detected, '(' + selectedIndustryType + ')');
-            if (selectedIndustryType) setIndustryTypeField(selectedIndustryType);
             if (!isSimpleFlow) setSpotlightConfig(detected);
         }
 
@@ -1682,66 +867,6 @@
             btn.parentElement.style.display = 'none';
         });
 
-        // The horizontal scrollbar turns up at some point during a large upload and
-        // guessing at the cause has been wrong once already. Watch for it for the
-        // first minute and report the moment the picture changes.
-        (function watchOverflow() {
-            var checks = 0;
-            var t = setInterval(function() {
-                reportOverflow('watch +' + (++checks) + 's');
-                if (checks >= 60) clearInterval(t);
-            }, 1000);
-            window.addEventListener('resize', function() { reportOverflow('resize'); });
-        })();
-
-        // Restyle the brand form. GHL renders it asynchronously and adds the logo
-        // preview card only once a file is chosen, so re-run on a few timers and
-        // on DOM changes rather than once at load. Tagging is idempotent - an
-        // element already carrying its class is skipped.
-        (function styleHostFormWhenReady() {
-            styleHostForm();
-            var tries = 0;
-            var timer = setInterval(function() {
-                styleHostForm();
-                if (++tries >= 8) clearInterval(timer);
-            }, 600);
-            if (window.MutationObserver) {
-                var pending = null;
-                new MutationObserver(function() {
-                    if (pending) return;
-                    pending = setTimeout(function() { pending = null; styleHostForm(); }, 150);
-                }).observe(document.body, { childList: true, subtree: true });
-            }
-        })();
-
-        // Hide GHL's Client Data File upload field and submit button via JS
-        (function hideGHLElements() {
-            var selectors = [
-                '#el_5GIq2FyRJrWJv32C9avI_btJHfCz265PqHT9D7m9S_13',
-                '#el_5GIq2FyRJrWJv32C9avI_button_12'
-            ];
-            var allFound = true;
-            selectors.forEach(function(sel) {
-                var el = document.querySelector(sel);
-                if (el) { el.style.display = 'none'; }
-                else { allFound = false; }
-            });
-            // Also hide by name attribute as fallback
-            var fileInputs = document.querySelectorAll('input[type="file"]');
-            fileInputs.forEach(function(input) {
-                if (input.name && input.name.indexOf('Client Data File') !== -1) {
-                    var wrapper = input.closest('.file-upload') || input.closest('.form-field-wrapper');
-                    if (wrapper) wrapper.style.display = 'none';
-                }
-            });
-            var submitBtn = document.querySelector('#_builder-form button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.style.display = 'none';
-                var wrapper = submitBtn.closest('.form-field-wrapper');
-                if (wrapper) wrapper.style.display = 'none';
-            }
-            if (!allFound) setTimeout(hideGHLElements, 500);
-        })();
 
         // Block native form submission if no file has been uploaded and processed
         waitForElement('form', function(form) {
@@ -1759,10 +884,11 @@
 
         // uploadBox pre-styled in HTML - just attach click listener
         waitForElement('#uploadBox', function(el) {
+            renderClientPanel();
             el.style.border = '1px solid #ACACACFF';
             el.style.borderRadius = '8px';
             el.style.minHeight = '74px';
-            // Remove GHL's default icon elements but keep any <input> elements
+            // Remove the placeholder icon the page ships, keep any <input> elements
             var kids = Array.prototype.slice.call(el.children);
             for (var k = 0; k < kids.length; k++) { if (kids[k].tagName !== 'INPUT') el.removeChild(kids[k]); }
             // Insert our SVG icon before any remaining inputs
@@ -1866,7 +992,7 @@
         waitForElement('#startGiftTypeMappingBtn', function(el) { el.addEventListener('click', startGiftTypeMapping); });
         waitForElement('#categoriesList', function(el) { el.addEventListener('click', function(e) { if (e.target.tagName === 'BUTTON') removeCategory(parseInt(e.target.getAttribute('data-index'))); }); });
 
-        // Wrap mapping sections in a GHL-style box with label
+        // Wrap mapping sections in a bordered box with a label
         waitForElement('#categorySetup', function(catSetup) {
             var parent = catSetup.parentNode;
             // Create label
@@ -1975,43 +1101,7 @@
                     + '<div id="allDoneError" style="display:none;margin-top:14px;padding:10px 14px;'
                     +   'background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#b91c1c;'
                     +   'font-size:0.87rem;font-weight:500;text-align:left;"></div>'
-                    // Never shown. These inputs exist only as the place the brand form's
-                    // values are written to, so the submit path keeps reading one set of
-                    // fields. None of them carries a default: a hidden field with a value
-                    // in it would submit that value silently when the brand form left the
-                    // real one blank.
-                    + '<div id="allDoneFields" style="display:grid;gap:12px;margin-top:16px;">'
-                    +   '<div>'
-                    +     '<label style="' + _lbl + '">Client / Organization Name ' + _req + '</label>'
-                    +     '<input id="mapper-client-name" type="text" placeholder="e.g. Smith Animal Shelter" style="' + _inp + '">'
-                    +   '</div>'
-                    +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
-                    +     '<div>'
-                    +       '<label style="' + _lbl + '">Contact Name ' + _req + '</label>'
-                    +       '<input id="mapper-contact-name" type="text" placeholder="Jane Smith" style="' + _inp + '">'
-                    +     '</div>'
-                    +     '<div>'
-                    +       '<label style="' + _lbl + '">Email ' + _req + '</label>'
-                    +       '<input id="mapper-email" type="email" placeholder="jane@example.org" style="' + _inp + '">'
-                    +     '</div>'
-                    +   '</div>'
-                    +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
-                    +     '<div>'
-                    +       '<label style="' + _lbl + '">Fiscal Year Start Month ' + _req + '</label>'
-                    +       '<select id="mapper-fy-start-month" style="' + _inp + 'background:#fff;cursor:pointer;">'
-                    +         '<option value="">Select month...</option>' + _monthOpts
-                    +       '</select>'
-                    +     '</div>'
-                    +     '<div>'
-                    +       '<label style="' + _lbl + '">Major Giving Threshold ' + _req + '</label>'
-                    +       '<input id="mapper-major-giving-threshold" type="number" min="1" placeholder="10000" style="' + _inp + '">'
-                    +     '</div>'
-                    +   '</div>'
-                    +   '<div>'
-                    +     '<label style="' + _lbl + '">Number of Board Members</label>'
-                    +     '<input id="mapper-board-members" type="number" min="0" placeholder="Optional" style="' + _inp + 'width:auto;min-width:160px;">'
-                    +   '</div>'
-                    + '</div>';
+                    ;
                 giftTypeSec.appendChild(allDoneCard);
             }
         });
@@ -2020,7 +1110,9 @@
             btn.addEventListener('click', function() {
                 // Validate submission fields
                 var clientName  = (document.getElementById('mapper-client-name')             || {}).value || '';
-                var contactName = (document.getElementById('mapper-contact-name')            || {}).value || '';
+                var firstName   = (document.getElementById('mapper-first-name')              || {}).value || '';
+                var lastName    = (document.getElementById('mapper-last-name')               || {}).value || '';
+                var contactName = (firstName.trim() + ' ' + lastName.trim()).trim();
                 var email       = (document.getElementById('mapper-email')                   || {}).value || '';
                 var fyMonth     = (document.getElementById('mapper-fy-start-month')          || {}).value || '';
                 var threshRaw   = (document.getElementById('mapper-major-giving-threshold')  || {}).value || '';
@@ -2032,13 +1124,13 @@
                 // up there rather than asking for it again down here.
                 var missing = [];
                 if (!clientName.trim())  missing.push('Client Name');
-                if (!contactName.trim()) missing.push('First and Last Name');
+                if (!firstName.trim() || !lastName.trim()) missing.push('First and Last Name');
                 if (!email.trim() || email.indexOf('@') < 0) missing.push('Email');
                 if (!fyMonth)            missing.push('Fiscal Year Start Month');
                 if (isNaN(threshold) || threshold <= 0) missing.push('Major Giving Threshold');
                 if (missing.length) {
                     showAllDoneError('Almost there — please complete ' + listToSentence(missing)
-                        + ' in the form above, then submit again.');
+                        + ' at the top of this page, then submit again.');
                     return;
                 }
                 if (!isEmailDomainAllowed(email)) { showAllDoneError(emailGateMessage()); return; }
@@ -2317,7 +1409,7 @@
         var file = e.target.files[0];
         if (!file) return;
         var detected = detectIndustry();
-        if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) { selectedIndustryType = lbl; setIndustryTypeField(lbl); } }
+        if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) selectedIndustryType = lbl; }
 
         // Show loading state
         var uploadBox = document.getElementById('uploadBox');
@@ -2383,7 +1475,6 @@
                     if (valErrors.length > 0) { showUploadValidationError(valErrors); return false; }
                 }],
                 ['Preparing Your Mapping', function() {
-                    setTimeout(function() { reportOverflow('after parse'); }, 400);
 
                     var uc = {};
                     for (var j = 0; j < constJson.length; j++) { var ct = (constJson[j]['Constituent Type'] || '').toString().trim(); if (ct) uc[ct] = true; }
@@ -2441,7 +1532,7 @@
                     if (giftTypeMappingSkipped) {
                         var gtBtn = document.getElementById('startGiftTypeMappingBtn'); if (gtBtn) gtBtn.textContent = 'Submit ➡';
                     }
-                    // Update upload box to show file info like GHL style
+                    // Update upload box to show the chosen file
                     var uploadBox = document.getElementById('uploadBox');
                     uploadBox.innerHTML = uploadIconSvg
                         + '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 14px 10px;border-top:1px solid #eee;margin-top:8px;box-sizing:border-box;">'
@@ -2773,6 +1864,74 @@
         }
     }
 
+    // The client details, rendered and owned by mapper.js. They used to be GHL form
+    // fields that this file read, restyled and fought with; nothing on the page is a
+    // form control any more, which is what removes every class of bug that came from
+    // not owning the markup.
+    //
+    // Placement: the page marks the spot with <div id="mapperClientDetails"></div>.
+    // Without it the panel goes in above the upload box, which is where it belongs
+    // anyway - details first, then the file.
+    function renderClientPanel() {
+        if (document.getElementById('mapper-client-name')) return;   // already built
+        var slot = document.getElementById('mapperClientDetails');
+        var uploadBox = document.getElementById('uploadBox');
+        if (!slot && !uploadBox) return;
+
+        var inp = 'width:100%;padding:11px 14px;border:1.5px solid #d1d5db;border-radius:10px;'
+                + 'font-size:0.95rem;line-height:1.4;color:#111827;background:#fff;'
+                + 'box-sizing:border-box;outline:none;font-family:inherit;';
+        var lbl = 'display:block;font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:6px;';
+        var req = '<span style="color:#ef4444;">*</span>';
+        var months = ['January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
+        var monthOpts = months.map(function(m) { return '<option value="' + m + '">' + m + '</option>'; }).join('');
+
+        var panel = document.createElement('div');
+        panel.id = 'mapperClientPanel';
+        panel.style.cssText = 'max-width:760px;margin:0 auto 26px;display:grid;gap:14px;text-align:left;';
+        panel.innerHTML = ''
+            + '<div style="font-size:0.74rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;'
+            +   'color:' + themeColor + ';">Client Information</div>'
+            + '<div><label style="' + lbl + '">Client Name ' + req + '</label>'
+            +   '<input id="mapper-client-name" type="text" placeholder="e.g. Easttown Library" style="' + inp + '"></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+            +   '<div><label style="' + lbl + '">First Name ' + req + '</label>'
+            +     '<input id="mapper-first-name" type="text" placeholder="Natalie" style="' + inp + '"></div>'
+            +   '<div><label style="' + lbl + '">Last Name ' + req + '</label>'
+            +     '<input id="mapper-last-name" type="text" placeholder="Isberg" style="' + inp + '"></div>'
+            + '</div>'
+            + '<div><label style="' + lbl + '">Email ' + req + '</label>'
+            +   '<input id="mapper-email" type="email" placeholder="you@organization.org" style="' + inp + '"></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+            +   '<div><label style="' + lbl + '"># of Board Members</label>'
+            +     '<input id="mapper-board-members" type="number" min="0" placeholder="Optional" style="' + inp + '"></div>'
+            +   '<div><label style="' + lbl + '">Fiscal Year Start Month ' + req + '</label>'
+            +     '<select id="mapper-fy-start-month" style="' + inp + 'cursor:pointer;">'
+            +       '<option value="">Select month…</option>' + monthOpts + '</select></div>'
+            + '</div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+            +   '<div><label style="' + lbl + '">Major Giving Threshold ' + req + '</label>'
+            +     '<input id="mapper-major-giving-threshold" type="number" min="1" placeholder="10000" style="' + inp + '"></div>'
+            +   '<div><label style="' + lbl + '">Organization Logo</label>'
+            +     '<input id="mapper-logo" type="file" accept="image/png,image/jpeg,image/svg+xml" style="' + inp
+            +       'padding:9px 12px;cursor:pointer;"></div>'
+            + '</div>';
+
+        if (slot) slot.appendChild(panel);
+        else uploadBox.parentNode.insertBefore(panel, uploadBox);
+
+        // A themed focus ring, the one thing inline styles cannot express.
+        if (!document.getElementById('mapper-panel-style')) {
+            var st = document.createElement('style');
+            st.id = 'mapper-panel-style';
+            st.textContent = '#mapperClientPanel input:focus,#mapperClientPanel select:focus{'
+                + 'border-color:' + themeColor + ';box-shadow:0 0 0 3px ' + themeColorLight + ';}'
+                + '#mapperClientPanel input::placeholder{color:#9ca3af;}';
+            document.head.appendChild(st);
+        }
+    }
+
     function showAllDoneCard() {
         ['mappingSection','spotlightMappingSection','pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection','constituentMappingSection'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
         var gts = document.getElementById('giftTypeMappingSection'); if (gts) gts.style.display = 'block';
@@ -2782,10 +1941,6 @@
         var gtContainer = document.getElementById('giftTypeMappingContainer'); if (gtContainer) gtContainer.innerHTML = '';
         var adc = document.getElementById('allDoneCard');
         if (adc) {
-            // Read the brand form now rather than when the card was built - the
-            // client fills it in before uploading, so the values are only
-            // guaranteed to be there by the time the card is about to be shown.
-            var remaining = prefillFromHostForm();
             var sum = document.getElementById('allDoneSummary');
             if (sum) {
                 // One line of context, so the last screen before an irreversible step
@@ -3010,35 +2165,17 @@
                 var _ucConsRows = cd2.filter(function(r) { return _ucGiftIds[String(r['Constituent ID'] || '').trim()]; }).map(function(r) {
                     return [r['Constituent ID'], r['Constituent Name'] || r['Name'] || '', r['Constituent Type'] || '', r['First Gift Date'] || '', r['Board Member?'] || r['Board Member'] || '', r['Street Address'] || r['Street'] || '', r['City'] || '', r['State'] || '', r['Zip Code'] || r['Zip'] || ''];
                 });
-                // Read FY Start Month — mapper's own select takes priority, fall back to GHL multiselect
-                var _ucFyMonth = null;
-                var _ucMapperFySel = document.getElementById('mapper-fy-start-month');
-                if (_ucMapperFySel && _ucMapperFySel.value) {
-                    _ucFyMonth = _ucMapperFySel.value;
-                } else {
-                    var _ucFyEl = document.querySelector('[name="EU5w6k8DZPkWhY1mYiGh"]');
-                    if (_ucFyEl) {
-                        if (_ucFyEl.classList && _ucFyEl.classList.contains('multiselect__input')) {
-                            var _ucFyCont = _ucFyEl.closest('.multiselect') || _ucFyEl.parentElement;
-                            var _ucFySpan = _ucFyCont ? _ucFyCont.querySelector('.multiselect__single') : null;
-                            if (_ucFySpan && _ucFySpan.textContent.trim()) _ucFyMonth = _ucFySpan.textContent.trim();
-                        } else if (_ucFyEl.tagName === 'INPUT' || _ucFyEl.tagName === 'SELECT') {
-                            _ucFyMonth = _ucFyEl.value || null;
-                        } else {
-                            var _ucFySpan2 = _ucFyEl.querySelector('.multiselect__single');
-                            if (_ucFySpan2 && _ucFySpan2.textContent.trim()) _ucFyMonth = _ucFySpan2.textContent.trim();
-                        }
-                    }
-                }
-                // Read Major Giving Threshold — mapper's own input takes priority, fall back to GHL input
-                var _ucMapperThreshEl = document.getElementById('mapper-major-giving-threshold');
-                var _ucThreshold = _ucMapperThreshEl ? parseFloat(_ucMapperThreshEl.value) : NaN;
-                if (isNaN(_ucThreshold) || _ucThreshold <= 0) {
-                    var _ucThreshEl = document.querySelector('[name="f7xBqOQM0lEntVHM9FbQ"]');
-                    _ucThreshold = _ucThreshEl ? parseFloat(_ucThreshEl.value) : NaN;
-                    if (isNaN(_ucThreshold) || _ucThreshold <= 0) _ucThreshold = 10000;
-                }
-                if (_ucFyMonth) {
+                // Both come from the panel this file renders. The fallbacks that used to
+                // read GHL's multiselect and its threshold input are gone, along with
+                // the hard-coded field GUIDs they searched for - and so is the silent
+                // default of 10,000, which could substitute a made-up threshold for the
+                // client's real one without anything being said.
+                var _ucFyEl = document.getElementById('mapper-fy-start-month');
+                var _ucFyMonth = (_ucFyEl && _ucFyEl.value) ? _ucFyEl.value : null;
+                var _ucThreshEl = document.getElementById('mapper-major-giving-threshold');
+                var _ucThreshold = _ucThreshEl ? parseFloat(_ucThreshEl.value) : NaN;
+                if (isNaN(_ucThreshold) || _ucThreshold <= 0) _ucThreshold = NaN;
+                if (_ucFyMonth && !isNaN(_ucThreshold)) {
                     var _ucResult = computeAnalytics(_ucGiftRows, _ucConsRows, { fyStartMonth: _ucFyMonth, threshold: _ucThreshold, donorJourney: !isSW });
                     _ucGiftSheet = _ucAoaSheet(_ucResult.gift.columns, _ucResult.gift.rows);
                     _ucConstSheet = _ucAoaSheet(_ucResult.constituent.columns, _ucResult.constituent.rows);
@@ -3209,9 +2346,6 @@
         // "Individuals" were each written out ~40,700 times.
         return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true, bookSST: true })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     }
-
-    // Stub kept for backward compatibility — direct PA submit mode no longer uses GHL file input.
-    window.attachToGHLForm = function() { return true; };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
