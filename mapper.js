@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 12:28 UTC';
-    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b26';
+    var MAPPER_BUILD   = '2026-09-23 12:52 UTC';
+    var MAPPER_VERSION = '9.23.2026 FEATURE TEST b27';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -46,6 +46,14 @@
     console.log('Mapper.js: Theme =', isSW ? 'SW (#00386c)' : isHF ? 'HF (#56153C)' : isAlford ? 'Alford (#2c5f5d)' : 'Databasey (#4F788D)');
     // Logged before anything else can fail, so a build that breaks on load still
     // says which build it is.
+    var _frameTag = (function() {
+        try {
+            var where = window.top === window ? 'top' : 'frame';
+            return where + ' ' + (location.pathname || '/') + (location.search || '');
+        } catch (e) { return 'frame ?'; }
+    })();
+    console.log('mapper.js: running in [' + _frameTag + ']'
+        + (window.top === window ? '' : ' — this page is framed'));
     console.log('%cmapper.js ' + MAPPER_VERSION + ' — built ' + MAPPER_BUILD,
                 'background:' + themeColor + ';color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;');
 
@@ -893,9 +901,24 @@
             var sig = hits.map(function(h) {
                 return (h.el.tagName + '.' + h.el.className + '@' + Math.round(h.r.right));
             }).join('|');
+            var scrolling = [];
+            docs.forEach(function(dd, di) {
+                var de = dd.documentElement;
+                if (de.scrollWidth > de.clientWidth + 1) {
+                    scrolling.push('doc' + di + ' scrolls ' + de.scrollWidth + ' in ' + de.clientWidth
+                        + 'px (' + (de.scrollWidth - de.clientWidth) + 'px over)');
+                }
+            });
+            if (scrolling.length) sig += '||' + scrolling.join(';');
             if (sig === _lastOverflow) return;
             _lastOverflow = sig;
-            if (!hits.length) { console.log('Mapper: nothing overflows any more (%s)', tag); return; }
+            if (scrolling.length) console.warn('Mapper: horizontal scroll — ' + scrolling.join('  |  ')
+                + '  [' + _frameTag + ', ' + tag + ']');
+            if (!hits.length) {
+                if (!scrolling.length) console.log('Mapper: nothing overflows any more (%s)', tag);
+                else console.warn('Mapper: …but no single element overhangs — margin, transform or the frame itself');
+                return;
+            }
             console.warn('Mapper: %d element(s) wider than the page (%dpx, %d document(s)) at "%s"',
                          hits.length, limit, docs.length, tag);
             hits.slice(0, 6).forEach(function(h) {
