@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 21:20 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s3';
+    var MAPPER_BUILD   = '2026-09-23 22:04 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s4';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -900,18 +900,8 @@
         // uploadBox pre-styled in HTML - just attach click listener
         waitForElement('#uploadBox', function(el) {
             renderClientPanel();
-            el.style.border = '1px solid #ACACACFF';
-            el.style.borderRadius = '8px';
-            el.style.minHeight = '74px';
-            // Remove the placeholder icon the page ships, keep any <input> elements
-            var kids = Array.prototype.slice.call(el.children);
-            for (var k = 0; k < kids.length; k++) { if (kids[k].tagName !== 'INPUT') el.removeChild(kids[k]); }
-            // Insert our SVG icon before any remaining inputs
-            var iconWrap = document.createElement('div');
-            iconWrap.id = 'uploadIconWrap';
-            iconWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:14px 0;pointer-events:none;';
-            iconWrap.innerHTML = uploadIconSvg;
-            el.insertBefore(iconWrap, el.firstChild);
+            el.style.cssText += ';' + UPLOAD_BOX_CSS;
+            dressUploadBox(el);
             el.addEventListener('click', function() { document.getElementById('fileInput').click(); });
         });
 
@@ -1139,7 +1129,6 @@
                 var missing = [];
                 if (!clientName.trim())  missing.push('Client Name');
                 if (!firstName.trim() || !lastName.trim()) missing.push('First and Last Name');
-                if (!boardMembers.toString().trim()) missing.push('# of Board Members');
                 if (!email.trim() || email.indexOf('@') < 0) missing.push('Email');
                 if (!fyMonth)            missing.push('Fiscal Year Start Month');
                 if (isNaN(threshold) || threshold <= 0) missing.push('Major Giving Threshold');
@@ -2022,11 +2011,6 @@
     }
 
     function shellMarkup() {
-        var uploadIcon = '<svg width="1em" height="2em" viewBox="0 0 16 16" class="bi bi-upload" fill="currentColor" '
-            + 'xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000;">'
-            + '<path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path>'
-            + '<path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
-
         return ''
         + '<div id="mapperClientDetails"></div>'
 
@@ -2034,10 +2018,7 @@
         +   '<h2 id="uploadTitle" style="margin-bottom:10px;margin-top:0;color:#2c3345;text-align:left;'
         +     'font-family:Inter,sans-serif;font-size:14px;font-weight:500;">Client Data File Upload</h2>'
         +   '<input type="file" id="fileInput" accept=".xlsx,.xls">'
-        +   '<div id="uploadBox" style="border:1px solid #ccc;border-radius:4px;padding:20px;text-align:center;'
-        +     'cursor:pointer;background:#fff;transition:all .2s;display:flex;flex-direction:column;'
-        +     'align-items:center;justify-content:center;min-height:98px;width:100%;box-sizing:border-box;">'
-        +     uploadIcon + '</div>'
+        +   '<div id="uploadBox" style="' + UPLOAD_BOX_CSS + '"></div>'
         +   '<div class="file-info" id="fileInfo"></div>'
         +   '<div class="upload-note" id="uploadNote">Note: the Client Data file <strong>must</strong> use the '
         +     'designated template.<br>Click the link at the top of the page to download the template.</div>'
@@ -2141,6 +2122,26 @@
         return true;
     }
 
+    // Both upload boxes are ours, so they come from one definition rather than two
+    // that drift. This is the client-data box's finished appearance - the styles
+    // init() applies to it and the badge icon it ends up with.
+    var UPLOAD_BOX_CSS = 'border:1px solid #ACACACFF;border-radius:8px;min-height:74px;'
+        + 'background:#fff;cursor:pointer;text-align:center;display:flex;flex-direction:column;'
+        + 'align-items:center;justify-content:center;width:100%;box-sizing:border-box;'
+        + 'transition:border-color .15s ease,background .15s ease;';
+
+    function dressUploadBox(el) {
+        if (!el || el.querySelector('.mp-upload-icon')) return;
+        var kids = Array.prototype.slice.call(el.children);
+        for (var k = 0; k < kids.length; k++) if (kids[k].tagName !== 'INPUT') el.removeChild(kids[k]);
+        var wrap = document.createElement('div');
+        wrap.className = 'mp-upload-icon';
+        wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;'
+            + 'padding:14px 0;pointer-events:none;';
+        wrap.innerHTML = uploadIconSvg;
+        el.insertBefore(wrap, el.firstChild);
+    }
+
     // The client details, rendered and owned by mapper.js. They used to be GHL form
     // fields that this file read, restyled and fought with; nothing on the page is a
     // form control we do not own any more.
@@ -2155,7 +2156,7 @@
     function clientPanelStyles() {
         return [
         '#mapperClientPanel{max-width:760px;margin:0 auto 26px;text-align:left;}',
-        '#mapperClientPanel .mp-sec{font-size:15px;font-weight:500;color:#2c3345;margin:28px 0 14px;}',
+        '#mapperClientPanel .mp-sec{font-size:17px;font-weight:600;color:#2c3345;margin:30px 0 16px;}',
         '#mapperClientPanel .mp-sec:first-child{margin-top:0;}',
         '#mapperClientPanel .mp-f{margin-bottom:16px;min-width:0;}',
         '#mapperClientPanel label{display:block;font-size:13.5px;font-weight:700;color:#2c3345;margin-bottom:6px;}',
@@ -2201,11 +2202,14 @@
         // The logo box is the client-data upload box: same border, radius, height
         // and icon, so the two read as one pair of controls.
         '#mapperClientPanel #mapper-logo{display:none;}',
-        '#mapperClientPanel .mp-logo-box{border:1px solid #ccc;border-radius:4px;padding:20px;',
-        '  text-align:center;cursor:pointer;background:#fff;transition:all .2s;display:flex;',
-        '  flex-direction:column;align-items:center;justify-content:center;min-height:98px;',
-        '  width:100%;box-sizing:border-box;}',
+        '#mapperClientPanel .mp-logo-box{' + UPLOAD_BOX_CSS + '}',
         '#mapperClientPanel .mp-logo-box:hover{border-color:#8f8f8f;background:#fafbfc;}',
+        // The client-data box sits in this section too, so its own heading becomes a
+        // field label like the logo's and the two read as one pair.
+        '#mapperClientPanel #uploadSection{margin:0;}',
+        '#mapperClientPanel #uploadTitle{font-size:13.5px!important;font-weight:700!important;',
+        '  color:#2c3345!important;margin:0 0 6px!important;font-family:inherit!important;}',
+        '#mapperClientPanel .upload-note{margin-top:10px;}',
         '#mapperClientPanel .mp-logo-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;}',
         '#mapperClientPanel .mp-logo-card img{width:56px;height:56px;object-fit:contain;flex:none;border-radius:4px;}',
         '#mapperClientPanel .mp-logo-meta{min-width:0;flex:1;}',
@@ -2230,10 +2234,6 @@
             + '<path d="m2 7 10 6 10-6"></path></svg>';
         var caret = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
             + 'stroke-width="2.4" aria-hidden="true"><path d="m5 8 7 8 7-8"></path></svg>';
-        var uploadIcon = '<svg width="1em" height="2em" viewBox="0 0 16 16" fill="currentColor" '
-            + 'xmlns="http://www.w3.org/2000/svg" style="display:block;margin:5px auto;width:30px;color:#000;">'
-            + '<path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8zM5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"></path>'
-            + '<path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"></path></svg>';
         var months = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 
@@ -2255,7 +2255,7 @@
             + '<div class="mp-f"><label for="mapper-client-name">Client Name' + req + '</label>'
             +   '<input id="mapper-client-name" type="text" placeholder="Enter Client Name"></div>'
             + '<div class="mp-row2">'
-            +   '<div class="mp-f"><label for="mapper-board-members"># of Board Members' + req + '</label>'
+            +   '<div class="mp-f"><label for="mapper-board-members"># of Board Members</label>'
             +     '<input id="mapper-board-members" type="number" min="0" placeholder="Enter # of Board Members"></div>'
             +   '<div class="mp-f"><label id="mapper-fy-label">Fiscal Year Start Month' + req + '</label>'
             +     '<div class="mp-holder">'
@@ -2280,10 +2280,10 @@
             +       ' placeholder="Enter Major Giving Threshold"></div></div>'
             +   '<div></div>'
             + '</div>'
+            + '<div class="mp-sec">File Uploads</div>'
             + '<div class="mp-f"><label for="mapper-logo">Organization Logo File</label>'
             +   '<input id="mapper-logo" type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml">'
-            +   '<div class="mp-logo-box" id="mapper-logo-box" role="button" tabindex="0">'
-            +     uploadIcon + '</div></div>';
+            +   '<div class="mp-logo-box" id="mapper-logo-box" role="button" tabindex="0"></div></div>';
 
         if (slot) slot.appendChild(panel);
         else uploadBox.parentNode.insertBefore(panel, uploadBox);
@@ -2294,8 +2294,13 @@
             st.textContent = clientPanelStyles();
             (document.head || document.documentElement).appendChild(st);
         }
+        // The client-data upload belongs in this section beside the logo. It is part
+        // of the shell rather than the panel, so move it in rather than duplicate it.
+        var section = document.getElementById('uploadSection');
+        if (section) panel.appendChild(section);
+
         wireMonthPicker();
-        wireLogoBox(uploadIcon);
+        wireLogoBox();
     }
 
     // The visible list sets a real <select>, so everything downstream keeps reading
@@ -2347,15 +2352,17 @@
         });
     }
 
-    function wireLogoBox(uploadIcon) {
+    function wireLogoBox() {
         var input = document.getElementById('mapper-logo');
         var box   = document.getElementById('mapper-logo-box');
         if (!input || !box) return;
 
         function reset() {
-            box.innerHTML = uploadIcon;
+            box.innerHTML = '';
+            dressUploadBox(box);
             box.style.cursor = 'pointer';
         }
+        reset();
         function show(file) {
             var size = file.size < 1048576
                 ? Math.round(file.size / 1024) + ' kB'
