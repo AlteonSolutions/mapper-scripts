@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 14:06 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s18';
+    var MAPPER_BUILD   = '2026-09-24 14:12 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s19';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -2528,12 +2528,12 @@
             +   '<input id="mapper-client-name" type="text" placeholder="Enter Client Name"></div>'
             + '<div class="mp-row3">'
             +   '<div class="mp-f"><label for="mapper-board-members"># of Board Members</label>'
-            +     '<input id="mapper-board-members" type="number" min="0" placeholder="Enter # of Board Members"></div>'
+            +     '<input id="mapper-board-members" type="number" min="0" placeholder="Enter Number"></div>'
             +   '<div class="mp-f"><label id="mapper-fy-label">Fiscal Year Start Month' + req + '</label>'
             +     '<div class="mp-holder">'
             +       '<div class="mp-select" id="mapper-fy-display" tabindex="0" role="combobox"'
             +         ' aria-expanded="false" aria-haspopup="listbox" aria-labelledby="mapper-fy-label">'
-            +         '<span class="mp-val mp-ph">Select Fiscal Year Start Month</span>'
+            +         '<span class="mp-val mp-ph">Select Month</span>'
             +         '<span class="mp-caret">' + caret + '</span></div>'
             +       '<div class="mp-options" id="mapper-fy-options" role="listbox">'
             +         months.map(function(m) {
@@ -2547,7 +2547,7 @@
             +   '<div class="mp-f"><label for="mapper-major-giving-threshold">Major Giving Threshold' + req + '</label>'
             +     '<div class="mp-holder"><span class="mp-affix">$</span>'
             +     '<input id="mapper-major-giving-threshold" type="number" min="1" class="mp-pad"'
-            +       ' placeholder="Enter Major Giving Threshold"></div></div>'
+            +       ' placeholder="Enter Amount"></div></div>'
             + '</div>'
             + '<div class="mp-sec">File Uploads</div>'
             + '<div class="mp-f"><label for="mapper-logo">Client Logo File Upload</label>'
