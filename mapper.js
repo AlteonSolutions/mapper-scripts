@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 11:48 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s13';
+    var MAPPER_BUILD   = '2026-09-24 12:40 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s14';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1417,7 +1417,7 @@
     function handleFileUpload(e) {
         var file = e.target.files[0];
         if (!file) return;
-        showSizeWarning(file.size);
+        startSlowWatch();
         var detected = detectIndustry();
         if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) selectedIndustryType = lbl; }
 
@@ -1565,17 +1565,13 @@
                     if (giftTypeMappingSkipped) {
                         var gtBtn = document.getElementById('startGiftTypeMappingBtn'); if (gtBtn) gtBtn.textContent = 'Submit ➡';
                     }
-                    // The box now shows a result rather than offering an upload, so the
-                    // badge goes - the same way the logo box drops its own once filled.
-                    var uploadBox = document.getElementById('uploadBox');
-                    uploadBox.innerHTML =
-                          '<div style="display:flex;justify-content:space-between;align-items:center;'
-                        + 'gap:16px;width:100%;padding:0 16px;box-sizing:border-box;flex-wrap:wrap;">'
-                        + '<div style="text-align:left;font-size:13px;color:#333;">✓ ' + file.name + '</div>'
-                        + '<div style="text-align:right;font-size:12px;color:#666;">' + (isStaffing ? solicitors.length + ' Solicitors &middot; ' : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ') + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types</div>'
-                        + '</div>';
-                    uploadBox.style.cursor = 'default';
-                    uploadBox.classList.add('mp-has-file');
+                    // Laid out like the logo card, since they are a pair: mark on the
+                    // left, name and detail stacked beside it, a full bar, and a
+                    // control to swap the file out.
+                    clearSlowWatch();
+                    showDataFileCard(file.name, (isStaffing ? solicitors.length + ' Solicitors &middot; '
+                        : isSimpleFlow ? '' : giftAppeals.length + ' Appeals &middot; ')
+                        + allConstituentTypeCount + ' Constituent Types &middot; ' + allGiftTypeCount + ' Gift Types');
                     document.getElementById('fileInfo').innerHTML = '';
                     var mb = document.getElementById('mappingBox'); if (mb) mb.style.display = 'block';
                     var ml = document.getElementById('mappingBoxLabel'); if (ml) ml.style.display = 'block';
@@ -2172,43 +2168,131 @@
         return true;
     }
 
-    // Past a certain size the wait is long enough that silence reads as a fault.
-    // Measured on files scaled to what SW sends, the whole pipeline runs at roughly
-    // 1.4s per MB of workbook. A warning that fires on most submissions stops being
-    // read, so this sits at 8MB - about fifteen seconds in a browser - rather than
-    // at the first point anything is noticeable. Moving the constant moves the
-    // warning; nothing else depends on it.
-    var LARGE_FILE_BYTES = 8 * 1024 * 1024;
-
-    function sizeWarning(bytes) {
-        if (!bytes || bytes < LARGE_FILE_BYTES) return '';
-        var mb = (bytes / 1048576).toFixed(1);
-        return bytes >= 15 * 1024 * 1024
-            ? 'This is a large file (' + mb + ' MB). Reading it and preparing your '
-              + 'submission may take a minute or two. Please keep this page open.'
-            : 'This is a large file (' + mb + ' MB). Reading it and preparing your '
-              + 'submission may take about a minute. Please keep this page open.';
+    // The client-data box once a file is in, mirroring the logo card. Kept next to
+    // the reset it depends on, because the two have to agree about what "empty"
+    // means or the box ends up half-populated.
+    function showDataFileCard(name, detail) {
+        var box = document.getElementById('uploadBox');
+        if (!box) return;
+        var tick = '<svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="' + themeColor + '" '
+            + 'stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+            + '<path d="M3 14h4l1.5 3h7L17 14h4"></path>'
+            + '<path d="M5 14 6.8 6.4A2 2 0 0 1 8.7 5h6.6a2 2 0 0 1 1.9 1.4L19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"></path>'
+            + '<circle cx="17.5" cy="7.5" r="4.6" fill="#fff"></circle>'
+            + '<path d="m15.6 7.6 1.4 1.4 2.6-3"></path></svg>';
+        box.className = (box.className.replace(/\bmp-has-file\b/g, '') + ' mp-has-file').trim();
+        box.style.cursor = 'default';
+        box.innerHTML = ''
+            + '<div style="display:flex;align-items:center;gap:16px;width:100%;'
+            +   'padding:8px 16px;box-sizing:border-box;text-align:left;">'
+            +   '<span style="flex:none;">' + tick + '</span>'
+            +   '<span style="min-width:0;flex:1;">'
+            +     '<b id="mapperDataName" style="display:block;font-size:14px;font-weight:600;color:#12181f;'
+            +       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></b>'
+            +     '<span id="mapperDataDetail" style="font-size:12.5px;color:#6b7280;"></span>'
+            +     '<span style="display:flex;align-items:center;gap:9px;margin-top:8px;">'
+            +       '<span style="flex:1;height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;">'
+            +         '<i style="display:block;height:100%;width:100%;border-radius:3px;'
+            +           'background:' + themeColor + ';"></i></span>'
+            +       '<span style="font-size:11px;color:#6b7280;flex:none;min-width:30px;text-align:right;'
+            +         'font-variant-numeric:tabular-nums;">100%</span></span>'
+            +   '</span>'
+            +   '<button type="button" id="mapperDataClear" aria-label="Remove this file" '
+            +     'style="border:0;background:transparent;cursor:pointer;color:#9ca3af;padding:6px;'
+            +     'line-height:0;flex:none;">'
+            +     '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            +     'stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14">'
+            +     '</path></svg></button>'
+            + '</div>';
+        box.querySelector('#mapperDataName').textContent = name;
+        box.querySelector('#mapperDataDetail').innerHTML = detail;
+        box.querySelector('#mapperDataClear').addEventListener('click', function(e) {
+            e.stopPropagation();
+            resetDataFile();
+        });
     }
 
-    // Shown under the upload box, where it covers both waits: the read that follows
-    // immediately and the submit that comes later. The upload section stays on the
-    // page throughout, so one note serves both rather than two that must agree.
-    function showSizeWarning(bytes) {
-        var text = sizeWarning(bytes);
-        var note = document.getElementById('mapperSizeNote');
-        if (!text) { if (note) note.style.display = 'none'; return; }
-        if (!note) {
-            var box = document.getElementById('uploadBox');
-            if (!box || !box.parentNode) return;
-            note = document.createElement('div');
-            note.id = 'mapperSizeNote';
-            note.style.cssText = 'margin-top:10px;padding:10px 14px;background:#fffbeb;'
-                + 'border:1px solid #fde68a;border-radius:8px;color:#92400e;font-size:0.85rem;'
-                + 'line-height:1.45;text-align:left;';
-            box.parentNode.insertBefore(note, box.nextSibling);
+    // Putting the file back means putting the whole flow back: every list derived
+    // from it, every section it revealed, and the mapping choices made against it.
+    // Anything left behind would be mapped against a file that is no longer there.
+    function resetDataFile() {
+        workbook = null;
+        giftAppeals = []; constituentTypes = []; giftTypes = [];
+        pledgeStatuses = []; appealCategories = []; solicitors = [];
+        categories = []; mappings = {}; spotlightMappings = {}; constituentMappings = {};
+        giftTypeMappings = {}; pledgeStatusMappings = {}; appealCategoryMappings = {};
+        selectedSolicitors = {}; spotlightSourceData = [];
+        currentIndex = 0; spotlightCurrentIndex = 0; constituentCurrentIndex = 0;
+        giftTypeCurrentIndex = 0; pledgeStatusCurrentIndex = 0; appealCategoryCurrentIndex = 0;
+        uploadedGiftCount = 0; uploadedConstituentCount = 0;
+
+        ['mappingSection','spotlightMappingSection','constituentMappingSection','giftTypeMappingSection',
+         'pledgeStatusMappingSection','appealCategoryMappingSection','solicitorSelectionSection',
+         'categorySetup','allDoneCard','mappingBox','mappingBoxLabel','stepProgress'].forEach(function(id) {
+            var el = document.getElementById(id); if (el) el.style.display = 'none';
+        });
+        ['mappingContainer','spotlightMappingContainer','constituentMappingContainer',
+         'giftTypeMappingContainer','pledgeStatusMappingContainer','appealCategoryMappingContainer',
+         'categoriesList','fileInfo'].forEach(function(id) {
+            var el = document.getElementById(id); if (el) el.innerHTML = '';
+        });
+        var csBtn = document.getElementById('customSubmitBtn');
+        if (csBtn && csBtn.parentElement) csBtn.parentElement.style.display = 'none';
+
+        var fi = document.getElementById('fileInput'); if (fi) fi.value = '';
+        var note = document.getElementById('uploadNote'); if (note) note.style.display = '';
+        var dl = document.getElementById('download-container'); if (dl) dl.style.display = 'flex';
+        clearSlowWatch();
+
+        var box = document.getElementById('uploadBox');
+        if (box) {
+            box.className = box.className.replace(/\bmp-has-file\b/g, '').trim();
+            box.style.cursor = 'pointer';
+            box.style.border = '1px solid #ACACACFF';
+            box.innerHTML = '';
+            dressUploadBox(box);
         }
-        note.textContent = text;
-        note.style.display = 'block';
+    }
+
+    // A warning tied to file size fires on a fast machine that would never have
+    // needed it - the AAS file is 8.5MB and loads in about three seconds on a good
+    // laptop. Tie it to the clock instead: if the read is still going after five
+    // seconds it is genuinely slow here, whatever the file weighs, and that is the
+    // only case worth interrupting for.
+    var SLOW_READ_MS = 5000;
+    var _slowTimer = null;
+
+    function slowNoteEl(create) {
+        var note = document.getElementById('mapperSlowNote');
+        if (note || !create) return note;
+        var box = document.getElementById('uploadBox');
+        if (!box || !box.parentNode) return null;
+        note = document.createElement('div');
+        note.id = 'mapperSlowNote';
+        // The page's own palette rather than a warning colour: this is a note about
+        // timing, not a problem, and amber made it read as one.
+        note.style.cssText = 'margin-top:10px;padding:10px 14px;border-radius:8px;'
+            + 'background:#f8f9fa;border:1px solid #e3e7ec;border-left:3px solid ' + themeColor + ';'
+            + 'color:#4b5563;font-size:0.85rem;line-height:1.45;text-align:left;';
+        box.parentNode.insertBefore(note, box.nextSibling);
+        return note;
+    }
+
+    function startSlowWatch() {
+        clearSlowWatch();
+        _slowTimer = setTimeout(function() {
+            var note = slowNoteEl(true);
+            if (!note) return;
+            note.textContent = 'Still working — a large file can take a minute or two to '
+                + 'read and prepare. Please keep this page open.';
+            note.style.display = 'block';
+        }, SLOW_READ_MS);
+    }
+
+    function clearSlowWatch() {
+        if (_slowTimer) { clearTimeout(_slowTimer); _slowTimer = null; }
+        var note = slowNoteEl(false);
+        if (note) note.style.display = 'none';
     }
 
     // Both upload boxes are ours, so they come from one definition rather than two
