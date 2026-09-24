@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 14:12 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s19';
+    var MAPPER_BUILD   = '2026-09-24 14:17 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s20';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1125,8 +1125,7 @@
                 var contactName = (firstName.trim() + ' ' + lastName.trim()).trim();
                 var email       = (document.getElementById('mapper-email')                   || {}).value || '';
                 var fyMonth     = (document.getElementById('mapper-fy-start-month')          || {}).value || '';
-                var threshRaw   = (document.getElementById('mapper-major-giving-threshold')  || {}).value || '';
-                var threshold   = parseFloat(threshRaw);
+                var threshold   = thresholdValue();
                 var boardMembers = (document.getElementById('mapper-board-members')          || {}).value || '';
 
                 // These come from the panel at the top of the page, not from anything
@@ -2546,8 +2545,8 @@
             +     '</div></div>'
             +   '<div class="mp-f"><label for="mapper-major-giving-threshold">Major Giving Threshold' + req + '</label>'
             +     '<div class="mp-holder"><span class="mp-affix">$</span>'
-            +     '<input id="mapper-major-giving-threshold" type="number" min="1" class="mp-pad"'
-            +       ' placeholder="Enter Amount"></div></div>'
+            +     '<input id="mapper-major-giving-threshold" type="text" inputmode="numeric"'
+            +       ' autocomplete="off" class="mp-pad" placeholder="Enter Amount"></div></div>'
             + '</div>'
             + '<div class="mp-sec">File Uploads</div>'
             + '<div class="mp-f"><label for="mapper-logo">Client Logo File Upload</label>'
@@ -2569,7 +2568,63 @@
         if (section) panel.appendChild(section);
 
         wireMonthPicker();
+        wireThresholdField();
         wireLogoBox();
+    }
+
+    // The threshold reads back as a number, whatever the box is showing. It is a
+    // text field so it can carry commas, which means every reader has to go
+    // through here: parseFloat('1,000') is 1, and a threshold of 1 would mark
+    // very nearly every donor in the file a major donor without anything looking
+    // wrong. Returns NaN when the box is empty or holds no digits.
+    function thresholdValue() {
+        var el = document.getElementById('mapper-major-giving-threshold');
+        if (!el) return NaN;
+        var digits = String(el.value || '').replace(/[^0-9.]/g, '');
+        if (!digits) return NaN;
+        return parseFloat(digits);
+    }
+
+    // Group the digits as they are typed. The caret is the fiddly part: rewriting
+    // the value moves it to the end, so count the digits to its left, reformat,
+    // then put it back after that many digits - it stays put on an edit in the
+    // middle and rides along when a comma appears to its left.
+    function wireThresholdField() {
+        var el = document.getElementById('mapper-major-giving-threshold');
+        if (!el) return;
+
+        function group(whole) {
+            return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        function format() {
+            var before = el.value;
+            var caret  = el.selectionStart;
+            var digitsLeft = (before.slice(0, caret).match(/[0-9]/g) || []).length;
+
+            // One leading run of digits, at most one decimal point, nothing else.
+            var cleaned = before.replace(/[^0-9.]/g, '');
+            var dot = cleaned.indexOf('.');
+            var whole = dot < 0 ? cleaned : cleaned.slice(0, dot);
+            var frac  = dot < 0 ? ''      : cleaned.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+            whole = whole.replace(/^0+(?=\d)/, '');
+
+            var after = group(whole) + (dot < 0 ? '' : '.' + frac);
+            if (after === before) return;
+            el.value = after;
+
+            // Walk forward past that many digits; commas the grouping added are
+            // stepped over rather than counted.
+            var pos = 0, seen = 0;
+            while (pos < after.length && seen < digitsLeft) {
+                if (/[0-9]/.test(after.charAt(pos))) seen++;
+                pos++;
+            }
+            if (el.setSelectionRange) el.setSelectionRange(pos, pos);
+        }
+
+        el.addEventListener('input', format);
+        // A pasted "$1,000.00" or "1 000" lands here before anything reads it.
+        el.addEventListener('blur', format);
     }
 
     // The visible list sets a real <select>, so everything downstream keeps reading
@@ -2942,8 +2997,7 @@
                 // client's real one without anything being said.
                 var _ucFyEl = document.getElementById('mapper-fy-start-month');
                 var _ucFyMonth = (_ucFyEl && _ucFyEl.value) ? _ucFyEl.value : null;
-                var _ucThreshEl = document.getElementById('mapper-major-giving-threshold');
-                var _ucThreshold = _ucThreshEl ? parseFloat(_ucThreshEl.value) : NaN;
+                var _ucThreshold = thresholdValue();
                 if (isNaN(_ucThreshold) || _ucThreshold <= 0) _ucThreshold = NaN;
                 if (_ucFyMonth && !isNaN(_ucThreshold)) {
                     var _ucResult = computeAnalytics(_ucGiftRows, _ucConsRows, { fyStartMonth: _ucFyMonth, threshold: _ucThreshold, donorJourney: !isSW });
