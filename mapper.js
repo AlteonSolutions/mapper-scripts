@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 11:15 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s12';
+    var MAPPER_BUILD   = '2026-09-24 11:48 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s13';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1425,11 +1425,19 @@
         var uploadBox = document.getElementById('uploadBox');
         uploadBox.style.border = '1px solid #ACACACFF';
         uploadBox.style.cursor = 'default';
-        uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px 0;">'
+        uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;'
+            +   'justify-content:center;padding:15px 0;width:100%;box-sizing:border-box;">'
             + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid ' + themeColor + ';border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
             + '<div id="mapperReadStatus" style="margin-top:10px;font-size:13px;color:#666;font-weight:500;'
             +   'max-width:100%;padding:0 12px;box-sizing:border-box;overflow-wrap:anywhere;">Reading Your File…</div>'
-            + '</div>';
+            + '<div style="display:flex;align-items:center;gap:9px;width:100%;max-width:300px;'
+            +   'margin-top:11px;padding:0 12px;box-sizing:border-box;">'
+            +   '<span style="flex:1;height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;">'
+            +     '<i id="mapperReadFill" style="display:block;height:100%;width:0;border-radius:3px;'
+            +       'background:' + themeColor + ';transition:width .4s ease;"></i></span>'
+            +   '<span id="mapperReadPct" style="font-size:11px;color:#6b7280;flex:none;min-width:30px;'
+            +     'text-align:right;font-variant-numeric:tabular-nums;">0%</span>'
+            + '</div></div>';
         // Inject spinner keyframes if not already present
         if (!document.getElementById('mapper-spinner-style')) {
             var spinStyle = document.createElement('style');
@@ -1452,6 +1460,15 @@
             function say(text) {
                 var el = document.getElementById('mapperReadStatus');
                 if (el) el.textContent = text;
+            }
+            // Reading the bytes is the first fifth of the bar; the five parse phases
+            // divide the rest. Both are real work, so the number is not invented.
+            function setRead(n) {
+                n = Math.max(0, Math.min(100, Math.round(n)));
+                var fill = document.getElementById('mapperReadFill');
+                var pct  = document.getElementById('mapperReadPct');
+                if (fill) fill.style.width = n + '%';
+                if (pct)  pct.textContent = n + '%';
             }
             function bail(err) {
                 console.error('Mapper: reading the workbook failed —', err);
@@ -1583,6 +1600,7 @@
             (function step(i) {
                 if (i >= phases.length) return;
                 say(phases[i][0] + '…');
+                setRead(20 + (i / phases.length) * 80);
                 // 16ms rather than 0, so the new label has actually painted before the
                 // next blocking stretch begins.
                 setTimeout(function() {
@@ -1590,9 +1608,20 @@
                     try { ok = phases[i][1](); }
                     catch (err) { bail(err); return; }
                     if (ok === false) return;
+                    setRead(20 + ((i + 1) / phases.length) * 80);
                     step(i + 1);
                 }, 16);
             })(0);
+        };
+        // The read is genuinely measurable on a large file, so show it rather than
+        // sitting at zero until parsing starts.
+        reader.onprogress = function(e) {
+            if (!e.lengthComputable) return;
+            var fill = document.getElementById('mapperReadFill');
+            var pct  = document.getElementById('mapperReadPct');
+            var n = Math.round((e.loaded / e.total) * 20);
+            if (fill) fill.style.width = n + '%';
+            if (pct)  pct.textContent = n + '%';
         };
         reader.readAsArrayBuffer(file);
     }
@@ -2284,7 +2313,7 @@
         '#mapperClientPanel .mp-logo-bar{display:flex;align-items:center;gap:9px;margin-top:7px;}',
         '#mapperClientPanel .mp-logo-track{flex:1;height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;}',
         '#mapperClientPanel .mp-logo-track i{display:block;height:100%;width:0;border-radius:3px;',
-        '  background:#22a06b;transition:width .45s ease;}',
+        '  background:' + themeColor + ';transition:width .45s ease;}',
         '#mapperClientPanel .mp-logo-pct{font-size:11px;color:#6b7280;flex:none;min-width:30px;',
         '  text-align:right;font-variant-numeric:tabular-nums;}',
         '#mapperClientPanel .mp-logo-clear{border:0;background:transparent;cursor:pointer;color:#9ca3af;',
