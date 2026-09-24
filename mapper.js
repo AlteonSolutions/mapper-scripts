@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 14:20 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s16';
+    var MAPPER_BUILD   = '2026-09-24 15:02 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s17';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1428,7 +1428,7 @@
         // The same card it will show when finished, so the box does not change
         // shape when the file lands - the phase sits where the name will be, and
         // the bar is already in place.
-        uploadBox.className = (uploadBox.className.replace(/\bmp-has-file\b/g, '') + ' mp-has-file').trim();
+        markUploadBox(uploadBox, true);
         uploadBox.innerHTML = uploadCardHtml({
             visual: dataFileIconLoading(), pct: 0, clearable: false,
             titleId: 'mapperReadStatus', detailId: 'mapperReadDetail',
@@ -2193,6 +2193,15 @@
         + '</div>';
     }
 
+    // Both boxes need mp-upload-box for the shared border, hover and - since the
+    // alignment fix - the padding that keeps their two cards on the same grid.
+    // Set it here rather than trusting whoever built the element to have done it.
+    function markUploadBox(el, hasFile) {
+        if (!el) return;
+        var cls = String(el.className).replace(/\bmp-upload-box\b|\bmp-has-file\b/g, '').trim();
+        el.className = (cls + ' mp-upload-box' + (hasFile ? ' mp-has-file' : '')).trim();
+    }
+
     // The client-data box's icon: a spreadsheet, drawn as a sheet rather than as a
     // web table - uniform cells edge to edge, a row-number gutter and lettered
     // columns, with the header distinguished by a fill instead of its own bar.
@@ -2232,7 +2241,7 @@
     function showDataFileCard(name, detail) {
         var box = document.getElementById('uploadBox');
         if (!box) return;
-        box.className = (box.className.replace(/\bmp-has-file\b/g, '') + ' mp-has-file').trim();
+        markUploadBox(box, true);
         box.style.cursor = 'default';
         box.innerHTML = uploadCardHtml({
             visual: dataFileIconDone(), pct: 100, clearable: true,
@@ -2281,7 +2290,7 @@
 
         var box = document.getElementById('uploadBox');
         if (box) {
-            box.className = box.className.replace(/\bmp-has-file\b/g, '').trim();
+            markUploadBox(box, false);
             box.style.cursor = 'pointer';
             box.style.border = '1px solid #ACACACFF';
             box.innerHTML = '';
@@ -2411,7 +2420,12 @@
         // and icon, so the two read as one pair of controls.
         '#mapperClientPanel #mapper-logo{display:none;}',
         '#mapperClientPanel .mp-logo-box{' + UPLOAD_BOX_CSS + '}',
-        '#mapperClientPanel .mp-logo-box.mp-has-file{cursor:default;padding:8px 16px;}',
+        // Both boxes, not just the logo's. The client-data box carries padding:0
+        // inline from UPLOAD_BOX_CSS so its icon centres while empty, and inline
+        // beats a stylesheet - which left its card flush to the border while the
+        // logo's was inset by 16px, so the text, the bars and the bins all sat
+        // slightly apart. !important is what reaches past the inline rule.
+        '#mapperClientPanel .mp-upload-box.mp-has-file{cursor:default;padding:8px 16px!important;}',
         // The client-data box sits in this section too, so its own heading becomes a
         // field label like the logo's and the two read as one pair.
         '#mapperClientPanel #uploadSection{margin:0;}',
@@ -2605,7 +2619,7 @@
 
         function reset() {
             box.innerHTML = '';
-            box.classList.remove('mp-has-file');
+            markUploadBox(box, false);
             dressUploadBox(box);
         }
         reset();
@@ -2615,7 +2629,7 @@
                 : (file.size / 1048576).toFixed(2) + ' MB';
             // Straight into the box: a wrapper around the card would sit between it
             // and the box's own flex layout, and the two boxes would stop matching.
-            box.classList.add('mp-has-file');
+            markUploadBox(box, true);
             box.innerHTML = uploadCardHtml({
                 visual: '<img alt="">', pct: 0, clearable: true,
                 titleId: 'mapperLogoName', detailId: 'mapperLogoSize',
