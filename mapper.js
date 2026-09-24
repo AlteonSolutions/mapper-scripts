@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-23 23:55 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s9';
+    var MAPPER_BUILD   = '2026-09-24 09:40 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s10';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1464,7 +1464,13 @@
             var phases = [
                 ['Reading Your File', function() {
                     var data = new Uint8Array(e.target.result);
-                    workbook = XLSX.read(data, { type: 'array', cellFormula: false, cellHTML: false, cellNF: false });
+                    // dense stores each row as an array rather than a map of cell
+                    // addresses. On a 100k-row file that is about 20% off the read -
+                    // the single biggest cost of opening a file - and sheet_to_json
+                    // reads either shape, so nothing downstream notices. Verified
+                    // value-identical across all twelve sheets of a real data file.
+                    workbook = XLSX.read(data, { type: 'array', dense: true,
+                        cellFormula: false, cellHTML: false, cellNF: false });
                     if (workbook.SheetNames.indexOf('Gift Data') === -1) { alert('Error: No Gift Data sheet found!'); return false; }
                     if (workbook.SheetNames.indexOf('Constituent Data') === -1) { alert('Error: No Constituent Data sheet found!'); return false; }
                 }],
