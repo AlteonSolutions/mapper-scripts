@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 12:40 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s14';
+    var MAPPER_BUILD   = '2026-09-24 13:30 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s15';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1425,19 +1425,17 @@
         var uploadBox = document.getElementById('uploadBox');
         uploadBox.style.border = '1px solid #ACACACFF';
         uploadBox.style.cursor = 'default';
-        uploadBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;'
-            +   'justify-content:center;padding:15px 0;width:100%;box-sizing:border-box;">'
-            + '<div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top:3px solid ' + themeColor + ';border-radius:50%;animation:mapperSpin 0.8s linear infinite;"></div>'
-            + '<div id="mapperReadStatus" style="margin-top:10px;font-size:13px;color:#666;font-weight:500;'
-            +   'max-width:100%;padding:0 12px;box-sizing:border-box;overflow-wrap:anywhere;">Reading Your File…</div>'
-            + '<div style="display:flex;align-items:center;gap:9px;width:100%;max-width:300px;'
-            +   'margin-top:11px;padding:0 12px;box-sizing:border-box;">'
-            +   '<span style="flex:1;height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;">'
-            +     '<i id="mapperReadFill" style="display:block;height:100%;width:0;border-radius:3px;'
-            +       'background:' + themeColor + ';transition:width .4s ease;"></i></span>'
-            +   '<span id="mapperReadPct" style="font-size:11px;color:#6b7280;flex:none;min-width:30px;'
-            +     'text-align:right;font-variant-numeric:tabular-nums;">0%</span>'
-            + '</div></div>';
+        // The same card it will show when finished, so the box does not change
+        // shape when the file lands - the phase sits where the name will be, and
+        // the bar is already in place.
+        uploadBox.className = (uploadBox.className.replace(/\bmp-has-file\b/g, '') + ' mp-has-file').trim();
+        uploadBox.innerHTML = uploadCardHtml({
+            visual: dataFileIcon(), pct: 0, clearable: false,
+            titleId: 'mapperReadStatus', detailId: 'mapperReadDetail',
+            fillId: 'mapperReadFill', pctId: 'mapperReadPct'
+        });
+        uploadBox.querySelector('#mapperReadStatus').textContent = 'Reading Your File…';
+        uploadBox.querySelector('#mapperReadDetail').textContent = file.name;
         // Inject spinner keyframes if not already present
         if (!document.getElementById('mapper-spinner-style')) {
             var spinStyle = document.createElement('style');
@@ -2168,42 +2166,56 @@
         return true;
     }
 
+    // The one card both upload boxes use, in every state they have. Everything that
+    // differs between them is an argument.
+    function uploadCardHtml(o) {
+        var trash = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            + 'stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14">'
+            + '</path></svg>';
+        return ''
+        + '<div class="mp-card">'
+        +   '<span class="mp-card-visual">' + (o.visual || '') + '</span>'
+        +   '<span class="mp-card-meta">'
+        +     '<b' + (o.titleId ? ' id="' + o.titleId + '"' : '') + '></b>'
+        +     '<span class="mp-card-detail"' + (o.detailId ? ' id="' + o.detailId + '"' : '') + '></span>'
+        +     '<span class="mp-card-bar">'
+        +       '<span class="mp-card-track"><i' + (o.fillId ? ' id="' + o.fillId + '"' : '')
+        +         ' style="width:' + (o.pct || 0) + '%;"></i></span>'
+        +       '<span class="mp-card-pct"' + (o.pctId ? ' id="' + o.pctId + '"' : '') + '>'
+        +         (o.pct || 0) + '%</span>'
+        +     '</span>'
+        +   '</span>'
+        // The button keeps its space even when there is nothing to remove yet, so
+        // the bar does not shift sideways when the card changes state.
+        +   '<button type="button" class="mp-card-clear"' + (o.clearId ? ' id="' + o.clearId + '"' : '')
+        +     (o.clearable ? '' : ' hidden') + ' aria-label="' + (o.clearLabel || 'Remove') + '">'
+        +     trash + '</button>'
+        + '</div>';
+    }
+
+    // The icon the client-data box shows in place of a thumbnail.
+    function dataFileIcon() {
+        return '<svg width="86" height="86" viewBox="0 0 24 24" fill="none" stroke="' + themeColor + '" '
+            + 'stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+            + '<path d="M3 14h4l1.5 3h7L17 14h4"></path>'
+            + '<path d="M5 14 6.8 6.4A2 2 0 0 1 8.7 5h6.6a2 2 0 0 1 1.9 1.4L19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"></path>'
+            + '<circle cx="17.5" cy="7.5" r="4.6" fill="#fff"></circle>'
+            + '<path d="m15.6 7.6 1.4 1.4 2.6-3"></path></svg>';
+    }
+
     // The client-data box once a file is in, mirroring the logo card. Kept next to
     // the reset it depends on, because the two have to agree about what "empty"
     // means or the box ends up half-populated.
     function showDataFileCard(name, detail) {
         var box = document.getElementById('uploadBox');
         if (!box) return;
-        var tick = '<svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="' + themeColor + '" '
-            + 'stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-            + '<path d="M3 14h4l1.5 3h7L17 14h4"></path>'
-            + '<path d="M5 14 6.8 6.4A2 2 0 0 1 8.7 5h6.6a2 2 0 0 1 1.9 1.4L19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"></path>'
-            + '<circle cx="17.5" cy="7.5" r="4.6" fill="#fff"></circle>'
-            + '<path d="m15.6 7.6 1.4 1.4 2.6-3"></path></svg>';
         box.className = (box.className.replace(/\bmp-has-file\b/g, '') + ' mp-has-file').trim();
         box.style.cursor = 'default';
-        box.innerHTML = ''
-            + '<div style="display:flex;align-items:center;gap:16px;width:100%;'
-            +   'padding:8px 16px;box-sizing:border-box;text-align:left;">'
-            +   '<span style="flex:none;">' + tick + '</span>'
-            +   '<span style="min-width:0;flex:1;">'
-            +     '<b id="mapperDataName" style="display:block;font-size:14px;font-weight:600;color:#12181f;'
-            +       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></b>'
-            +     '<span id="mapperDataDetail" style="font-size:12.5px;color:#6b7280;"></span>'
-            +     '<span style="display:flex;align-items:center;gap:9px;margin-top:8px;">'
-            +       '<span style="flex:1;height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;">'
-            +         '<i style="display:block;height:100%;width:100%;border-radius:3px;'
-            +           'background:' + themeColor + ';"></i></span>'
-            +       '<span style="font-size:11px;color:#6b7280;flex:none;min-width:30px;text-align:right;'
-            +         'font-variant-numeric:tabular-nums;">100%</span></span>'
-            +   '</span>'
-            +   '<button type="button" id="mapperDataClear" aria-label="Remove this file" '
-            +     'style="border:0;background:transparent;cursor:pointer;color:#9ca3af;padding:6px;'
-            +     'line-height:0;flex:none;">'
-            +     '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-            +     'stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14">'
-            +     '</path></svg></button>'
-            + '</div>';
+        box.innerHTML = uploadCardHtml({
+            visual: dataFileIcon(), pct: 100, clearable: true,
+            titleId: 'mapperDataName', detailId: 'mapperDataDetail',
+            clearId: 'mapperDataClear', clearLabel: 'Remove this file'
+        });
         box.querySelector('#mapperDataName').textContent = name;
         box.querySelector('#mapperDataDetail').innerHTML = detail;
         box.querySelector('#mapperDataClear').addEventListener('click', function(e) {
@@ -2383,13 +2395,32 @@
         '#mapperClientPanel #uploadTitle{font-size:13.5px!important;font-weight:700!important;',
         '  color:#2c3345!important;margin:0 0 6px!important;font-family:inherit!important;}',
         '#mapperClientPanel .upload-note{margin-top:10px;}',
+        // One card, used by both boxes and by the data box's loading state. They
+        // match because they are the same markup, not because two copies agree.
+        '#mapperClientPanel .mp-card{display:flex;align-items:center;gap:16px;width:100%;text-align:left;}',
+        '#mapperClientPanel .mp-card-visual{flex:none;width:200px;display:flex;align-items:center;',
+        '  justify-content:center;}',
+        '@media(max-width:560px){#mapperClientPanel .mp-card-visual{width:104px;}}',
+        '#mapperClientPanel .mp-card-meta{min-width:0;flex:1;}',
+        '#mapperClientPanel .mp-card-meta b{display:block;font-size:14px;font-weight:600;color:#12181f;',
+        '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+        '#mapperClientPanel .mp-card-detail{display:block;font-size:12.5px;color:#6b7280;min-height:17px;}',
+        '#mapperClientPanel .mp-card-bar{display:flex;align-items:center;gap:9px;margin-top:8px;}',
+        '#mapperClientPanel .mp-card-track{flex:1;height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;}',
+        '#mapperClientPanel .mp-card-track i{display:block;height:100%;width:0;border-radius:3px;',
+        '  background:' + themeColor + ';transition:width .4s ease;}',
+        '#mapperClientPanel .mp-card-pct{font-size:11px;color:#6b7280;flex:none;min-width:32px;',
+        '  text-align:right;font-variant-numeric:tabular-nums;}',
+        '#mapperClientPanel .mp-card-clear{border:0;background:transparent;cursor:pointer;color:#9ca3af;',
+        '  padding:6px;line-height:0;flex:none;}',
+        '#mapperClientPanel .mp-card-clear:hover{color:#b91c1c;}',
+        '#mapperClientPanel .mp-card-clear[hidden]{visibility:hidden;display:block;}',
         '#mapperClientPanel .mp-logo-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;}',
         // Height-constrained with the width left to follow. A square box letterboxes
         // a wide lockup - most logos are wider than they are tall, so the image ended
         // up sized to the width of the square and a third of its height.
-        '#mapperClientPanel .mp-logo-card img{height:94px;width:auto;max-width:220px;',
-        '  object-fit:contain;flex:none;border-radius:4px;background:#fff;}',
-        '@media(max-width:560px){#mapperClientPanel .mp-logo-card img{max-width:120px;}}',
+        '#mapperClientPanel .mp-card-visual img{height:94px;width:auto;max-width:100%;',
+        '  object-fit:contain;border-radius:4px;background:#fff;}',
         '#mapperClientPanel .mp-logo-meta{min-width:0;flex:1;}',
         '#mapperClientPanel .mp-logo-meta b{display:block;font-size:13px;font-weight:600;color:#12181f;',
         '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
@@ -2551,26 +2582,26 @@
             var size = file.size < 1048576
                 ? Math.round(file.size / 1024) + ' kB'
                 : (file.size / 1048576).toFixed(2) + ' MB';
-            var card = document.createElement('div');
-            card.className = 'mp-logo-card';
-            card.innerHTML = '<img alt="">'
-                + '<span class="mp-logo-meta"><b></b><span class="mp-logo-size"></span>'
-                +   '<span class="mp-logo-bar"><span class="mp-logo-track"><i></i></span>'
-                +   '<span class="mp-logo-pct">0%</span></span></span>'
-                + '<button type="button" class="mp-logo-clear" aria-label="Remove logo">'
-                +   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-                +   'stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14"></path>'
-                +   '</svg></button>';
-            card.querySelector('b').textContent = file.name;
-            card.querySelector('.mp-logo-size').textContent = size;
+            // Straight into the box: a wrapper around the card would sit between it
+            // and the box's own flex layout, and the two boxes would stop matching.
+            box.classList.add('mp-has-file');
+            box.innerHTML = uploadCardHtml({
+                visual: '<img alt="">', pct: 0, clearable: true,
+                titleId: 'mapperLogoName', detailId: 'mapperLogoSize',
+                fillId: 'mapperLogoFill', pctId: 'mapperLogoPct',
+                clearId: 'mapperLogoClear', clearLabel: 'Remove logo'
+            });
+            var card = box;
+            card.querySelector('#mapperLogoName').textContent = file.name;
+            card.querySelector('#mapperLogoSize').textContent = size;
 
             // Read it here rather than at submit: the thumbnail is the confirmation
             // that the right file was picked, and the file object is already in hand.
             // The bar is the read's own progress rather than a decoration - though a
             // logo is small enough that it usually arrives in one event, so it is
-            // held briefly at the start to be seen at all.
-            var fill = card.querySelector('.mp-logo-track i');
-            var pct  = card.querySelector('.mp-logo-pct');
+            // the transition that makes the travel visible.
+            var fill = card.querySelector('#mapperLogoFill');
+            var pct  = card.querySelector('#mapperLogoPct');
             function setPct(n) {
                 n = Math.max(0, Math.min(100, Math.round(n)));
                 fill.style.width = n + '%';
@@ -2589,14 +2620,12 @@
                 fill.style.background = '#b91c1c';
                 setPct(100);
             };
-            card.querySelector('.mp-logo-clear').addEventListener('click', function(e) {
+            card.querySelector('#mapperLogoClear').addEventListener('click', function(e) {
                 e.stopPropagation();
                 input.value = '';
                 reset();
             });
-            box.innerHTML = '';
-            box.appendChild(card);
-            box.classList.add('mp-has-file');
+
 
             // Start the read only once the bar is on the page and has been laid out.
             // A width set on a detached element, or in the same frame it was inserted,
