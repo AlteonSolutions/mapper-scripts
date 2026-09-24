@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 16:30 UTC';
-    var MAPPER_VERSION = '9.24.2026 STANDALONE s22';
+    var MAPPER_BUILD   = '2026-09-24 16:32 UTC';
+    var MAPPER_VERSION = '9.24.2026 STANDALONE s23';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1190,11 +1190,11 @@
                     // Every brand now names itself. HF used to arrive as 'Databasey' because
                     // it runs through the same downstream pipeline and macro template, but
                     // that left HF submissions indistinguishable from Databasey's own. The
-                    // flow needs a branch for 'heyfundraiser' that does whatever it does for
+                    // flow needs a branch for 'HeyFundraiser' that does whatever it does for
                     // 'Databasey', or HF submissions will fall through it.
                     // Databasey remains the fallback for a URL that matches no brand.
                     var formSource   = isSW ? 'SW' : isAlford ? 'Alford'
-                                     : isHF ? 'heyfundraiser' : 'Databasey';
+                                     : isHF ? 'HeyFundraiser' : 'Databasey';
                     var analysisType = isStaffing ? 'Interim Staffing' : (isDevelopmentAssessment ? 'Development Assessment' : (isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'));
                     var logoLookup = getLogoFile();
                     var logoFile   = logoLookup.file;
