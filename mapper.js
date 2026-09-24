@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 14:17 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s20';
+    var MAPPER_BUILD   = '2026-09-24 15:18 UTC';
+    var MAPPER_VERSION = '9.24.2026 STANDALONE s21';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -70,6 +70,19 @@
         + (window.top === window ? '' : ' — this page is framed'));
     console.log('%cmapper.js ' + MAPPER_VERSION + ' — built ' + MAPPER_BUILD,
                 'background:' + themeColor + ';color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;');
+
+    // The two files are cached separately, so a visitor can end up holding a fresh
+    // copy of one and a stale copy of the other. Today they agree on two globals and
+    // nothing else, so a mismatched pair is harmless - but it would not stay harmless
+    // silently, and a stale selector is otherwise invisible. Say so if they differ.
+    //
+    // Absence is not a mismatch: mapper.js runs on its own on the test pages, and the
+    // sector is then read from ?industry= or left unset.
+    if (window.SECTOR_SELECTION_VERSION && window.SECTOR_SELECTION_VERSION !== MAPPER_VERSION) {
+        console.warn('mapper.js: version mismatch — sector-selection.js is '
+            + window.SECTOR_SELECTION_VERSION + ' but mapper.js is ' + MAPPER_VERSION
+            + '. One of the two is a cached copy; reload with cache disabled to pair them.');
+    }
 
     // ---- Submission diagnostics ------------------------------------------------
     // The submit button spins until the page navigates away, so a stall anywhere in

@@ -1,7 +1,12 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var VERSION = '9.23.2026 standalone-ready';
+    // Same scheme as mapper.js, and bumped with it. The two files are served and
+    // cached separately, so the pair a visitor ends up with is not guaranteed to be
+    // the pair that was deployed - see the check at the end of this file.
+    var VERSION = '9.24.2026 STANDALONE s21';
+    var BUILD   = '2026-09-24 15:18 UTC';
+    window.SECTOR_SELECTION_VERSION = VERSION;
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -125,6 +130,12 @@
     // Kellogg has been retired (removed as a brand entirely, not just for this sector).
     var brand = isSW ? brands.sw : isHF ? brands.hf : isAlford ? brands.alford : brands.databasey;
     var themeColor = isSW ? '#00386c' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
+
+    // Announce itself the way mapper.js does, in the same brand colour, so the two
+    // lines sit together in the console and a stale copy of either is one glance
+    // rather than something you have to go looking for.
+    console.log('%csector-selection.js ' + VERSION + ' — built ' + BUILD,
+                'background:' + themeColor + ';color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;');
 
     // ── INIT ON DOM READY ────────────────────────────────────────────────────
     function init() {
