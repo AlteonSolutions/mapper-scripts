@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 10:05 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s11';
+    var MAPPER_BUILD   = '2026-09-24 11:15 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s12';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -2145,19 +2145,20 @@
 
     // Past a certain size the wait is long enough that silence reads as a fault.
     // Measured on files scaled to what SW sends, the whole pipeline runs at roughly
-    // 1.4s per MB of workbook - so 5MB is where it stops being unremarkable, and a
-    // browser is slower than the machine that was measured on. Moving this constant
-    // moves the warning; nothing else depends on it.
-    var LARGE_FILE_BYTES = 5 * 1024 * 1024;
+    // 1.4s per MB of workbook. A warning that fires on most submissions stops being
+    // read, so this sits at 8MB - about fifteen seconds in a browser - rather than
+    // at the first point anything is noticeable. Moving the constant moves the
+    // warning; nothing else depends on it.
+    var LARGE_FILE_BYTES = 8 * 1024 * 1024;
 
     function sizeWarning(bytes) {
         if (!bytes || bytes < LARGE_FILE_BYTES) return '';
         var mb = (bytes / 1048576).toFixed(1);
-        return bytes >= 12 * 1024 * 1024
+        return bytes >= 15 * 1024 * 1024
             ? 'This is a large file (' + mb + ' MB). Reading it and preparing your '
-              + 'submission may take several minutes. Please keep this page open.'
+              + 'submission may take a minute or two. Please keep this page open.'
             : 'This is a large file (' + mb + ' MB). Reading it and preparing your '
-              + 'submission may take a minute. Please keep this page open.';
+              + 'submission may take about a minute. Please keep this page open.';
     }
 
     // Shown under the upload box, where it covers both waits: the read that follows
@@ -2351,7 +2352,7 @@
             +   '<div></div>'
             + '</div>'
             + '<div class="mp-sec">File Uploads</div>'
-            + '<div class="mp-f"><label for="mapper-logo">Organization Logo File</label>'
+            + '<div class="mp-f"><label for="mapper-logo">Client Logo File Upload</label>'
             +   '<input id="mapper-logo" type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml">'
             +   '<div class="mp-logo-box mp-upload-box" id="mapper-logo-box" role="button" tabindex="0"></div></div>';
 
