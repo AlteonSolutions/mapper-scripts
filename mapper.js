@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 13:30 UTC';
-    var MAPPER_VERSION = '9.23.2026 STANDALONE s15';
+    var MAPPER_BUILD   = '2026-09-24 14:20 UTC';
+    var MAPPER_VERSION = '9.23.2026 STANDALONE s16';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -1430,7 +1430,7 @@
         // the bar is already in place.
         uploadBox.className = (uploadBox.className.replace(/\bmp-has-file\b/g, '') + ' mp-has-file').trim();
         uploadBox.innerHTML = uploadCardHtml({
-            visual: dataFileIcon(), pct: 0, clearable: false,
+            visual: dataFileIconLoading(), pct: 0, clearable: false,
             titleId: 'mapperReadStatus', detailId: 'mapperReadDetail',
             fillId: 'mapperReadFill', pctId: 'mapperReadPct'
         });
@@ -2193,14 +2193,37 @@
         + '</div>';
     }
 
-    // The icon the client-data box shows in place of a thumbnail.
-    function dataFileIcon() {
-        return '<svg width="86" height="86" viewBox="0 0 24 24" fill="none" stroke="' + themeColor + '" '
-            + 'stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-            + '<path d="M3 14h4l1.5 3h7L17 14h4"></path>'
-            + '<path d="M5 14 6.8 6.4A2 2 0 0 1 8.7 5h6.6a2 2 0 0 1 1.9 1.4L19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"></path>'
-            + '<circle cx="17.5" cy="7.5" r="4.6" fill="#fff"></circle>'
-            + '<path d="m15.6 7.6 1.4 1.4 2.6-3"></path></svg>';
+    // The client-data box's icon: a spreadsheet, drawn as a sheet rather than as a
+    // web table - uniform cells edge to edge, a row-number gutter and lettered
+    // columns, with the header distinguished by a fill instead of its own bar.
+    // Two states, so the box says what it is doing rather than only that it is busy.
+    function sheetGrid() {
+        var K = 'fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter"';
+        return '<rect x="3" y="3.5" width="18" height="17" rx="1" ' + K + ' stroke-width="1.4"></rect>'
+             + '<path d="M3 7.5h18M6.5 3.5v17" ' + K + ' stroke-width="1"></path>'
+             + '<path d="M3 11.8h18M3 16.1h18" ' + K + ' stroke-width="1"></path>'
+             + '<path d="M12 7.5v13M16.5 7.5v13" ' + K + ' stroke-width="1"></path>'
+             + '<path d="M3.4 4h17.2v3.1H3.4z" fill="currentColor" opacity=".16" stroke="none"></path>'
+             + '<path d="M3.4 7.5h3.1v12.6H3.4z" fill="currentColor" opacity=".1" stroke="none"></path>';
+    }
+
+    function dataFileIconLoading() {
+        return '<svg width="86" height="86" viewBox="0 0 24 24" aria-hidden="true" style="color:'
+             + themeColor + ';">' + sheetGrid()
+             + '<rect class="mp-cell mp-cell1" x="7.1" y="8.1" width="4.3" height="3" fill="currentColor" opacity=".5" stroke="none"></rect>'
+             + '<rect class="mp-cell mp-cell2" x="12.6" y="12.4" width="3.3" height="3" fill="currentColor" opacity=".34" stroke="none"></rect>'
+             + '<rect class="mp-cell mp-cell3" x="17.1" y="16.7" width="3.3" height="3" fill="currentColor" opacity=".22" stroke="none"></rect>'
+             + '</svg>';
+    }
+
+    function dataFileIconDone() {
+        return '<svg width="86" height="86" viewBox="0 0 24 24" aria-hidden="true" style="color:'
+             + themeColor + ';">' + sheetGrid()
+             + '<g class="mp-pop">'
+             +   '<circle cx="17" cy="17" r="4.4" fill="#fff" stroke="currentColor" stroke-width="1.2"></circle>'
+             +   '<path d="m15.2 17 1.4 1.5 2.7-3.2" fill="none" stroke="currentColor" stroke-width="1.4" '
+             +     'stroke-linecap="round" stroke-linejoin="round"></path>'
+             + '</g></svg>';
     }
 
     // The client-data box once a file is in, mirroring the logo card. Kept next to
@@ -2212,7 +2235,7 @@
         box.className = (box.className.replace(/\bmp-has-file\b/g, '') + ' mp-has-file').trim();
         box.style.cursor = 'default';
         box.innerHTML = uploadCardHtml({
-            visual: dataFileIcon(), pct: 100, clearable: true,
+            visual: dataFileIconDone(), pct: 100, clearable: true,
             titleId: 'mapperDataName', detailId: 'mapperDataDetail',
             clearId: 'mapperDataClear', clearLabel: 'Remove this file'
         });
@@ -2414,6 +2437,14 @@
         '#mapperClientPanel .mp-card-clear{border:0;background:transparent;cursor:pointer;color:#9ca3af;',
         '  padding:6px;line-height:0;flex:none;}',
         '#mapperClientPanel .mp-card-clear:hover{color:#b91c1c;}',
+        '@keyframes mapperCellIn{0%{opacity:0}18%{opacity:1}100%{opacity:1}}',
+        '@keyframes mapperPopIn{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06);opacity:1}'
+        + '100%{transform:scale(1);opacity:1}}',
+        '.mp-cell1{animation:mapperCellIn 2s ease-out infinite;}',
+        '.mp-cell2{animation:mapperCellIn 2s ease-out .22s infinite;}',
+        '.mp-cell3{animation:mapperCellIn 2s ease-out .44s infinite;}',
+        '.mp-pop{animation:mapperPopIn .5s cubic-bezier(.34,1.4,.64,1) both;transform-origin:17px 17px;}',
+        '@media(prefers-reduced-motion:reduce){.mp-cell1,.mp-cell2,.mp-cell3,.mp-pop{animation:none!important;}}',
         '#mapperClientPanel .mp-card-clear[hidden]{visibility:hidden;display:block;}',
         '#mapperClientPanel .mp-logo-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;}',
         // Height-constrained with the width left to follow. A square box letterboxes
