@@ -1,7 +1,7 @@
 /* APPROVED */
 (function() {
     'use strict';
-    var VERSION = '5.4.2026 09:48';
+    var VERSION = '9.23.2026 standalone-ready';
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
     var brands = {
@@ -303,24 +303,30 @@
                         window.scrollTo({ top: iconTop, behavior: 'smooth' });
                     }, 400);
 
-                    // Scroll 2: after file processed, bring mapper box to top
+                    // Scroll 2: after the file is processed, bring the mapper box to
+                    // the top. Inline, the element is in this document and can be
+                    // measured directly; framed, it still has to be asked across the
+                    // boundary and answered by postMessage.
                     window.addEventListener('message', function onMapperReady(event) {
                         if (event.data && event.data.type === 'mapperBoxReady') {
                             window.removeEventListener('message', onMapperReady);
                             setTimeout(function() {
-                                var iframe = document.getElementById('ghl-form-iframe');
-                                if (!iframe) return;
                                 var header = document.querySelector('.sticky-section') || document.querySelector('header') || document.querySelector('nav');
                                 var headerH = header ? header.offsetHeight : 0;
-                                // mappingBoxLabel is inside the iframe - get iframe top + element offset
-                                var iframeTop = iframe.getBoundingClientRect().top + window.pageYOffset;
-                                // postMessage the iframe to get the mappingBoxLabel offset
-                                iframe.contentWindow.postMessage({ type: 'getMapperBoxTop' }, '*');
+                                var iframe = document.getElementById('ghl-form-iframe');
+                                if (iframe) {
+                                    iframe.contentWindow.postMessage({ type: 'getMapperBoxTop' }, '*');
+                                    return;
+                                }
+                                var box = document.getElementById('mappingBoxLabel') || document.getElementById('mappingBox');
+                                if (!box) return;
+                                var targetY = box.getBoundingClientRect().top + window.pageYOffset - headerH - 10;
+                                window.scrollTo({ top: targetY, behavior: 'smooth' });
                             }, 200);
                         }
                     });
 
-                    // Receive mapper box position from iframe and scroll to it
+                    // Framed only: the iframe replies with the offset it measured.
                     window.addEventListener('message', function onMapperBoxTop(event) {
                         if (event.data && event.data.type === 'mapperBoxTop') {
                             window.removeEventListener('message', onMapperBoxTop);
@@ -336,14 +342,32 @@
             }, 2000);
         }
 
-        // Load iframe
+        // Hand the choice to the mapper. Two shapes are supported so the page can be
+        // moved off the GHL form without this file needing to change again:
+        //
+        //   iframe present  - the GHL form embed. Reload it with the choice in the
+        //                     query string, as before.
+        //   no iframe       - mapper.js is running inline in this document, so just
+        //                     set the globals it already reads. detectIndustry()
+        //                     checks window.selectedIndustryKey, and it runs again
+        //                     when the file is uploaded, so this lands in time.
+        window.selectedIndustryKey = mapperKey;
+        window.selectedIndustryLabel = industryLabel;
+
         var iframeEl = document.getElementById('ghl-form-iframe');
-        var newSrc = formBase
-            + '?industrytype=' + encodeURIComponent(industryLabel)
-            + '&industry=' + encodeURIComponent(mapperKey)
-            + (isSW ? '&brand=sw' : isDatabasey ? '&brand=databasey' : isHF ? '&brand=hf' : isAlford ? '&brand=alford' : '')
-            + (isStaffing ? '&variant=staffing' : isDevelopmentAssessment ? '&variant=developmentassessment' : isCampaignCounsel ? '&variant=campaigncounsel' : '');
-        if (iframeEl) iframeEl.src = newSrc;
+        if (iframeEl) {
+            var newSrc = formBase
+                + '?industrytype=' + encodeURIComponent(industryLabel)
+                + '&industry=' + encodeURIComponent(mapperKey)
+                + (isSW ? '&brand=sw' : isDatabasey ? '&brand=databasey' : isHF ? '&brand=hf' : isAlford ? '&brand=alford' : '')
+                + (isStaffing ? '&variant=staffing' : isDevelopmentAssessment ? '&variant=developmentassessment' : isCampaignCounsel ? '&variant=campaigncounsel' : '');
+            iframeEl.src = newSrc;
+        } else {
+            // Same document, so tell mapper.js directly rather than across a frame.
+            try {
+                window.postMessage({ type: 'setIndustryType', value: industryLabel }, '*');
+            } catch (e) {}
+        }
 
 
     };

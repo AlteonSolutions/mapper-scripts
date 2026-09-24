@@ -1,0 +1,129 @@
+@echo off
+setlocal
+title Mapper Upload Test
+
+REM Put this file anywhere. On first run it clones the repo into a
+REM "mapper-scripts" folder beside itself; after that it just updates.
+REM If the file already sits inside the clone, it uses that clone directly.
+
+cd /d "%~dp0"
+
+set REPO_URL=https://github.com/AlteonSolutions/mapper-scripts.git
+set BRANCH=feature/direct-pa-submit
+set PAGE=test-upload-local.html
+
+echo ============================================
+echo  Mapper.js - Local Upload Test
+echo  Branch: %BRANCH%
+echo ============================================
+echo.
+
+where git >nul 2>&1
+if errorlevel 1 goto :no_git
+
+REM ---- locate or create the clone -------------------------------------
+if exist "%~dp0.git" (
+    set "REPO_DIR=%~dp0."
+    goto :have_repo
+)
+if exist "%~dp0mapper-scripts\.git" (
+    set "REPO_DIR=%~dp0mapper-scripts"
+    goto :have_repo
+)
+
+if exist "%~dp0mapper-scripts" (
+    echo [1/3] Found "%~dp0mapper-scripts" but it isn't a git clone
+    echo       ^(likely left over from a different download method^) - removing it
+    echo       so a fresh clone can go there instead.
+    echo.
+    rmdir /s /q "%~dp0mapper-scripts"
+)
+
+echo [1/3] No clone found. Cloning into "%~dp0mapper-scripts" ...
+echo       (a GitHub sign-in window may appear - this is a private repo)
+echo.
+git clone --branch %BRANCH% "%REPO_URL%" "%~dp0mapper-scripts"
+if errorlevel 1 goto :clone_failed
+set REPO_DIR=%~dp0mapper-scripts
+echo.
+echo       Clone complete.
+goto :updated
+
+:have_repo
+cd /d "%REPO_DIR%"
+set "REPO_DIR=%CD%"
+echo  Folder: %CD%
+echo.
+
+echo [1/3] Fetching %BRANCH% ...
+git fetch origin %BRANCH%
+if errorlevel 1 goto :fetch_failed
+
+echo.
+echo [2/3] Switching to %BRANCH% ...
+git checkout %BRANCH%
+if errorlevel 1 goto :checkout_failed
+
+echo.
+echo [3/3] Pulling latest ...
+git pull --ff-only origin %BRANCH%
+if errorlevel 1 goto :not_ff
+
+:updated
+cd /d "%REPO_DIR%"
+
+REM No npm step: package.json is gitignored, so a fresh clone has nothing to
+REM install from. The page pulls xlsx from the CDN and mapper.js from disk.
+
+if not exist "%PAGE%" goto :no_page
+
+echo.
+echo [done] Launching %PAGE% ...
+start "" "%REPO_DIR%\%PAGE%"
+
+echo.
+echo Repo folder: %REPO_DIR%
+echo Edit mapper.js there and refresh the browser to retest - no commit needed.
+timeout /t 6 >nul
+exit /b 0
+
+REM ---- failure paths ---------------------------------------------------
+:no_git
+echo [ERROR] git is not on PATH.
+echo         Install Git for Windows from https://git-scm.com/download/win
+echo         then re-run this file.
+goto :fail
+
+:clone_failed
+echo.
+echo [ERROR] Clone failed.
+echo         Check your network, and that your GitHub account has access
+echo         to AlteonSolutions/mapper-scripts.
+goto :fail
+
+:fetch_failed
+echo.
+echo [ERROR] Fetch failed - check your network or GitHub credentials.
+goto :fail
+
+:checkout_failed
+echo.
+echo [ERROR] Could not switch branches. You most likely have local edits.
+echo         Commit or stash them first. Nothing has been discarded.
+goto :fail
+
+:not_ff
+echo.
+echo [WARN] Pull was not a fast-forward. Your local branch has commits that
+echo        are not on origin. Launching with what you have.
+goto :updated
+
+:no_page
+echo.
+echo [ERROR] %PAGE% not found in %REPO_DIR%.
+goto :fail
+
+:fail
+echo.
+pause
+exit /b 1

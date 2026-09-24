@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapper.js — Local Upload Test</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Roboto, sans-serif; background: #f4f4f4; color: #333; }
+
+        /* ── Test Controls Bar ───────────────────────────────────────────── */
+        #test-controls {
+            background: #1a1a1a; color: #ccc; padding: 10px 20px;
+            font-size: 12px; font-family: monospace;
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        #test-controls strong { color: #fff; }
+        #test-controls a {
+            color: #7ec8e3; text-decoration: none; padding: 3px 10px;
+            border: 1px solid #444; border-radius: 4px;
+        }
+        #test-controls a:hover { background: #333; }
+        #test-controls a.active { background: #2a4a5a; border-color: #7ec8e3; color: #fff; }
+        #current-mode { color: #aaa; margin-left: auto; }
+        #branch-badge {
+            background: #2d4a2d; color: #7ec87e; border: 1px solid #4a7a4a;
+            padding: 3px 10px; border-radius: 4px; font-weight: bold;
+        }
+
+        /* ── Page Layout ─────────────────────────────────────────────────── */
+        #page-wrap { max-width: 620px; margin: 30px auto; padding: 0 16px 60px; }
+
+        /* ── Upload Box ──────────────────────────────────────────────────── */
+        #uploadBox {
+            border: 2px dashed #ccc; border-radius: 8px; padding: 30px 20px;
+            text-align: center; cursor: pointer; background: #fafafa;
+            transition: border-color 0.2s;
+        }
+        #uploadBox:hover { border-color: #999; }
+
+        /* ── Mapping Card ────────────────────────────────────────────────── */
+        .mapping-card { padding: 10px 0; }
+        .appeal-label { font-size: 12px; color: #999; text-align: center; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .appeal-name { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 20px; color: #222; }
+
+        /* ── Category Buttons ────────────────────────────────────────────── */
+        .category-buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: nowrap; }
+        .category-buttons.allow-wrap { flex-wrap: wrap; }
+        .category-btn {
+            padding: 10px 18px; border-radius: 8px; border: 2px solid var(--theme-color, #2c5f5d);
+            background: white; color: var(--theme-color, #2c5f5d);
+            font-size: 14px; font-weight: 600; cursor: pointer; font-family: Roboto, sans-serif;
+            transition: background 0.15s, color 0.15s;
+        }
+        .category-btn:hover { opacity: 0.85; }
+        .non-event-btn { border-color: #999; color: #666; }
+        .non-event-btn:hover { background: #f5f5f5; }
+
+        /* ── Navigation Buttons ──────────────────────────────────────────── */
+        .navigation-buttons { display: flex; justify-content: space-between; margin-top: 10px; }
+        .nav-btn {
+            padding: 8px 20px; border-radius: 6px; border: 1px solid #ddd;
+            background: #f5f5f5; color: #555; font-size: 13px; font-weight: 600;
+            cursor: pointer; font-family: Roboto, sans-serif;
+        }
+        .nav-btn:disabled { opacity: 0.4; cursor: default; }
+        .nav-btn:not(:disabled):hover { background: #e8e8e8; }
+
+        /* ── Progress Bar ────────────────────────────────────────────────── */
+        .progress-container { margin-bottom: 20px; }
+        .progress-bar-track { background: #eee; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+        .progress-bar-fill { height: 100%; border-radius: 99px; background: var(--theme-color, #2c5f5d); transition: width 0.3s; width: 0%; }
+        .progress-bar-labels { display: flex; justify-content: space-between; font-size: 12px; color: #999; }
+
+        /* ── Step Tracker ────────────────────────────────────────────────── */
+        #stepProgress { margin-bottom: 20px; }
+        #stepTracker {
+            display: flex; align-items: center; justify-content: center;
+            position: relative; padding: 10px 0;
+        }
+        #stepTracker::before {
+            content: '';
+            position: absolute; top: 50%; left: var(--tracker-offset, 16.67%);
+            right: var(--tracker-offset, 16.67%);
+            height: 2px; background: #ddd; z-index: 0;
+            transform: translateY(-50%);
+        }
+        .step-item { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; flex: 1; }
+        .step-connector { flex: 1; height: 2px; background: #ddd; z-index: 0; }
+        .step-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            border: 2px solid #ddd; background: white; color: #bbb;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; transition: all 0.3s;
+        }
+        .step-circle.active { border-color: var(--theme-color, #2c5f5d); background: var(--theme-color, #2c5f5d); color: white; }
+        .step-circle.completed { border-color: var(--theme-color, #2c5f5d); background: var(--theme-color, #2c5f5d); color: white; }
+        .step-label { font-size: 11px; color: #999; margin-top: 6px; text-align: center; max-width: 90px; line-height: 1.3; }
+        .step-item.active .step-label { color: var(--theme-color, #2c5f5d); font-weight: 600; }
+        .step-item.completed .step-label { color: #aaa; }
+
+        /* ── Category Tags (event setup) ─────────────────────────────────── */
+        .category-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #f0f0f0; border-radius: 20px; padding: 4px 12px;
+            font-size: 13px; margin: 4px;
+        }
+        .category-tag button { background: none; border: none; cursor: pointer; color: #999; font-size: 16px; line-height: 1; padding: 0; }
+
+        /* ── Section Headings ────────────────────────────────────────────── */
+        h2 { font-size: 18px; font-weight: 700; text-align: center; margin: 0 0 16px; color: #222; }
+
+        /* ── Completion Cards ────────────────────────────────────────────── */
+        .completion-card { text-align: center; padding: 20px 0; }
+        .completion-card p { color: #555; margin-bottom: 20px; }
+        .continue-btn {
+            display: inline-block; padding: 12px 32px; border-radius: 8px;
+            background: var(--theme-color, #2c5f5d); color: white;
+            border: none; font-size: 15px; font-weight: 600; cursor: pointer;
+            font-family: Roboto, sans-serif;
+        }
+        .continue-btn:hover { opacity: 0.9; }
+
+        /* ── Category Setup ──────────────────────────────────────────────── */
+        .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .input-row input {
+            flex: 1; padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px;
+            font-size: 14px; font-family: Roboto, sans-serif;
+        }
+        .input-row button, .action-btn {
+            padding: 9px 18px; border-radius: 6px; border: none;
+            background: var(--theme-color, #2c5f5d); color: white;
+            font-size: 14px; font-weight: 600; cursor: pointer; font-family: Roboto, sans-serif;
+            white-space: nowrap;
+        }
+        .action-btn:hover { opacity: 0.9; }
+        .skip-link { display: block; text-align: center; margin-top: 12px; color: #999; font-size: 13px; cursor: pointer; text-decoration: underline; }
+        .skip-link:hover { color: #666; }
+        .skip-btn {
+            display: inline-block; padding: 12px 32px; border-radius: 8px;
+            background: white; color: var(--theme-color, #2c5f5d);
+            border: 1px solid var(--theme-color, #2c5f5d);
+            font-size: 15px; font-weight: 400; cursor: pointer;
+            font-family: Roboto, sans-serif;
+        }
+        .skip-btn:hover { opacity: 0.8; }
+
+        /* ── Mapping Box ─────────────────────────────────────────────────── */
+        #mappingBox { margin-top: 16px; }
+        #mappingBoxLabel { font-size: 14px; font-weight: 500; color: #2c3345; margin-bottom: 10px; }
+
+        /* ── Custom Submit Button ────────────────────────────────────────── */
+        #customSubmitBtn {
+            display: block; width: 100%; padding: 14px;
+            background: var(--theme-color, #2c5f5d); color: white;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+            cursor: pointer; font-family: Roboto, sans-serif; margin-top: 20px;
+        }
+        #customSubmitBtn:hover { opacity: 0.9; }
+
+        /* ── Theme vars ──────────────────────────────────────────────────── */
+        :root { --theme-color: #2c5f5d; --theme-color-hover: #3d7672; }
+
+        /* ── Client & Contact Info (mirrors the live GHL page layout) ──────── */
+        .demo-form-section { margin-bottom: 28px; }
+        .demo-form-section h3 { font-size: 15px; font-weight: 700; text-align: left; color: #222; margin: 0 0 14px; }
+        .demo-field { margin-bottom: 14px; }
+        .demo-field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+        .demo-required { color: #ef4444; }
+        .demo-field input, .demo-field select {
+            width: 100%; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
+            font-size: 14px; font-family: Roboto, sans-serif; box-sizing: border-box; outline: none;
+            background: #fff; color: #333;
+        }
+        .demo-field input:focus, .demo-field select:focus { border-color: var(--theme-color, #2c5f5d); }
+        .demo-field input::placeholder { color: #aaa; }
+        /* Icon sits over a wrapper hugging just the <input> (not the label
+           above it), centered via top:50%/translateY so it stays correct
+           regardless of label height or font metrics - a hardcoded top:Npx
+           here previously drifted off-center by the label's height. */
+        .demo-field-icon .demo-input-wrap { position: relative; }
+        .demo-field-icon input { padding-left: 32px; }
+        .demo-field-icon .demo-icon-glyph {
+            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            color: #999; font-size: 14px; line-height: 1; pointer-events: none;
+        }
+        .demo-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 480px) { .demo-grid-2 { grid-template-columns: 1fr; } }
+
+        /* Matches #uploadBox's ACTUAL rendered state once mapper.js's init
+           handler runs (mapper.js ~line 643-657): it strips every non-input
+           child and replaces them with just its own icon, border:1px solid
+           #ACACACFF, border-radius:8px, min-height:74px. No dashed border,
+           no caption text survives in the real box, so this doesn't have
+           any either - confirmed by inspecting its rendered innerHTML. */
+        .demo-upload-title { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+        .demo-upload-box {
+            border: 1px solid #ACACACFF; border-radius: 8px; min-height: 74px;
+            cursor: pointer; background: #fafafa;
+        }
+        .demo-upload-icon-wrap { display: flex; align-items: center; justify-content: center; padding: 14px 0; pointer-events: none; }
+        .demo-upload-filerow {
+            display: flex; justify-content: space-between; align-items: center; width: 100%;
+            padding: 8px 14px 10px; border-top: 1px solid #eee; margin-top: -8px;
+            font-size: 13px; color: #333; box-sizing: border-box;
+        }
+
+        /* mapper.js hardcodes #mapper-container to 713px (mapper.js ~line 667),
+           tuned for the original GHL iframe layout. Override it back to fill
+           this page's own width so the Client Data upload box lines up with
+           every other section instead of overflowing #page-wrap. !important
+           is required here since that 713px is an inline style set at
+           runtime, which normally beats a plain stylesheet rule. */
+        #mapper-container { width: 100% !important; }
+
+        /* ── Sector Selection (ported from sector-selection.js, no iframe) ──
+             Original ran on the outer GHL page with mapper.js in an iframe,
+             communicating industry choice via ?industry= on the iframe src
+             and scroll position via postMessage. Merged into one page here:
+             same icon config, brand assets, and collapse animation, but
+             selection sets window.selectedIndustryKey directly (one of
+             detectIndustry()'s existing fallbacks in mapper.js, unmodified)
+             and reveals the rest of the page in place instead of reloading
+             an iframe. */
+        #sector-heading { font-size: 20px; font-weight: 700; text-align: center; color: #222; margin: 8px 0 24px; }
+        .category-container { display: flex; flex-direction: column; gap: 18px; align-items: center; margin-bottom: 8px; }
+        .category-row { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .category-btn-icon {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            width: 92px; padding: 10px 6px; border: none; background: none; cursor: pointer;
+            font-family: Roboto, sans-serif; transition: transform 0.2s ease;
+        }
+        .category-btn-icon:hover { transform: translateY(-4px); }
+        .category-btn-icon.selected { transform: none; }
+        .category-icon {
+            width: 64px; height: 64px; border-radius: 50%; background: #fff;
+            border: 2px solid var(--theme-color, #2c5f5d); display: flex; align-items: center;
+            justify-content: center; padding: 14px; box-sizing: border-box;
+        }
+        .category-icon img { width: 100%; height: 100%; object-fit: contain; }
+        .category-label { font-size: 12px; font-weight: 600; color: #444; text-align: center; line-height: 1.3; }
+
+        #post-sector-content {
+            display: none; opacity: 0; transform: translateY(12px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        #post-sector-content.show { display: block; opacity: 1; transform: translateY(0); }
+        #sector-selection-wrap { transition: opacity 0.4s ease; }
+        #sector-selection-wrap.done { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<!-- ── Test Controls ──────────────────────────────────────────────────────── -->
+<div id="test-controls">
+    <span id="branch-badge">LOCAL FILES</span>
+    <strong>Variant:</strong>
+    <a href="test-upload-local.html">Alford</a>
+    <a href="test-upload-local.html?brand=databasey">Databasey</a>
+    <a href="test-upload-local.html?brand=sw">SW Analytics</a>
+    <a href="test-upload-local.html?brand=sw&variant=staffing">SW Staffing</a>
+    <a href="test-upload-local.html?brand=sw&variant=developmentassessment">SW Dev Assessment</a>
+    <a href="test-upload-local.html?brand=sw&variant=campaigncounsel">SW Campaign Counsel</a>
+    <span id="current-mode"></span>
+</div>
+
+<!-- ── Page ───────────────────────────────────────────────────────────────── -->
+<div id="page-wrap">
+
+    <!-- ── Sector Selection (shown first) ─────────────────────────────────── -->
+    <div id="sector-selection-wrap">
+        <div id="sector-heading">What sector best describes your organization?</div>
+        <div class="category-container">
+            <div class="category-row" id="row1"></div>
+            <div class="category-row" id="row2"></div>
+        </div>
+        <!-- #template-download-wrap inserted here by the script below, matching sector-selection.js -->
+    </div>
+
+    <!-- ── Everything below stays hidden until a sector is picked ──────────── -->
+    <div id="post-sector-content">
+
+    <!-- ── Client & Contact Info ────────────────────────────────────────────
+         Mirrors the live GHL page layout: these fields drive the actual
+         submission. They are synced into mapper.js's own late-appearing
+         "All Done" card fields (mapper-client-name etc.) right before that
+         card's Submit button is read — see the sync script near the bottom
+         of this file. mapper.js itself is not modified for this; it still
+         creates and reads its own fields exactly as it does in production,
+         they just arrive pre-filled from here. -->
+    <div class="demo-form-section">
+        <h3>Internal Contact Information</h3>
+        <div class="demo-grid-2">
+            <div class="demo-field">
+                <label>First Name <span class="demo-required">*</span></label>
+                <input type="text" id="demo-first-name" placeholder="Enter First Name">
+            </div>
+            <div class="demo-field">
+                <label>Last Name <span class="demo-required">*</span></label>
+                <input type="text" id="demo-last-name" placeholder="Enter Last Name">
+            </div>
+        </div>
+        <div class="demo-field demo-field-icon">
+            <label>Email <span class="demo-required">*</span></label>
+            <div class="demo-input-wrap">
+                <span class="demo-icon-glyph">&#9993;</span>
+                <input type="email" id="demo-email" placeholder="Enter Email">
+            </div>
+            <div id="demo-email-hint" style="font-size:12px;color:#b45309;margin-top:5px;"></div>
+        </div>
+    </div>
+
+    <div class="demo-form-section">
+        <h3>Client Information</h3>
+        <div class="demo-field">
+            <label>Client Name <span class="demo-required">*</span></label>
+            <input type="text" id="demo-client-name" placeholder="Enter Client Name">
+        </div>
+        <div class="demo-grid-2">
+            <div class="demo-field">
+                <label># of Board Members <span class="demo-required">*</span></label>
+                <input type="number" id="demo-board-members" min="0" placeholder="Enter # of Board Members">
+            </div>
+            <div class="demo-field">
+                <label>Fiscal Year Start Month <span class="demo-required">*</span></label>
+                <select id="demo-fy-month">
+                    <option value="">Select Fiscal Year Start Month</option>
+                </select>
+            </div>
+        </div>
+        <div class="demo-field demo-field-icon">
+            <label>Major Giving Threshold <span class="demo-required">*</span></label>
+            <div class="demo-input-wrap">
+                <span class="demo-icon-glyph">$</span>
+                <input type="number" id="demo-threshold" min="1" placeholder="Enter Major Giving Threshold">
+            </div>
+        </div>
+    </div>
+
+    <!-- Organization Logo File — a real upload. mapper.js's getLogoFile() finds
+         it by searching for a label containing "Logo" and reading the nearest
+         file input, then base64-encodes it into the PA payload as
+         logo_content / logo_filename. Field names chosen to mirror the
+         existing file_content pattern — confirm they match what the PA flow
+         actually expects to receive before relying on this in production. -->
+    <!-- Icon and box styling below are pixel-matched to what #uploadBox
+         actually looks like once mapper.js initializes, NOT how it's marked
+         up here. mapper.js's own init handler (mapper.js ~line 643) strips
+         every non-<input> child out of #uploadBox and replaces it with just
+         its own icon (border 1px solid #ACACACFF, min-height 74px, no
+         caption text) - confirmed by inspecting its rendered innerHTML.
+         There is no way to keep caption text inside that box, so true visual
+         parity means matching that icon-only final state, with the label
+         living above the box instead of inside it - same pattern for both. -->
+    <div class="demo-form-section">
+        <label class="demo-upload-title">Organization Logo File</label>
+        <div class="demo-upload-box" id="logoUploadBox">
+            <div class="demo-upload-icon-wrap">
+                <svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="40" height="40" rx="20" fill="#F2F4F7"/>
+                    <rect x="3" y="3" width="40" height="40" rx="20" stroke="#F9FAFB" stroke-width="6"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M20.9167 16.3334C17.9252 16.3334 15.5 18.7585 15.5 21.7501C15.5 23.2425 16.1025 24.5926 17.0795 25.5732C17.4043 25.8992 17.4034 26.4268 17.0773 26.7517C16.7513 27.0765 16.2237 27.0756 15.8988 26.7495C14.6233 25.4693 13.8334 23.7012 13.8334 21.7501C13.8334 17.8381 17.0047 14.6667 20.9167 14.6667C23.454 14.6667 25.6787 16.0013 26.9288 18.003C29.8376 18.0973 32.1667 20.485 32.1667 23.4167C32.1667 25.0991 31.3987 26.6028 30.1974 27.595C29.8425 27.8881 29.3172 27.838 29.0242 27.4831C28.7311 27.1282 28.7812 26.603 29.1361 26.3099C29.9705 25.6208 30.5 24.581 30.5 23.4167C30.5 21.3457 28.8211 19.6667 26.75 19.6667C26.2803 19.6667 25.8332 19.422 25.5872 19.0046C24.6441 17.4042 22.905 16.3334 20.9167 16.3334ZM22.4108 22.4108C22.7362 22.0854 23.2639 22.0854 23.5893 22.4108L26.9226 25.7442C27.2481 26.0696 27.2481 26.5972 26.9226 26.9227C26.5972 27.2481 26.0696 27.2481 25.7441 26.9227L23.8334 25.0119V30.5001C23.8334 30.9603 23.4603 31.3334 23 31.3334C22.5398 31.3334 22.1667 30.9603 22.1667 30.5001V25.0119L20.256 26.9227C19.9305 27.2481 19.4029 27.2481 19.0775 26.9227C18.752 26.5972 18.752 26.0696 19.0775 25.7442L22.4108 22.4108Z" fill="#2c3345FF"/>
+                </svg>
+            </div>
+        </div>
+        <input type="file" id="demo-logo-input" accept=".png,.jpg,.jpeg" style="display:none;">
+    </div>
+
+    <div id="mapper-container" style="visibility:hidden;">
+
+        <!-- Upload area -->
+        <label class="demo-upload-title">Client Data File Upload</label>
+        <div id="uploadBox" style="border:2px dashed #ccc;border-radius:8px;padding:0;text-align:center;cursor:pointer;background:#fafafa;">
+            <svg width="30" height="30" viewBox="0 0 16 16" fill="#aaa" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 10px;">
+                <path fill-rule="evenodd" d="M.5 8a.5.5 0 0 1 .5.5V12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5A.5.5 0 0 1 .5 8z"/>
+                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0v-8A.5.5 0 0 1 8 2z"/>
+                <path fill-rule="evenodd" d="M5 4.854a.5.5 0 0 0 .707 0L8 2.56l2.293 2.293A.5.5 0 1 0 11 4.146L8.354 1.5a.5.5 0 0 0-.708 0L5 4.146a.5.5 0 0 0 0 .708z"/>
+            </svg>
+            <div style="font-size:14px;color:#666;">Click to upload your Client Data file</div>
+            <div style="font-size:12px;color:#aaa;margin-top:4px;">.xlsx files only</div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;">
+        <div id="fileInfo"></div>
+        <div id="uploadNote" style="font-size:12px;color:#999;text-align:center;margin-top:8px;">
+            Note: the Client Data file <strong>must</strong> use the designated template.
+        </div>
+
+        <!-- Event category setup -->
+        <div id="categorySetup" style="display:none;padding:10px 0;">
+            <h2>Define Special Events</h2>
+            <p style="text-align:center;color:#666;font-size:14px;margin-bottom:16px;">Enter up to 3 special events to map your gift appeals against.</p>
+            <div class="input-row">
+                <input type="text" id="categoryInput" placeholder="Enter event name (e.g., Gala, Golf Tournament, Annual Auction)">
+                <button id="addCategoryBtn" class="action-btn">Add</button>
+            </div>
+            <div id="categoriesList" style="margin-bottom:16px;"></div>
+            <div style="text-align:center;display:flex;gap:12px;justify-content:center;">
+                <button id="startMappingBtn" class="continue-btn">Continue to Mapping ➡</button>
+                <button id="skipSpecialEventBtn" class="skip-btn">Skip Mapping</button>
+            </div>
+        </div>
+
+        <!-- Event mapping section -->
+        <div id="mappingSection" style="display:none;">
+            <h2>Special Event Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="progressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="progressText">0 of 0 appeals mapped</span>
+                    <span id="progressBarText"></span>
+                </div>
+            </div>
+            <div id="mappingContainer"></div>
+            <div id="completionCard" class="completion-card" style="display:none;">
+                <p id="completionNextStep"></p>
+                <button id="completionNextButton" class="continue-btn"></button>
+            </div>
+        </div>
+
+        <!-- Spotlight mapping section -->
+        <div id="spotlightMappingSection" style="display:none;">
+            <h2 id="spotlightMappingTitle">Spotlight Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="spotlightProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="spotlightProgressText">0 of 0 mapped</span>
+                    <span id="spotlightProgressBarText"></span>
+                </div>
+            </div>
+            <div id="spotlightMappingContainer"></div>
+            <div id="spotlightCompletionCard" class="completion-card" style="display:none;">
+                <p id="spotlightCompletionText"></p>
+                <button id="startConstituentMappingBtn" class="continue-btn">Continue to Constituent Mapping ➡</button>
+            </div>
+            <div id="spotlightSkipWrapper" style="display:none;">
+                <span id="skipSpotlightBtn" class="skip-link">Skip spotlight mapping</span>
+            </div>
+        </div>
+
+        <!-- Constituent mapping section -->
+        <div id="constituentMappingSection" style="display:none;">
+            <h2>Constituent Type Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="constituentProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="constituentProgressText">0 of 0 constituent types mapped</span>
+                    <span id="constituentProgressBarText"></span>
+                </div>
+            </div>
+            <div id="constituentMappingContainer"></div>
+            <div id="constituentCompletionCard" class="completion-card" style="display:none;">
+                <p>You have successfully mapped all Constituent Types.</p>
+                <button id="startGiftTypeMappingBtn" class="continue-btn">Continue to Gift Type Mapping ➡</button>
+            </div>
+        </div>
+
+        <!-- Gift type mapping section -->
+        <div id="giftTypeMappingSection" style="display:none;">
+            <h2>Gift Type Mapping</h2>
+            <div class="progress-container">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="giftTypeProgressBar"></div></div>
+                <div class="progress-bar-labels">
+                    <span id="giftTypeProgressText">0 of 0 gift types mapped</span>
+                    <span id="giftTypeProgressBarText"></span>
+                </div>
+            </div>
+            <div id="giftTypeMappingContainer"></div>
+            <div id="giftTypeCompletionCard" class="completion-card" style="display:none;">
+                <p>You have successfully mapped all Gift Types.</p>
+            </div>
+        </div>
+
+        <!-- Step progress tracker -->
+        <div id="stepProgress" style="display:none;">
+            <div id="stepTracker"></div>
+        </div>
+
+        <!-- Submit button (revealed by mapper.js when all steps complete) -->
+        <div>
+            <button id="customSubmitBtn" type="button">Submit</button>
+        </div>
+
+    </div><!-- end #mapper-container -->
+
+    </div><!-- end #post-sector-content -->
+
+</div><!-- end #page-wrap -->
+
+<style>
+    #insp { position: fixed; top: 0; right: 0; width: 470px; height: 100vh; overflow-y: auto;
+            background: #14171a; color: #d5dae0; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace;
+            border-left: 2px solid #2b3138; padding: 14px 16px 40px; z-index: 99999; display: none; }
+    #insp.open { display: block; }
+    #insp h3 { margin: 0 0 10px; font-size: 13px; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+    #insp h4 { margin: 18px 0 6px; font-size: 12px; color: #8fb4d0; text-transform: uppercase; letter-spacing: .04em; }
+    #insp table { width: 100%; border-collapse: collapse; }
+    #insp td { padding: 2px 6px 2px 0; vertical-align: top; word-break: break-all; }
+    #insp td.k { color: #7f8b98; white-space: nowrap; width: 1%; }
+    #insp .ok   { color: #6fcf6f; }
+    #insp .bad  { color: #ff7b72; font-weight: bold; }
+    #insp .warn { color: #e3c76f; }
+    #insp .n    { color: #79c0ff; }
+    #insp button { background: #22303c; color: #9fd0f0; border: 1px solid #35505f;
+                   border-radius: 4px; padding: 5px 12px; font: inherit; cursor: pointer; margin: 2px 4px 2px 0; }
+    #insp button:hover { background: #2c3e4d; }
+    #insp-toggle { position: fixed; top: 8px; right: 8px; z-index: 100000; background: #14171a;
+                   color: #9fd0f0; border: 1px solid #35505f; border-radius: 4px;
+                   padding: 6px 12px; font: 12px ui-monospace, monospace; cursor: pointer; }
+    #insp-live { color: #e3c76f; }
+    #insp hr { border: 0; border-top: 1px solid #2b3138; margin: 14px 0; }
+</style>
+<button id="insp-toggle">Inspector</button>
+<div id="insp">
+    <h3>Submit Inspector</h3>
+    <label id="insp-live"><input type="checkbox" id="insp-live-cb"> Send to Power Automate for real</label>
+    <div id="insp-body"><p style="color:#7f8b98">Nothing captured yet. Complete the flow and press Submit.</p></div>
+</div>
+
+<!-- xlsx: CDN first (same build the live page loads, and package.json is
+     gitignored so a fresh clone has no node_modules to install from), then a
+     local node_modules copy for anyone who does have one / is offline.
+     Only mapper.js is deliberately local -- that is the point of this harness. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+    if (typeof XLSX === 'undefined') {
+        // document.write during parse inserts this synchronously, ahead of mapper.js
+        document.write('<scr' + 'ipt src="node_modules/xlsx/dist/xlsx.full.min.js"><\/scr' + 'ipt>');
+    }
+</script>
+<script>
+/* Local test harness — intercepts the Power Automate submit so nothing is sent
+   unless you explicitly opt in, then inspects the workbook mapper.js produced. */
+(function () {
+    'use strict';
+
+    var REQUIRED = [
+        'Gift Data', 'Constituent Data',
+        'All Donors', 'Major Donors',
+        'All Prospects', 'Renewals', 'Major Gift Prospects', 'Lapsed Major Donors',
+        'Mid-Level Giving Prospects', 'Planned Giving Prospects',
+        'Decreased Giving Donors', 'Consecutive Giving Donors'
+    ];
+    var TEMPLATE_ONLY = { 'Gift Data': 1, 'Constituent Data': 1 };
+    var CSV_ONLY = { 'All Donors': 1, 'Major Donors': 1 };
+
+    var panel, body, liveCb, computeLog = [];
+
+    document.addEventListener('DOMContentLoaded', function () {
+        panel = document.getElementById('insp');
+        body = document.getElementById('insp-body');
+        liveCb = document.getElementById('insp-live-cb');
+        document.getElementById('insp-toggle').addEventListener('click', function () {
+            panel.classList.toggle('open');
+        });
+    });
+
+    // Surface UPSTREAM_COMPUTE console output — a silent fallback here means the
+    // prospect sheets never got built.
+    ['log', 'warn', 'error'].forEach(function (lvl) {
+        var orig = console[lvl].bind(console);
+        console[lvl] = function () {
+            var s = Array.prototype.map.call(arguments, function (a) {
+                return (a && a.message) ? a.message : String(a);
+            }).join(' ');
+            if (s.indexOf('UPSTREAM_COMPUTE') !== -1) computeLog.push({ lvl: lvl, msg: s });
+            return orig.apply(null, arguments);
+        };
+    });
+
+    // Swallow only mapper's own post-submit failure alert while intercepting.
+    var swallow = false;
+    var origAlert = window.alert.bind(window);
+    window.alert = function (m) {
+        if (swallow && String(m).indexOf('Submission failed') === 0) { swallow = false; return; }
+        return origAlert(m);
+    };
+
+    var origFetch = window.fetch.bind(window);
+    window.fetch = function (url, opts) {
+        var u = String(url && url.url ? url.url : url);
+        var isSubmit = opts && opts.method === 'POST' && /powerplatform\.com/.test(u);
+        if (!isSubmit) return origFetch(url, opts);
+
+        var payload;
+        try { payload = JSON.parse(opts.body); } catch (e) { payload = null; }
+        try { render(payload); } catch (e) { showError(e); }
+
+        if (liveCb && liveCb.checked) return origFetch(url, opts);
+        swallow = true;
+        return Promise.resolve(new Response('{"intercepted":true}', { status: 503 }));
+    };
+
+    function esc(s) {
+        return String(s).replace(/[&<>]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+        });
+    }
+    function showError(e) {
+        panel.classList.add('open');
+        body.innerHTML = '<p class="bad">Inspector failed: ' + esc(e.message) + '</p>';
+    }
+    function norm(v) {
+        if (v === null || v === undefined) return null;
+        return String(v).trim().toLowerCase();
+    }
+    function rowsOf(ws) {
+        if (!ws || !ws['!ref']) return 0;
+        return Math.max(0, XLSX.utils.decode_range(ws['!ref']).e.r); // minus header
+    }
+
+    function render(payload) {
+        panel.classList.add('open');
+        if (!payload || !payload.file_content) {
+            body.innerHTML = '<p class="bad">No file_content in payload.</p>';
+            return;
+        }
+
+        var bin = atob(payload.file_content);
+        var buf = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        var wb = XLSX.read(buf, { type: 'array' });
+
+        var html = [];
+
+        html.push('<h4>Payload</h4><table>');
+        ['company_name', 'full_name', 'email', 'Fiscal Year Start Month',
+         'Major Giving Threshold', '# of Board Members', 'Industry Type',
+         'form_source', 'analysis_type'].forEach(function (k) {
+            html.push('<tr><td class="k">' + esc(k) + '</td><td>' + esc(payload[k] === '' ? '(empty)' : payload[k]) + '</td></tr>');
+        });
+        html.push('<tr><td class="k">file size</td><td class="n">' +
+            (buf.length / 1024).toFixed(1) + ' KB</td></tr></table>');
+
+        // ---- sheet inventory ----
+        html.push('<h4>Sheets (' + wb.SheetNames.length + ')</h4><table>');
+        var missing = [];
+        REQUIRED.forEach(function (name) {
+            var ws = wb.Sheets[name];
+            var dest = TEMPLATE_ONLY[name] ? 'template' : CSV_ONLY[name] ? 'csv' : 'prospecting';
+            if (!ws) {
+                missing.push(name);
+                html.push('<tr><td class="k bad">MISSING</td><td class="bad">' + esc(name) + '</td></tr>');
+            } else {
+                html.push('<tr><td class="k ok">' + rowsOf(ws) + '</td><td>' + esc(name) +
+                    ' <span style="color:#5a646e">&rarr; ' + dest + '</span></td></tr>');
+            }
+        });
+        var extra = wb.SheetNames.filter(function (n) { return REQUIRED.indexOf(n) === -1; });
+        extra.forEach(function (n) {
+            html.push('<tr><td class="k">' + rowsOf(wb.Sheets[n]) + '</td><td style="color:#7f8b98">' +
+                esc(n) + ' <span style="color:#5a646e">&rarr; passthrough</span></td></tr>');
+        });
+        html.push('</table>');
+
+        // ---- checks ----
+        html.push('<hr><h4>Checks</h4><table>');
+        function check(ok, label, detail) {
+            html.push('<tr><td class="k ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'PASS' : 'FAIL') +
+                '</td><td>' + esc(label) + (detail ? ' <span style="color:#7f8b98">' + esc(detail) + '</span>' : '') + '</td></tr>');
+        }
+        function warn(label, detail) {
+            html.push('<tr><td class="k warn">WARN</td><td>' + esc(label) +
+                (detail ? ' <span style="color:#7f8b98">' + esc(detail) + '</span>' : '') + '</td></tr>');
+        }
+
+        check(missing.length === 0, 'All 12 required sheets present',
+              missing.length ? 'missing: ' + missing.join(', ') : '');
+
+        var gift = wb.Sheets['Gift Data'], cons = wb.Sheets['Constituent Data'];
+        if (gift && cons) {
+            var gRows = XLSX.utils.sheet_to_json(gift, { header: 1 });
+            var cRows = XLSX.utils.sheet_to_json(cons, { header: 1 });
+
+            // DeleteExtraConstituents port: every constituent must appear in Gift Data col A
+            var giftIds = {};
+            for (var r = 1; r < gRows.length; r++) {
+                var gid = norm(gRows[r][0]);
+                if (gid !== null) giftIds[gid] = 1;
+            }
+            var orphans = 0, firstOrphan = '';
+            for (var c = 1; c < cRows.length; c++) {
+                var cid = norm(cRows[c][0]);
+                if (cid === null || !giftIds[cid]) {
+                    orphans++;
+                    if (!firstOrphan) firstOrphan = String(cRows[c][0]) + ' / ' + String(cRows[c][1]);
+                }
+            }
+            check(orphans === 0, 'No constituents absent from Gift Data',
+                  orphans ? orphans + ' orphan(s), e.g. ' + firstOrphan : '(DeleteExtraConstituents port)');
+
+            // 10-year cap
+            var yrCols = (cRows[0] || []).filter(function (h) { return /^[0-9]{4}$/.test(String(h)); });
+            check(yrCols.length > 0 && yrCols.length <= 10, 'Year columns within 10-year cap',
+                  yrCols.length + ' -> ' + yrCols.join(','));
+
+            // header row present on every derived sheet
+            var noHeader = REQUIRED.filter(function (n) {
+                var ws = wb.Sheets[n];
+                return ws && !(XLSX.utils.sheet_to_json(ws, { header: 1 })[0] || []).length;
+            });
+            check(noHeader.length === 0, 'Every sheet has a header row',
+                  noHeader.length ? noHeader.join(', ') : '');
+
+            // derived sheets must be subsets of Constituent Data
+            var consIds = {};
+            for (var k = 1; k < cRows.length; k++) { var n2 = norm(cRows[k][0]); if (n2 !== null) consIds[n2] = 1; }
+            var leaked = [];
+            ['All Donors', 'Major Donors', 'All Prospects', 'Renewals', 'Major Gift Prospects',
+             'Lapsed Major Donors', 'Mid-Level Giving Prospects', 'Planned Giving Prospects',
+             'Decreased Giving Donors', 'Consecutive Giving Donors'].forEach(function (n3) {
+                var ws = wb.Sheets[n3]; if (!ws) return;
+                var rr = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                for (var q = 1; q < rr.length; q++) {
+                    var id = norm(rr[q][0]);
+                    if (id !== null && !consIds[id]) { leaked.push(n3); return; }
+                }
+            });
+            check(leaked.length === 0, 'Derived sheets inherit the constituent filter',
+                  leaked.length ? 'unfiltered: ' + leaked.join(', ') : '');
+
+            if (rowsOf(cons) === 0) warn('Constituent Data is empty');
+        }
+
+        if (computeLog.length) {
+            html.push('</table><h4>Upstream compute log</h4><table>');
+            computeLog.forEach(function (l) {
+                html.push('<tr><td class="k ' + (l.lvl === 'log' ? 'ok' : 'bad') + '">' + l.lvl +
+                    '</td><td>' + esc(l.msg) + '</td></tr>');
+            });
+        } else {
+            warn('No UPSTREAM_COMPUTE console output', 'upstream compute may not have run');
+        }
+        html.push('</table>');
+
+        // ---- download ----
+        var fname = (payload.company_name || 'Client') + ' Data File.xlsx';
+        html.push('<hr><button id="insp-dl">Download ' + esc(fname) + '</button>');
+        html.push('<button id="insp-json">Copy payload JSON (no file)</button>');
+        body.innerHTML = html.join('');
+
+        document.getElementById('insp-dl').addEventListener('click', function () {
+            var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fname;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        });
+        document.getElementById('insp-json').addEventListener('click', function () {
+            var p = {}; for (var k in payload) if (k !== 'file_content') p[k] = payload[k];
+            navigator.clipboard.writeText(JSON.stringify(p, null, 2));
+        });
+    }
+})();
+
+</script>
+
+<script>
+    // Sector selection - ported from sector-selection.js. That file ran on
+    // the outer GHL page with mapper.js loaded in a separate iframe, passing
+    // the chosen industry via ?industry= on the iframe's src (a full iframe
+    // reload) and syncing scroll position across frames via postMessage.
+    // Merged into one page here: same brand icon config and the same
+    // collapse-to-center / fade-out animation, but selection sets
+    // window.selectedIndustryKey directly instead of reloading anything -
+    // that's already one of the fallbacks detectIndustry() in mapper.js
+    // checks (unmodified), so no page reload and no iframe are needed for
+    // the choice to reach mapper.js's spotlight config and Industry Type
+    // field. All iframe/postMessage scroll-sync code from the original is
+    // dropped as inapplicable to a single-document layout.
+    (function () {
+        'use strict';
+
+        var brands = {
+            alford: { icons: {
+                arts_culture:       'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a89511711212fc4e39.svg',
+                environmental:      'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8480ea4de5ac8772a.svg',
+                education:          'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a85e933b4a1f6909d9.svg',
+                family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69948e0fd614c9b315f2d7d1.svg',
+                healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8951171bc3cfc4e3a.svg',
+                human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8d119a5a3fe4cc554.svg',
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/6978f3a8fa89c784f91527c0.svg'
+            }},
+            sw: { icons: {
+                arts_culture:       'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931b3d5f8724c61fde2.svg',
+                environmental:      'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962932f02fa40f576301c2.svg',
+                education:          'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931d614c91a00646632.svg',
+                family_foundation:  'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931905d476dbdbf20b2.svg',
+                healthcare:         'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/699629313fd420c9de4da557.svg',
+                human_services:     'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931f02fa478206301b5.svg',
+                religion:           'https://storage.googleapis.com/msgsndr/CwIkkwa8MTjmkcKkZaGX/media/69962931419632499471805b.svg'
+            }},
+            kellogg: { icons: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db0f58810f313b39b17.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68f58810f313b3af1f.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e688c6ee94929b7a342.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e6860904d91054158b3.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e68fedd58e234bc1d1c.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187e687b799e67777fc875.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a187db1054f002268c9ecf1.svg'
+            }},
+            databasey: { icons: {
+                arts_culture:       'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882988c6ee94929b7fa77.svg',
+                environmental:      'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539a.svg',
+                education:          'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882987b799e6777801fba.svg',
+                family_foundation:  'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188299fedd58e234bc76b8.svg',
+                healthcare:         'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298fedd58e234bc7698.svg',
+                human_services:     'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a188298ff82912d6585539b.svg',
+                religion:           'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/6a1882993e043d8258f12989.svg'
+            }}
+        };
+
+        var industries = [
+            { key: 'arts_culture',      mapperKey: 'arts',                label: 'Arts & Culture',       row: 1 },
+            { key: 'environmental',     mapperKey: 'environmental',       label: 'Environmental',        row: 1 },
+            { key: 'education',         mapperKey: 'education',           label: 'Education',            row: 1 },
+            { key: 'family_foundation', mapperKey: 'communityfoundation', label: 'Community Foundation', row: 1 },
+            { key: 'healthcare',        mapperKey: 'healthcare',          label: 'Healthcare',           row: 2 },
+            { key: 'human_services',    mapperKey: 'humanservices',       label: 'Human Services',       row: 2 },
+            { key: 'religion',          mapperKey: 'religion',            label: 'Religion',             row: 2 }
+        ];
+
+        var ssParams = new URLSearchParams(window.location.search);
+        var ssIsSW = ssParams.get('brand') === 'sw';
+        var ssIsKellogg = ssParams.get('brand') === 'kellogg';
+        var ssIsDatabasey = ssParams.get('brand') === 'databasey';
+        var ssIsStaffing = ssParams.get('variant') === 'staffing';
+        var ssIsDevAssessment = ssParams.get('variant') === 'developmentassessment';
+        var ssIsCampaignCounsel = ssParams.get('variant') === 'campaigncounsel';
+        var ssBrand = ssIsSW ? brands.sw : ssIsKellogg ? brands.kellogg : ssIsDatabasey ? brands.databasey : brands.alford;
+
+        industries.forEach(function (ind) {
+            var row = document.getElementById('row' + ind.row);
+            if (!row) return;
+            var btn = document.createElement('button');
+            btn.className = 'category-btn-icon';
+            btn.type = 'button';
+            btn.onclick = function () { selectIndustry(btn, ind.mapperKey, ind.label); };
+            btn.innerHTML = '<div class="category-icon"><img src="' + ssBrand.icons[ind.key] + '" alt="' + ind.label + '"></div>'
+                          + '<div class="category-label">' + ind.label + '</div>';
+            row.appendChild(btn);
+        });
+
+        var templateUrl = ssIsStaffing
+            ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f41949cad250291f4bf0cb.xlsx'
+            : ssIsDevAssessment
+            ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f4d41f23e63d676c8653d7.xlsx'
+            : ssIsCampaignCounsel
+            ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f50560daa24d98950cd696.xlsx'
+            : 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
+        var dlWrap = document.createElement('div');
+        dlWrap.id = 'template-download-wrap';
+        dlWrap.style.cssText = 'text-align:center;margin-top:14px;';
+        var dlLink = document.createElement('a');
+        dlLink.href = templateUrl;
+        dlLink.download = 'Data Upload Template.xlsx';
+        dlLink.textContent = 'Download Data Template';
+        dlLink.style.cssText = 'display:inline-block;font-family:Roboto,sans-serif;font-size:14px;color:var(--theme-color,#2c5f5d);border:1px solid var(--theme-color,#2c5f5d);border-radius:8px;padding:9px 28px;text-decoration:none;cursor:pointer;background:#fff;transition:transform 0.3s ease;';
+        dlLink.onmouseover = function () { this.style.transform = 'translateY(-3px)'; };
+        dlLink.onmouseout  = function () { this.style.transform = 'translateY(0)'; };
+        dlLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            fetch(templateUrl).then(function (r) { return r.blob(); }).then(function (blob) {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'Data Upload Template.xlsx';
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(a.href);
+            }).catch(function () { window.open(templateUrl, '_blank'); });
+        });
+        dlWrap.appendChild(dlLink);
+        document.getElementById('sector-selection-wrap').appendChild(dlWrap);
+
+        window.selectIndustry = function (clickedBtn, mapperKey, industryLabel) {
+            var dlw = document.getElementById('template-download-wrap');
+            if (dlw) dlw.style.display = 'none';
+            var cc = document.querySelector('.category-container');
+            var allBtns = cc ? cc.querySelectorAll('.category-btn-icon') : [];
+
+            if (clickedBtn && cc) {
+                var ccRect = cc.getBoundingClientRect();
+                var clickedRect = clickedBtn.getBoundingClientRect();
+                var endX = (ccRect.width / 2) - (clickedRect.width / 2);
+                var endY = 10;
+
+                var snapshots = [];
+                allBtns.forEach(function (btn) {
+                    var r = btn.getBoundingClientRect();
+                    snapshots.push({ btn: btn, left: r.left - ccRect.left, top: r.top - ccRect.top, width: r.width, height: r.height });
+                });
+
+                cc.style.position = 'relative';
+                cc.style.height = ccRect.height + 'px';
+                cc.style.overflow = 'visible';
+
+                snapshots.forEach(function (s) {
+                    s.btn.style.position = 'absolute';
+                    s.btn.style.left = s.left + 'px';
+                    s.btn.style.top = s.top + 'px';
+                    s.btn.style.width = s.width + 'px';
+                    s.btn.style.height = s.height + 'px';
+                    s.btn.style.margin = '0';
+                });
+
+                clickedBtn.classList.add('selected');
+
+                allBtns.forEach(function (btn) {
+                    if (btn !== clickedBtn) {
+                        btn.style.transition = 'opacity 0.6s ease';
+                        btn.style.opacity = '0';
+                        btn.style.pointerEvents = 'none';
+                    }
+                });
+
+                setTimeout(function () {
+                    clickedBtn.style.transition = 'left 1.2s cubic-bezier(0.4,0,0.2,1), top 1.2s cubic-bezier(0.4,0,0.2,1)';
+                    clickedBtn.style.left = endX + 'px';
+                    clickedBtn.style.top = endY + 'px';
+                }, 700);
+
+                setTimeout(function () {
+                    // window.selectedIndustryKey is one of the fallbacks
+                    // detectIndustry() in mapper.js already checks - setting
+                    // it here is all that's needed for the choice to reach
+                    // mapper.js's spotlight config and Industry Type field
+                    // once the user uploads their file.
+                    window.selectedIndustryKey = mapperKey;
+
+                    document.getElementById('sector-selection-wrap').classList.add('done');
+                    var psc = document.getElementById('post-sector-content');
+                    psc.classList.add('show');
+                    setTimeout(function () {
+                        psc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }, 1900);
+            } else {
+                window.selectedIndustryKey = mapperKey;
+                document.getElementById('sector-selection-wrap').classList.add('done');
+                document.getElementById('post-sector-content').classList.add('show');
+            }
+        };
+    })();
+</script>
+
+<script>
+    // Demo-page wiring: populate the FY month select, forward clicks on the
+    // logo box to its hidden file input, and copy the upfront fields into
+    // mapper.js's own late-appearing fields right before it reads them.
+    // Registered before mapper.js's <script> tag so this click listener on
+    // #customSubmitBtn (which already exists in the static markup above)
+    // attaches first and runs before mapper.js's own listener on every click.
+    (function () {
+        'use strict';
+
+        // Testing hint only - shows the same brand-only domain mapper.js's alert names (not the
+        // internal @getdatabasey.com/@heyfundraiser.com override domains, which stay functional
+        // but aren't for display). NOT the enforcement itself - that stays solely in mapper.js;
+        // this is a label, computed independently the same way the sector-selection block above
+        // does (each section here reads ?brand= on its own rather than sharing state across
+        // IIFEs), so a stale copy here can't weaken the real check.
+        (function () {
+            var p = new URLSearchParams(window.location.search);
+            var brand = p.get('brand');
+            var domain = (brand === 'sw') ? 'schultzwilliams.com'
+                : (brand === 'databasey' || brand === 'hf') ? null
+                : 'alford.com'; // default here is Alford, matching this file's own brand default
+            var hintEl = document.getElementById('demo-email-hint');
+            if (hintEl) hintEl.textContent = domain ? 'Must end in: @' + domain : '';
+        })();
+
+        var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        var fyMonthSel = document.getElementById('demo-fy-month');
+        MONTHS.forEach(function (m) {
+            var opt = document.createElement('option');
+            opt.value = m; opt.textContent = m;
+            fyMonthSel.appendChild(opt);
+        });
+
+        var logoBox = document.getElementById('logoUploadBox');
+        var logoInput = document.getElementById('demo-logo-input');
+        var logoIconWrap = logoBox.querySelector('.demo-upload-icon-wrap');
+        logoBox.addEventListener('click', function () { logoInput.click(); });
+        logoInput.addEventListener('change', function () {
+            // Mirrors mapper.js's own #uploadBox success state (mapper.js
+            // ~line 1224-1228): icon stays, a bordered row with a checkmark
+            // and the filename gets appended below it, inside the box.
+            var existingRow = logoBox.querySelector('.demo-upload-filerow');
+            if (existingRow) existingRow.remove();
+            var f = logoInput.files && logoInput.files[0];
+            if (f) {
+                var row = document.createElement('div');
+                row.className = 'demo-upload-filerow';
+                var span = document.createElement('span');
+                span.textContent = '✓ ' + f.name;  // filename is user-controlled, never build via innerHTML
+                row.appendChild(span);
+                logoIconWrap.parentNode.appendChild(row);
+            }
+        });
+
+        function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+        function syncMapperFields() {
+            var mc = document.getElementById('mapper-client-name');
+            var mn = document.getElementById('mapper-contact-name');
+            var me = document.getElementById('mapper-email');
+            var mf = document.getElementById('mapper-fy-start-month');
+            var mt = document.getElementById('mapper-major-giving-threshold');
+            var mb = document.getElementById('mapper-board-members');
+            if (mc) mc.value = val('demo-client-name');
+            if (mn) mn.value = (val('demo-first-name') + ' ' + val('demo-last-name')).trim();
+            if (me) me.value = val('demo-email');
+            if (mf) mf.value = val('demo-fy-month');
+            if (mt) mt.value = val('demo-threshold');
+            if (mb) mb.value = val('demo-board-members');
+        }
+
+        // mapper.js builds #allDoneCard (mapper.js ~line 841) unconditionally
+        // at init, well before mapping is actually done - it just sits
+        // display:none until showAllDoneCard() (mapper.js ~line 1492) flips it
+        // to visible once every mapping step is complete. Checking for mere
+        // existence rather than visibility fires this the instant the page
+        // loads, capturing the top fields while they're still blank. Poll for
+        // offsetParent !== null (real visibility) instead, so this only fires
+        // once mapping has genuinely finished and the top fields hold whatever
+        // the user actually typed. Sync it then, hide just the field grid -
+        // keeping the heading and Submit button - so the user isn't asked to
+        // fill in the same details twice. The click-time sync below stays as
+        // a defensive re-sync in case a top field gets edited after this runs.
+        (function watchForAllDoneCard() {
+            var interval = setInterval(function () {
+                var card = document.getElementById('allDoneCard');
+                if (!card || card.offsetParent === null) return;
+                clearInterval(interval);
+                syncMapperFields();
+                var heading = card.children[0];
+                var fieldGrid = card.children[1];
+                if (heading) heading.textContent = '🎉 All Done! Ready to submit.';
+                if (fieldGrid) fieldGrid.style.display = 'none';
+            }, 200);
+        })();
+
+        document.getElementById('customSubmitBtn').addEventListener('click', function () {
+            syncMapperFields();
+        });
+    })();
+</script>
+<script src="mapper.js"></script>
+<script>
+    if (typeof XLSX === 'undefined') {
+        document.addEventListener('DOMContentLoaded', function () {
+            var b = document.createElement('div');
+            b.style.cssText = 'background:#7a1f1f;color:#fff;padding:14px 20px;font:13px/1.5 ui-monospace,monospace;position:relative;z-index:100001';
+            b.textContent = 'XLSX failed to load, so nothing on this page will work. ' +
+                'The CDN (cdnjs.cloudflare.com) was unreachable and there is no local ' +
+                'node_modules copy. Check your connection or corporate proxy, then reload.';
+            document.body.insertBefore(b, document.body.firstChild);
+        });
+    }
+</script>
+<script>
+    // Highlight active variant link
+    var params = new URLSearchParams(window.location.search);
+    var brand = params.get('brand'), variant = params.get('variant');
+    document.querySelectorAll('#test-controls a').forEach(function(a) {
+        var lp = new URLSearchParams(a.href.split('?')[1] || '');
+        if (lp.get('brand') === brand && lp.get('variant') === variant) a.classList.add('active');
+    });
+    var modeLabel = variant === 'staffing' ? 'SW Staffing' : variant === 'developmentassessment' ? 'SW Dev Assessment' : variant === 'campaigncounsel' ? 'SW Campaign Counsel' : brand === 'sw' ? 'SW Analytics' : brand === 'databasey' ? 'Databasey' : 'Alford';
+    document.getElementById('current-mode').textContent = '▸ ' + modeLabel;
+</script>
+</body>
+</html>

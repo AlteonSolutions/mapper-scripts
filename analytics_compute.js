@@ -122,10 +122,19 @@ function computeAnalytics(giftRows, consRows, params) {
   }
   const threshold = params.threshold;
   const doDJ = params.donorJourney !== false;
-  const djYear = (params.donorJourneyYear != null) ? params.donorJourneyYear : endYear - 5;
 
   const years = [];
   for (let y = endYear - dataYears + 1; y <= endYear; y++) years.push(y);
+
+  // Donor Journey anchors on "Year5" (the 6th slot in the reported window, matching the
+  // template's positional ConstituentData[Year5] reference) - a donor active 5 years before
+  // the end of the reported window, whose giving history through end-of-data can then be
+  // charted. That requires a full 6-year window (indices 0..5); with fewer years there's no
+  // meaningful history to show, so leave it blank for everyone rather than reaching outside
+  // the reported window into fuller raw history (the PPT automation deletes the slide when
+  // there's nothing to populate it with).
+  const djYear = (params.donorJourneyYear != null) ? params.donorJourneyYear
+    : (years.length >= 6 ? years[5] : null);
 
   // ---- prep gift rows ----
   const G = giftRows.map(r => {
@@ -157,7 +166,7 @@ function computeAnalytics(giftRows, consRows, params) {
     }
   }
   const djSum = new Map();        // cid -> sum in FY djYear
-  if (doDJ) for (const g of G) if (g.cid !== null && g.fy === djYear) djSum.set(g.cid, (djSum.get(g.cid) || 0) + g.amt);
+  if (doDJ && djYear !== null) for (const g of G) if (g.cid !== null && g.fy === djYear) djSum.set(g.cid, (djSum.get(g.cid) || 0) + g.amt);
 
   function givingFor(cid, year) {
     const m = matFull.get(cid); if (!m) return null;
@@ -183,7 +192,28 @@ function computeAnalytics(giftRows, consRows, params) {
   consCols.push('Consecutive Year Donor', 'Donor Journey Donor', 'Renewals', 'Major Gift Prospect',
     'Lapsed Major Donors', 'Mid-Level Giving Prospect', 'Planned Giving Prospect');
 
-  const consOut = C.map(c => {
+  // Drop constituents absent from Gift Data. Ports the DeleteExtraConstituents
+  // macro's =COUNTIF('Gift Data'!$A:$A,A2)=0 -> delete rule. That macro ran on the
+  // data file *after* this script produced it, so the gift-side aggregates above
+  // are deliberately built pre-filter; only the constituent output is pruned.
+  // Every derived sheet below reads consOut, so each inherits the filter.
+  const giftCids = new Set();
+  for (const g of G) if (g.cid !== null) giftCids.add(g.cid);
+
+  // Constituents with at least one gift inside the reported window. Used to trim the
+  // output below: the template only ever shows these `years`, and every prospect flag
+  // reads window years only, so a constituent with no in-window giving carries blank
+  // year columns and cannot qualify for any flag or donor sheet. Dropping them is
+  // output-only - all aggregates above (Total Giving, First Gift Date fallback, gifts
+  // per year) are still built from the FULL gift history, so no reported number moves.
+  const windowStart = years[0];
+  const windowCids = new Set();
+  for (const g of G) {
+    if (g.cid === null || g.fy === null) continue;
+    if (g.fy >= windowStart && g.fy <= endYear) windowCids.add(g.cid);
+  }
+
+  const consOut = C.filter(c => giftCids.has(c.cid) && windowCids.has(c.cid)).map(c => {
     const cid = c.cid;
     // First Gift Date FY
     let fgdfy;
@@ -206,17 +236,21 @@ function computeAnalytics(giftRows, consRows, params) {
       else if (rr === 'Recovered') v = (cur === null) ? '' : round2(cur);
       ll[y] = v;
     }
-    // Donor Journey (constituent) = gave in FY endYear-5 (full history); SW: blank
+    // Donor Journey (constituent) = gave in FY djYear (the reported window's Year5 slot); SW: blank
     let donorJourney = '';
-    if (doDJ) donorJourney = (givingFor(cid, endYear - 5) !== null) ? 'Yes' : '';
+    if (doDJ && djYear !== null) donorJourney = (givingFor(cid, djYear) !== null) ? 'Yes' : '';
     // window helpers
     const w4 = years.slice(-4);
     const w5 = years.slice(-5);
     const last = years[years.length - 1];
-    // block for [Year7]:[Year10] COUNTIFS = w4 giving + lift/loss of w4 except last year
+    // block = the 4 raw giving values for Year7:Year10, matching the template's
+    // COUNTIFS(Year7:Year10, ">=500", "<"&Threshold) exactly. Lift/Loss (year-over-year
+    // change) is a different metric and must NOT be mixed in here — a donor whose giving
+    // merely fluctuated through this dollar range isn't the same as one who actually gave
+    // at that level, and counting both inflates Major Gift Prospect / Lapsed Major Donors
+    // with false positives (confirmed: was 149 vs the correct 90 on one real dataset).
     const block = [];
     for (const y of w4) block.push(giving[y]);
-    for (let i = 0; i < w4.length - 1; i++) { const y = w4[i]; const v = ll[y]; if (v !== '' && v != null) block.push(v); }
     let cntMid = 0, cntMaj = 0;
     for (const v of block) { if (v != null && v !== '') { if (v >= 500 && v < threshold) cntMid++; if (v >= threshold) cntMaj++; } }
     const y9_10 = (w4.length >= 2) ? (giving[w4[w4.length - 2]] !== null || giving[w4[w4.length - 1]] !== null) : (giving[last] !== null);
@@ -247,6 +281,13 @@ function computeAnalytics(giftRows, consRows, params) {
   // ---- Gift output ----
   const giftCols = ['Constituent ID', 'Gift Date', 'Gift Amount', 'Gift Type', 'Event', 'Spotlights',
     'Gifts Per Year', 'Gift Month', 'Gift FY', 'Donor Journey Donor', 'FGD', 'National Breakdown'];
+  // Gifts older than the reported window are dropped from the OUTPUT only. The template
+  // can only ever show `years` (10 FY max), so pre-window rows are pure file weight - on a
+  // real client that was 33,684 of 44,488 rows (76%), and GenerateGivingCircles copies the
+  // whole workbook through a save/reopen/save cycle before deleting Gift Data from the copy.
+  // Post-window (current, incomplete FY) and blank/unparseable-date rows are kept: they are
+  // recent or unclassifiable, not stale. Every aggregate above was built from the full set,
+  // so Total Giving stays lifetime and the First Gift Date fallback still sees 1997 gifts.
   const giftOut = G.map((g, idx) => {
     const gpy = g.fy !== null ? gpyKey.get(g.cid + '|' + g.fy) : '';
     const month = g.date ? g.date.getUTCMonth() + 1 : '';
@@ -265,9 +306,100 @@ function computeAnalytics(giftRows, consRows, params) {
     const raw = giftRows[idx];
     // raw[0] is the original Constituent ID — pass through as-is (normId only used internally for matching).
     return [raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], gpy, month, fy, dj, fgdSerial, nat];
+  }).filter((row, idx) => {
+    // map is 1:1 with G, so idx still indexes G here.
+    const fy = G[idx].fy;
+    return fy === null || fy >= windowStart;
   });
 
-  return { gift: { columns: giftCols, rows: giftOut }, constituent: { columns: consCols, rows: consOut } };
+  // ---- Donor / Prospect sheet outputs ----
+  // Column index helpers into a consOut row (0-based):
+  //   years[0] giving  → 11
+  //   years[k] giving  → 3k+9  (k >= 1)
+  //   years[k] ret     → 3k+10 (k >= 1)
+  //   flag cols base   → 3n+9  (n = years.length)
+  //     +0 Consecutive Year Donor, +1 DJ, +2 Renewals, +3 Major Gift Prospect,
+  //     +4 Lapsed Major Donors, +5 Mid-Level, +6 Planned Giving
+  var _n = years.length;
+  var _gIdx = function(k) { return k === 0 ? 11 : 3 * k + 9; };
+  var _rIdx = function(k) { return 3 * k + 10; };
+  var _fBase = 3 * _n + 9;
+  var _F_CON = _fBase, _F_REN = _fBase + 2, _F_MGP = _fBase + 3,
+      _F_LMD = _fBase + 4, _F_MID = _fBase + 5, _F_PLN = _fBase + 6;
+  var _lK = _n - 1;
+  var _endGIdx = _gIdx(_lK);
+  var _endRIdx = _lK >= 1 ? _rIdx(_lK) : null;
+  var _prevGIdx = _lK >= 1 ? _gIdx(_lK - 1) : null;
+
+  var _idNameCols = ['Constituent ID', 'Constituent Name'];
+  function _flagRows(fi) {
+    return consOut.filter(function(r) { return r[fi] === 'Yes'; })
+      .map(function(r) { return [r[0], r[1]]; });
+  }
+
+  // All Donors: gave in EndYear
+  var allDonorsCols = ['Constituent ID', 'Constituent Name', 'Street Address', 'City', 'State', 'Zip Code', 'Giving'];
+  var allDonorsRows = consOut
+    .filter(function(r) { return r[_endGIdx] !== '' && r[_endGIdx] !== null; })
+    .map(function(r) { return [r[0], r[1], r[5], r[6], r[7], r[8], r[_endGIdx]]; });
+
+  // Major Donors: gave > threshold in EndYear
+  var majorDonorsRows = consOut
+    .filter(function(r) { return r[_endGIdx] !== '' && r[_endGIdx] !== null && r[_endGIdx] > threshold; })
+    .map(function(r) { return [r[0], r[1], r[5], r[6], r[7], r[8], r[_endGIdx]]; });
+
+  // Decreased Giving Donors
+  var decreasedCols = ['Constituent ID', 'Constituent Name',
+    String(endYear - 1) + ' Giving', String(endYear) + ' Giving', 'Loss'];
+  var decreasedRows = (_endRIdx !== null && _prevGIdx !== null)
+    ? consOut.filter(function(r) { return r[_endRIdx] === 'Retained - Decrease'; })
+        .map(function(r) {
+          var prev = r[_prevGIdx] !== '' ? r[_prevGIdx] : null;
+          var cur  = r[_endGIdx]  !== '' ? r[_endGIdx]  : null;
+          var loss = (prev !== null && cur !== null) ? round2(cur - prev) : '';
+          return [r[0], r[1], prev !== null ? prev : '', cur !== null ? cur : '', loss];
+        })
+    : [];
+
+  // Consecutive Giving Donors: last up-to-5 years of giving
+  var _c5k = [];
+  for (var _k = Math.max(0, _lK - 4); _k <= _lK; _k++) _c5k.push(_k);
+  var consecCols = ['Constituent ID', 'Constituent Name'].concat(
+    _c5k.map(function(k) { return String(years[k]) + ' Giving'; }));
+  var consecRows = consOut
+    .filter(function(r) { return r[_F_CON] === 'Yes'; })
+    .map(function(r) {
+      return [r[0], r[1]].concat(_c5k.map(function(k) { return r[_gIdx(k)] !== '' ? r[_gIdx(k)] : ''; }));
+    });
+
+  // All Prospects: constituents with at least one prospect flag = "Yes"
+  var allProspectsCols = ['Constituent ID', 'Constituent Name',
+    'Renewals', 'Major Gift Prospect', 'Lapsed Major Donors',
+    'Mid-Level Giving Prospect', 'Planned Giving Prospect'];
+  var allProspectsRows = consOut
+    .filter(function(r) {
+      return r[_F_REN] === 'Yes' || r[_F_MGP] === 'Yes' || r[_F_LMD] === 'Yes' ||
+             r[_F_MID] === 'Yes' || r[_F_PLN] === 'Yes';
+    })
+    .map(function(r) {
+      return [r[0], r[1], r[_F_REN] || '', r[_F_MGP] || '', r[_F_LMD] || '',
+              r[_F_MID] || '', r[_F_PLN] || ''];
+    });
+
+  return {
+    gift:                    { columns: giftCols,          rows: giftOut },
+    constituent:             { columns: consCols,           rows: consOut },
+    allDonors:               { columns: allDonorsCols,      rows: allDonorsRows },
+    majorDonors:             { columns: allDonorsCols,      rows: majorDonorsRows },
+    allProspects:            { columns: allProspectsCols,   rows: allProspectsRows },
+    renewals:                { columns: _idNameCols,        rows: _flagRows(_F_REN) },
+    majorGiftProspects:      { columns: _idNameCols,        rows: _flagRows(_F_MGP) },
+    lapsedMajorDonors:       { columns: _idNameCols,        rows: _flagRows(_F_LMD) },
+    midLevelProspects:       { columns: _idNameCols,        rows: _flagRows(_F_MID) },
+    plannedGivingProspects:  { columns: _idNameCols,        rows: _flagRows(_F_PLN) },
+    decreasedGivingDonors:   { columns: decreasedCols,      rows: decreasedRows },
+    consecutiveGivingDonors: { columns: consecCols,         rows: consecRows },
+  };
 }
 
 module.exports = { computeAnalytics, deriveYearParams };
