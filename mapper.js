@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-09-24 16:32 UTC';
-    var MAPPER_VERSION = '9.24.2026 STANDALONE s23';
+    var MAPPER_BUILD   = '2026-10-01 14:19 UTC';
+    var MAPPER_VERSION = '10.1.2026 STANDALONE s24';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -2916,8 +2916,51 @@
             for (var r = 0; r < gd.length; r++) gd[r]['Spotlights'] = '';
         }
 
-        // Apply gift type mappings - replace Gift Type values in Gift Data
-        for (var gt = 0; gt < gd.length; gt++) { var ogt = (gd[gt]['Gift Type'] || '').toString().trim(); var mgt = ogt === '' ? giftTypeMappings['__blank__'] : giftTypeMappings[ogt]; gd[gt]['Gift Type'] = (mgt === 'Skip' || mgt === undefined) ? (ogt || '') : mgt; }
+        // Apply gift type mappings - replace Gift Type values in Gift Data.
+        // Skip now writes the word 'Skip' rather than leaving the client's own wording
+        // in place, so the cash-basis filter below has one value to test for instead of
+        // having to know every label a client might have used for a non-gift.
+        for (var gt = 0; gt < gd.length; gt++) { var ogt = (gd[gt]['Gift Type'] || '').toString().trim(); var mgt = ogt === '' ? giftTypeMappings['__blank__'] : giftTypeMappings[ogt]; gd[gt]['Gift Type'] = mgt !== undefined ? mgt : ogt; }
+
+        // The analytics are cash basis, so only money actually received survives: Cash
+        // and Pledge Payment. A pledge is a promise rather than a receipt, and counting
+        // the pledge as well as the payments made against it would book the same money
+        // twice. Skip is the user saying this type is not a gift at all.
+        //
+        // The test is on the final Gift Type, not on the mapping, because a row the file
+        // already labelled 'Pledge' never reaches giftTypeMappings - types that already
+        // match a standard category are filtered out of the mapping UI as nothing to
+        // decide, so they carry no mapping to inspect.
+        //
+        // Simple flows are left alone. Campaign Counsel is built around pledges and
+        // their statuses; stripping them would empty the report it exists to produce.
+        if (!isSimpleFlow) {
+            var hasGiftTypeData = false;
+            for (var ht = 0; ht < gd.length; ht++) {
+                if ((gd[ht]['Gift Type'] || '').toString().trim() !== '') { hasGiftTypeData = true; break; }
+            }
+            // With no gift type recorded anywhere there is nothing to judge, and every
+            // row would fail the test - an empty report rather than an unfiltered one.
+            if (hasGiftTypeData) {
+                var keptGifts = [], droppedBy = {};
+                for (var kt = 0; kt < gd.length; kt++) {
+                    var fgt = (gd[kt]['Gift Type'] || '').toString().trim();
+                    if (fgt === 'Cash' || fgt === 'Pledge Payment') keptGifts.push(gd[kt]);
+                    else { var k = fgt || '(blank)'; droppedBy[k] = (droppedBy[k] || 0) + 1; }
+                }
+                var droppedCount = gd.length - keptGifts.length;
+                if (droppedCount) {
+                    var breakdown = Object.keys(droppedBy).sort().map(function(k) {
+                        return k + ' ' + droppedBy[k];
+                    }).join(', ');
+                    console.log('Cash basis: removed ' + droppedCount + ' of ' + gd.length
+                        + ' gifts (' + breakdown + ')');
+                    MapperDiag.step('Cash basis applied', droppedCount + ' of ' + gd.length
+                        + ' gifts removed — ' + breakdown);
+                }
+                gd = keptGifts;
+            }
+        }
 
         var sheetCD = workbook.Sheets['Constituent Data'];
         console.log('Constituent sheet !ref:', sheetCD['!ref']);
