@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-10-26 14:01 UTC';
-    var MAPPER_VERSION = '10.26.2026 STANDALONE s27';
+    var MAPPER_BUILD   = '2026-10-26 17:55 UTC';
+    var MAPPER_VERSION = '10.26.2026 STANDALONE s28';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -51,6 +51,23 @@
     var isDevelopmentAssessment = _variantIs('developmentassessment', 'getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = _variantIs('campaigncounsel', 'getdatabasey.com/sw/campaigncounsel');
     var isSimpleFlow = isStaffing || isDevelopmentAssessment || isCampaignCounsel;
+
+    // The upload templates live in the repository and are served by GitHub Pages beside
+    // this file, so changing one is a commit rather than a re-upload to GHL's media
+    // library. There is one Analytics template for every brand - SW, Databasey,
+    // HeyFundraiser and Alford all download the same file, which is what the four GHL
+    // pages were already doing - and one per SW analysis type.
+    //
+    // sector-selection.js carries the same two lines, because it offers the download
+    // before mapper.js has loaded and mapper.js has to work without it on the test
+    // pages. Keep them in step; they are bumped as a pair anyway.
+    var TEMPLATE_BASE = 'https://alteonsolutions.github.io/mapper-scripts/templates/';
+    function templateUrl() {
+        return TEMPLATE_BASE + (isStaffing ? 'SW-Interim-Staffing'
+            : isDevelopmentAssessment ? 'SW-Development-Assessment'
+            : isCampaignCounsel ? 'SW-Campaign-Counsel'
+            : 'Analytics') + '-Data-Upload-Template.xlsx';
+    }
     // Databasey is the default/fallback brand; Alford now requires an explicit ?brand=alford match.
     // Kellogg has been retired (removed as a brand entirely).
     var themeColor = isSW ? '#00386c' : isHF ? '#56153C' : isAlford ? '#2c5f5d' : '#4F788D';
@@ -948,15 +965,9 @@
             downloadBtn.onmouseover = function() { this.style.transform = 'translateY(-5px)'; };
             downloadBtn.onmouseout = function() { this.style.transform = 'translateY(0)'; };
             downloadBtn.addEventListener('click', function() {
-                var templateUrl = isStaffing
-                    ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f41949cad250291f4bf0cb.xlsx'
-                    : isDevelopmentAssessment
-                    ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f4d41f23e63d676c8653d7.xlsx'
-                    : isCampaignCounsel
-                    ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f50560daa24d98950cd696.xlsx'
-                    : 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
+                var tUrl = templateUrl();
                 var filename = 'Data Upload Template.xlsx';
-                fetch(templateUrl)
+                fetch(tUrl)
                     .then(function(response) { return response.blob(); })
                     .then(function(blob) {
                         var link = document.createElement('a');
@@ -969,7 +980,7 @@
                     })
                     .catch(function() {
                         var link = document.createElement('a');
-                        link.href = templateUrl;
+                        link.href = tUrl;
                         link.download = filename;
                         link.click();
                     });

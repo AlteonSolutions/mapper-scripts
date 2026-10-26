@@ -4,8 +4,8 @@
     // Same scheme as mapper.js, and bumped with it. The two files are served and
     // cached separately, so the pair a visitor ends up with is not guaranteed to be
     // the pair that was deployed - see the check at the end of this file.
-    var VERSION = '10.26.2026 STANDALONE s27';
-    var BUILD   = '2026-10-26 14:01 UTC';
+    var VERSION = '10.26.2026 STANDALONE s28';
+    var BUILD   = '2026-10-26 17:55 UTC';
     window.SECTOR_SELECTION_VERSION = VERSION;
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
@@ -154,13 +154,14 @@
     });
 
     // ── TEMPLATE DOWNLOAD LINK ───────────────────────────────────────────────
-    var templateUrl = isStaffing
-        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f41949cad250291f4bf0cb.xlsx'
-        : isDevelopmentAssessment
-        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f4d41f23e63d676c8653d7.xlsx'
-        : isCampaignCounsel
-        ? 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/69f50560daa24d98950cd696.xlsx'
-        : 'https://assets.cdn.filesafe.space/CwIkkwa8MTjmkcKkZaGX/media/699de24d52a4028ce9b402d1.xlsx';
+    // Served from the repository by GitHub Pages, beside this file. mapper.js carries
+    // the same two lines: it offers the same download once the mapper is on screen, and
+    // it has to work without this file on the test pages. Keep them in step.
+    var TEMPLATE_BASE = 'https://alteonsolutions.github.io/mapper-scripts/templates/';
+    var templateUrl = TEMPLATE_BASE + (isStaffing ? 'SW-Interim-Staffing'
+        : isDevelopmentAssessment ? 'SW-Development-Assessment'
+        : isCampaignCounsel ? 'SW-Campaign-Counsel'
+        : 'Analytics') + '-Data-Upload-Template.xlsx';
     var dlWrap = document.createElement('div');
     dlWrap.id = 'template-download-wrap';
     dlWrap.style.cssText = 'text-align:center;margin-top:14px;';
