@@ -208,7 +208,7 @@ function computeAnalytics(giftRows, consRows, params) {
     'Board Member?', 'Street Address', 'City', 'State', 'Zip Code', 'First Gift Date FY', 'Total Giving'];
   years.forEach((y, i) => { consCols.push(String(y)); if (i > 0) consCols.push(`${y} Retention`, `${y} Lift/Loss`); });
   consCols.push('Consecutive Year Donor', 'Donor Journey Donor', 'Renewals', 'Major Gift Prospect',
-    'Lapsed Major Donors', 'Mid-Level Giving Prospect', 'Planned Giving Prospect');
+    'Lapsed Major Donors', 'Mid-Level Giving Prospect', 'Planned Giving Prospect', 'Deceased?');
 
   // Drop constituents absent from Gift Data. Ports the DeleteExtraConstituents
   // macro's =COUNTIF('Gift Data'!$A:$A,A2)=0 -> delete rule. That macro ran on the
@@ -298,11 +298,18 @@ function computeAnalytics(giftRows, consRows, params) {
     // of record, and removing it would understate what the organisation actually raised.
     // Consecutive Year Donor and Donor Journey Donor describe past behaviour rather than
     // an ask, so they stand too.
-    if (isDeceased(c.row[9])) {
+    //
+    // The column reports the decision as 'Yes' or blank rather than echoing the cell, so
+    // it matches every other flag in this sheet and says plainly why a row carries no
+    // prospect flags. Whatever the client typed - a date of death, an x - stays in their
+    // uploaded file.
+    const dead = isDeceased(c.row[9]);
+    if (dead) {
       out.push(consecutive, donorJourney, '', '', '', '', '');
     } else {
       out.push(consecutive, donorJourney, renewals, majorProspect, lapsed, midlevel, plannedGiving);
     }
+    out.push(dead ? 'Yes' : '');
     return out;
   });
 
@@ -347,7 +354,11 @@ function computeAnalytics(giftRows, consRows, params) {
   //   years[k] ret     → 3k+10 (k >= 1)
   //   flag cols base   → 3n+9  (n = years.length)
   //     +0 Consecutive Year Donor, +1 DJ, +2 Renewals, +3 Major Gift Prospect,
-  //     +4 Lapsed Major Donors, +5 Mid-Level, +6 Planned Giving
+  //     +4 Lapsed Major Donors, +5 Mid-Level, +6 Planned Giving, +7 Deceased?
+  //   Deceased? is appended last on purpose. Every index above is an offset counted
+  //   forward from column A, so adding a column at the end shifts nothing; putting it
+  //   beside Board Member?, where it belongs by meaning, would move every giving,
+  //   retention and flag column one to the right and the macro reads them by position.
   var _n = years.length;
   var _gIdx = function(k) { return k === 0 ? 11 : 3 * k + 9; };
   var _rIdx = function(k) { return 3 * k + 10; };
