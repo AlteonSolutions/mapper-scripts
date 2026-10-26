@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-10-01 14:38 UTC';
-    var MAPPER_VERSION = '10.1.2026 STANDALONE s25';
+    var MAPPER_BUILD   = '2026-10-26 13:56 UTC';
+    var MAPPER_VERSION = '10.26.2026 STANDALONE s26';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -3053,7 +3053,13 @@
                 var _ucGiftIds = {};
                 for (var _uci = 0; _uci < _ucGiftRows.length; _uci++) { var _ucGid = String(_ucGiftRows[_uci][0] || '').trim(); if (_ucGid) _ucGiftIds[_ucGid] = true; }
                 var _ucConsRows = cd2.filter(function(r) { return _ucGiftIds[String(r['Constituent ID'] || '').trim()]; }).map(function(r) {
-                    return [r['Constituent ID'], r['Constituent Name'] || r['Name'] || '', r['Constituent Type'] || '', r['First Gift Date'] || '', r['Board Member?'] || r['Board Member'] || '', r['Street Address'] || r['Street'] || '', r['City'] || '', r['State'] || '', r['Zip Code'] || r['Zip'] || ''];
+                    return [r['Constituent ID'], r['Constituent Name'] || r['Name'] || '', r['Constituent Type'] || '', r['First Gift Date'] || '', r['Board Member?'] || r['Board Member'] || '', r['Street Address'] || r['Street'] || '', r['City'] || '', r['State'] || '', r['Zip Code'] || r['Zip'] || '',
+                        // Tenth column, read by header name like the nine before it, so it
+                        // works wherever the client's file happens to put it - including
+                        // last, and including not at all. The compute reads only the first
+                        // nine into the output sheet, so carrying it here suppresses the
+                        // prospect flags without adding a column the macro is not expecting.
+                        r['Deceased?'] || r['Deceased'] || ''];
                 });
                 // Both come from the panel this file renders. The fallbacks that used to
                 // read GHL's multiselect and its threshold input are gone, along with

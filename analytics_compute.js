@@ -12,7 +12,11 @@
  *   const { computeAnalytics } = require('./analytics_compute');
  *   const out = computeAnalytics(giftRows, consRows, params);
  *   // giftRows: array of [Constituent ID, Gift Date, Gift Amount, Gift Type, Event, Spotlights]
- *   // consRows: array of [Constituent ID, Name, Type, First Gift Date, Board Member?, Street, City, State, Zip]
+ *   // consRows: array of [Constituent ID, Name, Type, First Gift Date, Board Member?, Street, City, State, Zip,
+ *   //                     Deceased?]
+ *   //   Deceased? is optional - older callers pass nine columns and nobody is treated as
+ *   //   deceased. It suppresses the five prospect flags only; the giving history is
+ *   //   untouched, so what the organisation actually raised still reconciles.
  *   //   (Dates may be Excel serial numbers, JS Date objects, or ISO strings.)
  *   // params: { fyStartMonth, endYear, dataYears, threshold,
  *   //           donorJourneyYear=null, donorJourney=true }
@@ -52,6 +56,20 @@ function fyOf(date, fyStart) {
   if (fyStart === 1) return y;
   return m >= fyStart ? y + 1 : y;
 }
+// A 'Deceased?' cell is read the way a person fills in a column with a question mark at
+// the end of its name: blank means no, and anything they bothered to type means yes -
+// including a date of death, which is what a client is most likely to put there. Only an
+// explicit negative reads as "not deceased", so a stray mark does not quietly put someone
+// back on a solicitation list. An absent column means nobody is marked, which keeps every
+// file uploaded before the column existed working exactly as it did.
+const NOT_DECEASED = new Set(['', 'no', 'n', 'false', 'f', '0', 'none', 'n/a', 'na', '-', '--']);
+function isDeceased(v) {
+  if (v === null || v === undefined) return false;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  return !NOT_DECEASED.has(String(v).trim().toLowerCase());
+}
+
 function round2(x) { return Math.round((x + (x >= 0 ? 1e-9 : -1e-9)) * 100) / 100; }
 function normId(v) {
   if (v === null || v === undefined) return null;
@@ -274,7 +292,17 @@ function computeAnalytics(giftRows, consRows, params) {
       out.push(giving[y] === null ? '' : giving[y]);
       if (i > 0) out.push(ret[y], ll[y]);
     });
-    out.push(consecutive, donorJourney, renewals, majorProspect, lapsed, midlevel, plannedGiving);
+    // Prospecting is a list of people to approach, so a donor marked deceased carries no
+    // prospect flag - nobody should be reported as a major gift prospect after they have
+    // died. Everything above this line is left alone on purpose: their giving is a matter
+    // of record, and removing it would understate what the organisation actually raised.
+    // Consecutive Year Donor and Donor Journey Donor describe past behaviour rather than
+    // an ask, so they stand too.
+    if (isDeceased(c.row[9])) {
+      out.push(consecutive, donorJourney, '', '', '', '', '');
+    } else {
+      out.push(consecutive, donorJourney, renewals, majorProspect, lapsed, midlevel, plannedGiving);
+    }
     return out;
   });
 
