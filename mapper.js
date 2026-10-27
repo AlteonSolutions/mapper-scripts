@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-10-26 17:55 UTC';
-    var MAPPER_VERSION = '10.26.2026 STANDALONE s28';
+    var MAPPER_BUILD   = '2026-10-27 14:12 UTC';
+    var MAPPER_VERSION = '10.27.2026 STANDALONE s30';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -51,6 +51,100 @@
     var isDevelopmentAssessment = _variantIs('developmentassessment', 'getdatabasey.com/sw/developmentassessment');
     var isCampaignCounsel = _variantIs('campaigncounsel', 'getdatabasey.com/sw/campaigncounsel');
     var isSimpleFlow = isStaffing || isDevelopmentAssessment || isCampaignCounsel;
+
+    // XLSX comes from this repository rather than from the hosting page. The GHL
+    // embed loads cdnjs 0.18.5 as a plain script tag before this file, which meant
+    // the version the mapper actually ran on was whatever that page pinned, and
+    // changing it meant editing GHL on every brand page. Loading our own copy puts
+    // it under version control: the build is vendored under vendor/ and served by
+    // Pages beside this script, so an upgrade is a commit.
+    //
+    // The vendored build sets window.XLSX, replacing the page's 0.18.5 rather than
+    // competing with it. Nothing reads or writes a workbook until that has finished
+    // and the version has been checked. There is deliberately no fallback to the
+    // page's copy: falling back would be a silent downgrade to the version this
+    // whole arrangement exists to stop depending on, and a file parsed by the wrong
+    // build can be wrong without looking wrong. A failure is reported instead.
+    //
+    // The version is in the path, so the URL changes when the version does and no
+    // browser or CDN cache can serve the old build for the new pin.
+    var XLSX_REQUIRED = '0.20.3';
+    // Resolved against this script's own URL rather than a fixed address, so whichever
+    // copy of mapper.js is running loads the vendored build sitting beside it: Pages in
+    // production, a local server when testing a branch. A hardcoded Pages URL would make
+    // a local test quietly exercise the deployed file instead of the working tree - the
+    // one thing a local test exists to avoid.
+    //
+    // Read now, while the script is still executing, because document.currentScript is
+    // only set during that window; by the time xlsxReady() runs from init() it is null.
+    var XLSX_URL = (function() {
+        var self = null;
+        if (document.currentScript && document.currentScript.src) {
+            self = document.currentScript.src;
+        } else {
+            // currentScript is null for a copy injected after parse, so fall back to
+            // finding our own tag. Last match wins: a later copy is the live one.
+            var tags = document.getElementsByTagName('script');
+            for (var i = tags.length - 1; i >= 0; i--) {
+                if (tags[i].src && /(^|\/)mapper\.js(\?|#|$)/.test(tags[i].src)) {
+                    self = tags[i].src; break;
+                }
+            }
+        }
+        // Nothing identifiable: assume the deployed layout rather than give up, since
+        // production is the case that must not depend on this guesswork succeeding.
+        if (!self) self = 'https://alteonsolutions.github.io/mapper-scripts/mapper.js';
+        // Strip the filename and any ?v= cache-buster, keeping the directory.
+        return self.replace(/[^/]*$/, '') + 'vendor/xlsx-' + XLSX_REQUIRED + '/xlsx.full.min.js';
+    })();
+    var _xlsxLoad = null;
+    function xlsxReady() {
+        if (_xlsxLoad) return _xlsxLoad;
+        _xlsxLoad = new Promise(function(resolve, reject) {
+            if (window.XLSX && window.XLSX.version === XLSX_REQUIRED) { resolve(); return; }
+            var s = document.createElement('script');
+            s.src = XLSX_URL;
+            s.async = false;
+            s.onload = function() {
+                var got = window.XLSX && window.XLSX.version;
+                if (got === XLSX_REQUIRED) {
+                    console.log('%cmapper.js: XLSX ' + got + ' loaded from the repository',
+                        'background:' + themeColor + ';color:#fff;padding:2px 8px;border-radius:4px;');
+                    resolve();
+                } else {
+                    reject(new Error('loaded the vendored build but XLSX.version is '
+                        + (got || 'undefined') + ', expected ' + XLSX_REQUIRED));
+                }
+            };
+            s.onerror = function() { reject(new Error('could not load ' + XLSX_URL)); };
+            (document.head || document.documentElement).appendChild(s);
+        });
+        return _xlsxLoad;
+    }
+    // For the call sites that already sit inside a try/catch. Throws rather than
+    // returning a boolean so a caller cannot forget to check the answer.
+    function assertXlsx() {
+        var got = window.XLSX && window.XLSX.version;
+        if (!window.XLSX) throw new Error('The spreadsheet engine has not loaded yet.');
+        if (got !== XLSX_REQUIRED) {
+            throw new Error('The spreadsheet engine is version ' + got + ' but this tool '
+                + 'requires ' + XLSX_REQUIRED + '. Reload the page and try again.');
+        }
+    }
+    // One message for every way the load can fail, since from the user's side they
+    // are the same problem and none of them is their fault.
+    function xlsxLoadFailed(err) {
+        console.error('mapper.js: XLSX did not load -', err && err.message ? err.message : err);
+        var box = document.getElementById('uploadBox');
+        if (box) {
+            markUploadBox(box, false);
+            dressUploadBox(box);
+        }
+        var note = document.getElementById('uploadNote'); if (note) note.style.display = '';
+        var dl = document.getElementById('download-container'); if (dl) dl.style.display = 'flex';
+        alert('The spreadsheet engine could not be loaded, so the file cannot be read.\n\n'
+            + 'Please reload the page and try again. If it keeps happening, click Get Support.');
+    }
 
     // The upload templates live in the repository and are served by GitHub Pages beside
     // this file, so changing one is a commit rather than a re-upload to GHL's media
@@ -897,6 +991,12 @@
 
     function init() {
         renderShell();
+        // Start fetching the pinned build straight away, so it is almost always
+        // already in place by the time someone has filled the form and chosen a
+        // file. Nothing waits on it here; the upload and submit paths do.
+        xlsxReady().catch(function(err) {
+            console.error('mapper.js: XLSX preload failed -', err && err.message ? err.message : err);
+        });
         // Check URL params on load - if industry param exists, detect and set field
         var urlParams = new URLSearchParams(window.location.search);
         var industryParam = urlParams.get('industry');
@@ -1446,6 +1546,14 @@
     function handleFileUpload(e) {
         var file = e.target.files[0];
         if (!file) return;
+        // Not a byte is read until the pinned build is in place and has identified
+        // itself. The preload in init() means this has normally already resolved and
+        // startFileUpload runs on the next tick; if it has not, the file waits rather
+        // than being parsed by whatever the page happened to load.
+        xlsxReady().then(function() { startFileUpload(file); }, xlsxLoadFailed);
+    }
+
+    function startFileUpload(file) {
         startSlowWatch();
         var detected = detectIndustry();
         if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) selectedIndustryType = lbl; }
@@ -1508,6 +1616,11 @@
             }
             var phases = [
                 ['Reading Your File', function() {
+                    // Checked again here rather than trusted from the gate above: the
+                    // page's own 0.18.5 tag could in principle land after ours, and the
+                    // cost of checking is nothing against parsing a file with the wrong
+                    // build and shipping numbers nobody questions.
+                    assertXlsx();
                     var data = new Uint8Array(e.target.result);
                     // dense stores each row as an array rather than a map of cell
                     // addresses. On a 100k-row file that is about 20% off the read -
@@ -2884,6 +2997,10 @@
     }
 
     function generateExcelBlob() {
+        // The write half of the same guarantee. Reaching here means a file was parsed,
+        // so the right build was present a moment ago - but the submit happens much
+        // later, and the caller already turns a throw into a reported failure.
+        assertXlsx();
         var eventOk = specialEventSkipped || Object.keys(mappings).length > 0;
         var spotlightOk = !spotlightConfig || spotlightSkipped || Object.keys(spotlightMappings).length > 0;
         var constituentOk = constituentMappingSkipped || Object.keys(constituentMappings).length > 0;

@@ -516,11 +516,13 @@
     <div id="insp-body"><p style="color:#7f8b98">Nothing captured yet. Complete the flow and press Submit.</p></div>
 </div>
 
-<!-- xlsx: CDN first (same build the live page loads, and package.json is
-     gitignored so a fresh clone has no node_modules to install from), then a
-     local node_modules copy for anyone who does have one / is offline.
+<!-- xlsx: CDN first, then a local node_modules copy for anyone who has one /
+     is offline (package.json is gitignored, so a fresh clone has none).
+     NOTE: this is 0.20.3, which is NOT what the live page loads - the live
+     page's script tag lives in the GHL page embed and is still on 0.18.5, so
+     this harness is ahead of production until that embed is updated too.
      Only mapper.js is deliberately local -- that is the point of this harness. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
     if (typeof XLSX === 'undefined') {
         // document.write during parse inserts this synchronously, ahead of mapper.js

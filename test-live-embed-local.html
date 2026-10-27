@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Embed (local branch)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!--
+      A copy of the live GHL page, with one difference: sector-selection.js and
+      mapper.js are loaded from this directory instead of GitHub Pages, so a branch
+      can be exercised in a real browser before it is merged. Pages has no PR
+      previews, and the gate that swaps XLSX cannot be proven in jsdom.
+
+      Everything else is deliberately identical to the deployed embed, in the same
+      order and all synchronous:
+
+          1. cdnjs xlsx 0.18.5     <- what the GHL page pins
+          2. sector-selection.js
+          3. mapper.js             <- loads vendor/xlsx-0.20.3 over the top of 1
+
+      Keeping the 0.18.5 tag is the whole point: it is the thing the version gate
+      has to override. If the console reports 0.20.3 after load, the override works
+      against the real page conditions rather than a simulated one.
+
+      Serve over HTTP, not file://. Opening this from the filesystem gives the
+      scripts a file:// origin, where fetch is blocked and the template download and
+      the submit both fail for reasons that have nothing to do with the branch.
+    -->
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            padding: 20px 20px;
+            background-color: #f5f5f5;
+            overflow-y: scroll;
+        }
+        .category-container {
+            max-width: 1400px; margin: 0 auto; padding: 10px;
+            transition: max-height 0.8s ease, padding 0.8s ease;
+            overflow: hidden;
+        }
+        .category-row {
+            display: flex; justify-content: center; align-items: center;
+            gap: clamp(12px, 2.5vw, 32px);
+            margin-bottom: clamp(12px, 2vh, 32px);
+        }
+        .category-btn-icon {
+            background: none; border: none; cursor: pointer; text-align: center; padding: 0;
+            width: clamp(90px, min(14vw, 18vh), 200px);
+            height: clamp(90px, min(14vw, 18vh), 200px);
+            flex: 0 0 clamp(90px, min(14vw, 18vh), 200px);
+            transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.4,0,0.2,1),
+                        width 0.8s ease, height 0.8s ease;
+        }
+        .category-btn-icon:hover { transform: translateY(-5px); filter: brightness(1.1); }
+        .category-btn-icon:active { transform: translateY(-2px); }
+        .category-btn-icon.selected,
+        .category-btn-icon.selected:hover {
+            transform: none !important; box-shadow: none !important; cursor: default;
+        }
+        .category-icon { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .category-icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .category-label { display: none; }
+
+        #industry-header img {
+            width: 224px; height: 224px; object-fit: contain; display: block; margin: 0 auto;
+        }
+        #selected-icon-anchor { display: none; text-align: center; margin: 0 auto; }
+
+        #form-container {
+            max-width: 1000px; margin: 20px auto 0; padding: 0 20px;
+            visibility: hidden; opacity: 0; height: 0; overflow: hidden;
+            transition: opacity 0.4s ease;
+        }
+        #form-container.show {
+            visibility: visible; opacity: 1; height: auto; overflow: visible;
+        }
+
+        @media (max-width: 768px) {
+            .category-row { flex-wrap: wrap; gap: 16px; justify-content: center; }
+        }
+
+        /* Not part of the live page - a banner so nobody forgets which copy this is. */
+        #localTestBanner {
+            max-width: 1000px; margin: 0 auto 18px; padding: 12px 16px; border-radius: 8px;
+            border: 1px solid #b42318; background: #fef3f2; color: #7a271a;
+            font-size: 13.5px; line-height: 1.55;
+        }
+        #localTestBanner b { color: #7a271a; }
+        #localTestBanner code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+            background: #fff; border: 1px solid #fecdca; border-radius: 4px; padding: 1px 5px;
+        }
+        #localTestBanner .v { font-weight: 700; }
+    </style>
+</head>
+<body>
+
+    <div id="localTestBanner">
+        <b>Local branch test — not the live page.</b>
+        <code>sector-selection.js</code> and <code>mapper.js</code> come from this
+        directory; the <code>xlsx 0.18.5</code> tag below is the one the GHL page loads,
+        left in place so the version gate has something real to override.
+        <div style="margin-top:7px;">
+            XLSX after load: <span class="v" id="xlsxSeen">checking…</span>
+        </div>
+        <div style="margin-top:7px;">
+            <b>Submit posts to the live Power Automate endpoint</b> and creates a real
+            client folder. Upload and map freely; stop before Submit unless you mean it.
+        </div>
+    </div>
+
+    <div class="category-container">
+        <div class="category-row" id="row1"></div>
+        <div class="category-row" id="row2"></div>
+    </div>
+
+    <div id="selected-icon-anchor"></div>
+
+    <div id="form-container">
+        <div id="mapper-root"></div>
+    </div>
+
+    <!-- 1. the version the GHL page pins, loaded first, exactly as in production -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 2 and 3. the branch under test, from this directory rather than Pages -->
+    <script src="sector-selection.js"></script>
+    <script src="mapper.js"></script>
+
+    <script>
+    // Report which build won, so the thing being tested is visible on the page and
+    // not only in the console. Polls because mapper.js fetches its copy
+    // asynchronously; gives up after 15s so a failure shows as a failure.
+    (function () {
+        var el = document.getElementById('xlsxSeen');
+        var WANT = '0.20.3';
+        var started = Date.now();
+        function paint() {
+            var v = window.XLSX && window.XLSX.version;
+            if (v === WANT) {
+                el.textContent = v + ' — vendored build loaded, gate working';
+                el.style.color = '#1a7f47';
+                return;
+            }
+            if (Date.now() - started > 15000) {
+                el.textContent = (v || 'not loaded') + ' — expected ' + WANT
+                    + '. The vendored file did not load; check the console and the'
+                    + ' Network tab for vendor/xlsx-' + WANT + '/xlsx.full.min.js';
+                el.style.color = '#b42318';
+                return;
+            }
+            el.textContent = (v || 'none') + ' — waiting for ' + WANT + '…';
+            setTimeout(paint, 250);
+        }
+        paint();
+    })();
+    </script>
+
+</body>
+</html>
