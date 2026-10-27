@@ -4,8 +4,8 @@
     // Same scheme as mapper.js, and bumped with it. The two files are served and
     // cached separately, so the pair a visitor ends up with is not guaranteed to be
     // the pair that was deployed - see the check at the end of this file.
-    var VERSION = '10.26.2026 STANDALONE s28';
-    var BUILD   = '2026-10-26 17:55 UTC';
+    var VERSION = '10.27.2026 STANDALONE s29';
+    var BUILD   = '2026-10-27 14:01 UTC';
     window.SECTOR_SELECTION_VERSION = VERSION;
 
     // ── BRAND CONFIG ─────────────────────────────────────────────────────────
