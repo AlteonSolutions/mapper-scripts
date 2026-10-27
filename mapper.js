@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-10-27 14:01 UTC';
-    var MAPPER_VERSION = '10.27.2026 STANDALONE s29';
+    var MAPPER_BUILD   = '2026-10-27 14:12 UTC';
+    var MAPPER_VERSION = '10.27.2026 STANDALONE s30';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -69,8 +69,34 @@
     // The version is in the path, so the URL changes when the version does and no
     // browser or CDN cache can serve the old build for the new pin.
     var XLSX_REQUIRED = '0.20.3';
-    var XLSX_URL = 'https://alteonsolutions.github.io/mapper-scripts/vendor/xlsx-'
-        + XLSX_REQUIRED + '/xlsx.full.min.js';
+    // Resolved against this script's own URL rather than a fixed address, so whichever
+    // copy of mapper.js is running loads the vendored build sitting beside it: Pages in
+    // production, a local server when testing a branch. A hardcoded Pages URL would make
+    // a local test quietly exercise the deployed file instead of the working tree - the
+    // one thing a local test exists to avoid.
+    //
+    // Read now, while the script is still executing, because document.currentScript is
+    // only set during that window; by the time xlsxReady() runs from init() it is null.
+    var XLSX_URL = (function() {
+        var self = null;
+        if (document.currentScript && document.currentScript.src) {
+            self = document.currentScript.src;
+        } else {
+            // currentScript is null for a copy injected after parse, so fall back to
+            // finding our own tag. Last match wins: a later copy is the live one.
+            var tags = document.getElementsByTagName('script');
+            for (var i = tags.length - 1; i >= 0; i--) {
+                if (tags[i].src && /(^|\/)mapper\.js(\?|#|$)/.test(tags[i].src)) {
+                    self = tags[i].src; break;
+                }
+            }
+        }
+        // Nothing identifiable: assume the deployed layout rather than give up, since
+        // production is the case that must not depend on this guesswork succeeding.
+        if (!self) self = 'https://alteonsolutions.github.io/mapper-scripts/mapper.js';
+        // Strip the filename and any ?v= cache-buster, keeping the directory.
+        return self.replace(/[^/]*$/, '') + 'vendor/xlsx-' + XLSX_REQUIRED + '/xlsx.full.min.js';
+    })();
     var _xlsxLoad = null;
     function xlsxReady() {
         if (_xlsxLoad) return _xlsxLoad;

@@ -5,6 +5,7 @@
   "description": "Data mapping tool scripts. xlsx is pinned to the 0.20.3 tarball from cdn.sheetjs.com: SheetJS stopped publishing to npm after 0.18.5, so the registry cannot serve this version and a semver range would silently resolve to the old one.",
   "license": "UNLICENSED",
   "scripts": {
+    "serve": "node serve.js",
     "test:regression": "node regression_test.js --dir .",
     "test:sheetjs-diff": "node sheetjs_version_diff.js"
   },
