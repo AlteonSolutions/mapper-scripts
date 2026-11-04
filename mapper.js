@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-10-27 14:12 UTC';
-    var MAPPER_VERSION = '10.27.2026 STANDALONE s30';
+    var MAPPER_BUILD   = '2026-11-04 21:43 UTC';
+    var MAPPER_VERSION = '11.4.2026 STANDALONE s31';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -3339,25 +3339,61 @@
         // sheet_to_json()-derived gd/cd2 arrays are), so these are genuinely pre-mapper snapshots.
         // Named distinctly so the macro/flow (which only ever reads 'Gift Data'/'Constituent Data'
         // by exact name) ignores them entirely — no separate submission or flow branch needed.
+        // A detached, values-only copy of a parsed sheet.
+        //
+        // Handles both shapes SheetJS produces. A sparse sheet keys its cells by address;
+        // a dense one keeps them in !data as an array of row arrays, and the upload is read
+        // dense. Copying !data by reference would make this an alias rather than a copy -
+        // it would strip nothing, and anything that later touched the parsed workbook would
+        // rewrite the very rows these sheets exist to preserve. For a record of what was
+        // uploaded, that is the one failure that matters, so the rows are copied out.
+        //
+        // Formulas are dropped rather than carried: cellFormula is false on read, so there
+        // should be none, but this must not depend on a read option set a thousand lines
+        // away. A formula cell with no cached value becomes blank rather than a stale number.
         function cloneSheetValuesOnly(srcSheet) {
-            var out = {};
-            for (var addr in srcSheet) {
-                if (addr[0] === '!') { out[addr] = srcSheet[addr]; continue; }
-                var cell = srcSheet[addr];
+            function plain(cell) {
+                if (!cell) return cell;
                 var nc = { t: cell.t };
                 if (cell.v !== undefined) nc.v = cell.v;
                 if (cell.z !== undefined) nc.z = cell.z;
                 if (cell.f && nc.v === undefined) { nc.v = ''; nc.t = 's'; }
-                out[addr] = nc;
+                return nc;
+            }
+            var out = {};
+            for (var addr in srcSheet) {
+                if (addr === '!data') continue;
+                if (addr[0] === '!') { out[addr] = srcSheet[addr]; continue; }
+                out[addr] = plain(srcSheet[addr]);
+            }
+            if (Array.isArray(srcSheet['!data'])) {
+                var rows = srcSheet['!data'], copy = new Array(rows.length);
+                for (var r = 0; r < rows.length; r++) {
+                    var row = rows[r];
+                    if (!row) { copy[r] = row; continue; }
+                    var nr = new Array(row.length);
+                    for (var c = 0; c < row.length; c++) nr[c] = plain(row[c]);
+                    copy[r] = nr;
+                }
+                out['!data'] = copy;
             }
             return out;
         }
-        // Untrimmed reference copies of what was uploaded. They are never read by the PAD flow
-        // or any macro - they exist purely so the original rows can be inspected after the fact.
-        // On Montpelier they were 21.6MB of the 57MB of sheet XML (38%), which is payload the
-        // submitter's browser has to build, zip, base64 and POST. Off by default; flip to true
-        // if someone needs the raw rows round-tripped again.
-        var INCLUDE_ORIGINAL_SHEETS = false;
+        // A verbatim record of what was uploaded, carried alongside the processed data.
+        //
+        // Nothing reads these sheets - not the PAD flow, not a macro, not the deck. They
+        // exist so that when a number is questioned months later, the rows it came from can
+        // be looked at as submitted, before mapping, before the cash-basis filter, before
+        // any of it. The processed sheets cannot answer that question: by then gift types
+        // have been rewritten, Gift Appeal has become Event, and every pledge is gone.
+        //
+        // It is not free. Measured on synthetic data at three scales, the two sheets add a
+        // consistent ~38%: +0.6MB on a 3k-gift file, +12.9MB and about 4.7s of extra write
+        // time at SW scale (102k gifts). That is the price of being able to answer the
+        // question at all, and it is paid on every submission rather than only the ones
+        // that later turn out to need it - a record kept only when trouble is expected is
+        // not a record. Set to false to stop sending them.
+        var INCLUDE_ORIGINAL_SHEETS = true;
         if (INCLUDE_ORIGINAL_SHEETS) {
             if (workbook.Sheets['Gift Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Gift Data']), 'Gift Data (Original)');
             if (workbook.Sheets['Constituent Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Constituent Data']), 'Constituent Data (Original)');
