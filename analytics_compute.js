@@ -196,12 +196,35 @@ function computeAnalytics(giftRows, consRows, params) {
   const consFgd = new Map();      // cid -> first-gift-date raw (Date|null)
   const consType = new Map();     // cid -> type
   const consIds = new Set();
-  const C = consRows.map(r => {
+  // One row per constituent, keyed on Constituent ID and nothing else.
+  //
+  // Exports routinely carry a Constituent Data row per transaction rather than per
+  // donor, repeating the contact ID with a different description each time - one real
+  // file had 7,643 rows for 1,360 donors, the worst ID appearing 142 times. Every one
+  // of those rows carries that donor's full per-year totals, because the totals are
+  // computed per ID. So anything that sums a year column counts the same giving over
+  // and over: that file reported $16.6M raised in 2025 against $934K of actual gifts,
+  // and 7,638 donors against 1,360. The deck is built from those sums, so every
+  // headline number on it was inflated.
+  //
+  // Identity is the ID. Names are deliberately not consulted - the duplicate rows
+  // disagree about names precisely because the name describes the gift rather than the
+  // person ("Tim Stokes YEA 12/30/2020"), so matching on them would merge nothing and
+  // splitting on them would keep the duplicates.
+  //
+  // First row wins, which also matches the First Gift Date and Constituent Type already
+  // taken from the first sighting. Nothing numeric is lost: the year values are derived
+  // from the gift data per ID, so every duplicate row of an ID carries identical totals.
+  const C = [];
+  for (const r of consRows) {
     const cid = normId(r[0]);
+    if (consIds.has(cid)) continue;
     const fgd = toDate(r[3]);
-    if (!consIds.has(cid)) { consFgd.set(cid, fgd); consType.set(cid, r[2]); consIds.add(cid); }
-    return { row: r, cid, fgd };
-  });
+    consFgd.set(cid, fgd);
+    consType.set(cid, r[2]);
+    consIds.add(cid);
+    C.push({ row: r, cid, fgd });
+  }
 
   // ---- Constituent output ----
   const consCols = ['Constituent ID', 'Constituent Name', 'Constituent Type', 'First Gift Date',

@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-11-05 14:11 UTC';
-    var MAPPER_VERSION = '11.5.2026 STANDALONE s33';
+    var MAPPER_BUILD   = '2026-11-05 14:47 UTC';
+    var MAPPER_VERSION = '11.5.2026 STANDALONE s34';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -3293,6 +3293,20 @@
                         // prospect flags without adding a column the macro is not expecting.
                         r['Deceased?'] || r['Deceased'] || ''];
                 });
+                // The compute keeps one row per Constituent ID. Say so when that
+                // actually removed something, because a file with a row per
+                // transaction rather than per donor looks normal until a total is
+                // summed - and the client is the only one who can fix the export.
+                var _ucSeen = {}, _ucDupes = 0;
+                for (var _ucd = 0; _ucd < _ucConsRows.length; _ucd++) {
+                    var _ucKey = String(_ucConsRows[_ucd][0] == null ? '' : _ucConsRows[_ucd][0]).trim().toLowerCase();
+                    if (_ucSeen[_ucKey]) _ucDupes++; else _ucSeen[_ucKey] = true;
+                }
+                if (_ucDupes) {
+                    MapperDiag.step('Duplicate constituents merged',
+                        _ucDupes + ' of ' + _ucConsRows.length + ' rows repeated a Constituent ID - '
+                        + 'kept one row each for ' + (_ucConsRows.length - _ucDupes) + ' donors');
+                }
                 // Both come from the panel this file renders. The fallbacks that used to
                 // read GHL's multiselect and its threshold input are gone, along with
                 // the hard-coded field GUIDs they searched for - and so is the silent
