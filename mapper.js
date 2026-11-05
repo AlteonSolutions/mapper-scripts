@@ -12,8 +12,8 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-11-05 14:47 UTC';
-    var MAPPER_VERSION = '11.5.2026 STANDALONE s34';
+    var MAPPER_BUILD   = '2026-11-05 18:21 UTC';
+    var MAPPER_VERSION = '11.5.2026 STANDALONE s35';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
@@ -618,6 +618,19 @@
         function _fyOf(date, fyStart) { var y = date.getUTCFullYear(), m = date.getUTCMonth() + 1; return (fyStart === 1) ? y : (m >= fyStart ? y + 1 : y); }
         function _round2(x) { return Math.round((x + (x >= 0 ? 1e-9 : -1e-9)) * 100) / 100; }
         function _normId(v) { if (v === null || v === undefined) return null; if (typeof v === 'number') return String(v); return String(v).trim().toLowerCase(); }
+        // A 'Deceased?' cell is read the way a person fills in a column whose name ends in
+        // a question mark: blank means no, and anything they bothered to type means yes -
+        // including a date of death, which is what a client is most likely to put there.
+        // Only an explicit negative reads as not-deceased, so a stray mark does not quietly
+        // put someone back on a solicitation list. An absent column means nobody is marked,
+        // which keeps files uploaded before the column existed working exactly as they did.
+        var _NOT_DECEASED = { '': 1, 'no': 1, 'n': 1, 'false': 1, 'f': 1, '0': 1, 'none': 1, 'n/a': 1, 'na': 1, '-': 1, '--': 1 };
+        function _isDeceased(v) {
+            if (v === null || v === undefined) return false;
+            if (typeof v === 'boolean') return v;
+            if (typeof v === 'number') return v !== 0;
+            return !_NOT_DECEASED[String(v).trim().toLowerCase()];
+        }
         var _TYPE_MAP = { 'Bequest': 'Bequests', 'Estate': 'Bequests', 'Individual': 'Individuals', 'Foundation': 'Foundations', 'Family Foundation': 'Foundations', 'Corporation': 'Corporations', 'Organization': 'Corporations', 'Government': '' };
         var _MONTHS = { january:1, february:2, march:3, april:4, may:5, june:6, july:7, august:8, september:9, october:10, november:11, december:12, jan:1, feb:2, mar:3, apr:4, jun:6, jul:7, aug:8, sep:9, sept:9, oct:10, nov:11, dec:12 };
         function _monthNum(v) {
@@ -692,14 +705,34 @@
                 v = _round2(v); return v === 0 ? null : v;
             }
             var consFgdMap = {}, consTypeMap = {}, consIdSet = {};
-            var C = consRows.map(function(r) {
-                var cid = _normId(r[0]), fgd = _toDate(r[3]);
-                if (!(cid in consIdSet)) { consFgdMap[cid] = fgd; consTypeMap[cid] = r[2]; consIdSet[cid] = true; }
-                return { row: r, cid: cid, fgd: fgd };
-            });
+            // One row per Constituent ID, keyed on the ID and nothing else.
+            //
+            // Exports routinely carry a Constituent Data row per transaction rather than
+            // per donor, repeating the contact ID with a different description each time.
+            // One real file had 8,225 rows for 1,622 donors. Every one of those rows
+            // carries that donor's full per-year totals, because the totals are computed
+            // per ID - so anything summing a year column counts the same giving over and
+            // over. That file's deck reported $16.6M raised against $934K of real gifts.
+            //
+            // Names are deliberately not consulted. The duplicate rows disagree about
+            // names precisely because the name describes the gift rather than the person
+            // ("Tim Stokes YEA 12/30/2020"), so matching on them would merge nothing and
+            // splitting on them would keep every duplicate.
+            //
+            // First row wins, matching the First Gift Date and Constituent Type already
+            // taken from the first sighting. Nothing numeric is lost: the year values are
+            // derived per ID, so every duplicate row of an ID carries identical totals.
+            var C = [];
+            for (var ci = 0; ci < consRows.length; ci++) {
+                var r = consRows[ci], cid = _normId(r[0]);
+                if (cid in consIdSet) continue;
+                var fgd = _toDate(r[3]);
+                consFgdMap[cid] = fgd; consTypeMap[cid] = r[2]; consIdSet[cid] = true;
+                C.push({ row: r, cid: cid, fgd: fgd });
+            }
             var consCols = ['Constituent ID', 'Constituent Name', 'Constituent Type', 'First Gift Date', 'Board Member?', 'Street Address', 'City', 'State', 'Zip Code', 'First Gift Date FY', 'Total Giving'];
             for (var yi = 0; yi < years.length; yi++) { consCols.push(String(years[yi])); if (yi > 0) consCols.push(years[yi] + ' Retention', years[yi] + ' Lift/Loss'); }
-            consCols.push('Consecutive Year Donor', 'Donor Journey Donor', 'Renewals', 'Major Gift Prospect', 'Lapsed Major Donors', 'Mid-Level Giving Prospect', 'Planned Giving Prospect');
+            consCols.push('Consecutive Year Donor', 'Donor Journey Donor', 'Renewals', 'Major Gift Prospect', 'Lapsed Major Donors', 'Mid-Level Giving Prospect', 'Planned Giving Prospect', 'Deceased?');
             // Drop constituents absent from Gift Data. Ports the DeleteExtraConstituents
             // macro's =COUNTIF('Gift Data'!$A:$A,A2)=0 -> delete rule. That macro ran on the
             // data file *after* this script produced it, so the gift-side aggregates above
@@ -763,7 +796,18 @@
                 var out = c.row.slice(0, 9);
                 out.push(fgdfy, totalGiving);
                 for (var oi = 0; oi < years.length; oi++) { out.push(giving[years[oi]] === null ? '' : giving[years[oi]]); if (oi > 0) out.push(ret[years[oi]], ll[years[oi]]); }
-                out.push(consecutive, donorJourney, renewals, majorProspect, lapsed, midlevel, plannedGiving);
+                // Prospecting is a list of people to approach, so a donor marked deceased
+                // carries no prospect flag - nobody should be reported as a major gift
+                // prospect after they have died. Their giving is left alone on purpose: it
+                // is a matter of record, and removing it would understate what the
+                // organisation actually raised. Consecutive Year Donor and Donor Journey
+                // Donor describe past behaviour rather than an ask, so they stand too.
+                var dead = _isDeceased(c.row[9]);
+                if (dead) out.push(consecutive, donorJourney, '', '', '', '', '');
+                else out.push(consecutive, donorJourney, renewals, majorProspect, lapsed, midlevel, plannedGiving);
+                // Reported as Yes or blank rather than echoing the cell, so it matches
+                // every other flag here and says plainly why a row carries none.
+                out.push(dead ? 'Yes' : '');
                 return out;
             });
             var giftCols = ['Constituent ID', 'Gift Date', 'Gift Amount', 'Gift Type', 'Event', 'Spotlights', 'Gifts Per Year', 'Gift Month', 'Gift FY', 'Donor Journey Donor', 'FGD', 'National Breakdown'];
