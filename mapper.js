@@ -12,11 +12,75 @@
     // Bumped by hand on every push. It has to be a constant baked in at build
     // time, not a new Date() at load - a runtime clock reads "now" whichever
     // build is being served, so it cannot tell a fresh file from a cached one.
-    var MAPPER_BUILD   = '2026-11-04 21:43 UTC';
-    var MAPPER_VERSION = '11.4.2026 STANDALONE s31';
+    var MAPPER_BUILD   = '2026-11-05 13:31 UTC';
+    var MAPPER_VERSION = '11.5.2026 STANDALONE s32';
     var UPSTREAM_COMPUTE = true; // set true to emit 12-col Gift + full Constituent via analytics_compute
     // Direct PA HTTP trigger URL — set before deploying. Omit trailing slash.
     var PA_TRIGGER_URL = 'https://defaulted5c7128d9ed46fb9e402a0fae8db2.22.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/24/workflows/008b5ce9fd5a4db69f04c74da8ffbd18/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=6mMSZNTMFX_k1X66vlsEmmKHta_GieRr4QQfrQNky_w';
+
+    // A second flow that receives the uploaded workbook, byte for byte, and nothing
+    // else. Paste its HTTP trigger URL here to switch the archive on; while it is
+    // empty nothing is sent and the submission behaves exactly as before.
+    //
+    // Why a separate flow rather than another field on the one above: a second field
+    // travels in the same request, so it makes that request bigger without making
+    // anything smaller. A separate request takes the bytes out of the submission
+    // entirely - at SW scale the main POST drops from 62.7MB to 45.5MB - and it runs
+    // while the main workbook is still being built, so it costs almost no wall clock.
+    //
+    // The file is sent as its own raw bytes rather than re-serialised or base64'd:
+    //
+    //   re-serialising values-only was measured at 1% LARGER and up to 6.4s of CPU,
+    //   because an xlsx is already a zip - formulas and formatting compress to almost
+    //   nothing, so there is nothing to squeeze out
+    //
+    //   base64 inflates by a third; posting the raw body instead saves 5.4MB of the
+    //   21.7MB an SW-scale file would otherwise cost
+    //
+    // Everything needed to file it lands in headers, since the body is the file.
+    var PA_ORIGINAL_URL = '';
+
+    // Post the uploaded workbook to the archive flow, verbatim.
+    //
+    // Started the moment Submit is pressed, before the main workbook is built, so the
+    // upload overlaps the slowest part of the submission instead of following it. The
+    // returned promise is never allowed to fail the submission: this is a copy kept in
+    // case someone asks a question later, and losing it must not cost the client their
+    // analysis. Whether it worked is recorded in the diagnostics either way.
+    function sendOriginalWorkbook(meta) {
+        if (!PA_ORIGINAL_URL) return Promise.resolve({ sent: false, why: 'no archive flow configured' });
+        if (!uploadedFile) return Promise.resolve({ sent: false, why: 'no uploaded file in hand' });
+        var started = Date.now();
+        var mb = (uploadedFile.size / 1048576).toFixed(1);
+        return fetch(PA_ORIGINAL_URL, {
+            method: 'POST',
+            // The body is the file. Metadata rides in headers so nothing has to be
+            // encoded around it, and so the flow can file it without parsing the body.
+            headers: {
+                'Content-Type': 'application/octet-stream',
+                'x-submission-id': meta.submissionId,
+                'x-client-name': encodeURIComponent(meta.clientName || ''),
+                'x-contact-email': encodeURIComponent(meta.email || ''),
+                'x-form-source': meta.formSource || '',
+                'x-analysis-type': meta.analysisType || '',
+                'x-original-filename': encodeURIComponent(uploadedFile.name || 'upload.xlsx')
+            },
+            body: uploadedFile
+        }).then(function(res) {
+            var ok = res.ok;
+            MapperDiag.step(ok ? 'Original workbook archived' : 'Original workbook not archived',
+                mb + ' MB in ' + ((Date.now() - started) / 1000).toFixed(1) + 's'
+                + (ok ? '' : ' - HTTP ' + res.status));
+            return { sent: ok, status: res.status };
+        }).catch(function(err) {
+            // Deliberately a step rather than a warn: the submission itself is fine,
+            // and revealing the diagnostics panel would tell the client something is
+            // wrong with their analysis when nothing is.
+            MapperDiag.step('Original workbook not archived',
+                (err && err.message ? err.message : String(err)) + ' - the analysis is unaffected');
+            return { sent: false, why: err && err.message };
+        });
+    }
 
     if (window.location.href.includes('page-builder') || 
         window.location.href.includes('/builder/') ||
@@ -443,6 +507,10 @@
     document.documentElement.style.setProperty('--theme-color-hover', themeColorHover);
     
     var workbook = null;
+    // The uploaded file itself, kept so a verbatim copy can be archived. Holding the
+    // File is nearly free - the browser already has the bytes on disk and only reads
+    // them when asked - and it is a perfect record in a way no re-serialisation is.
+    var uploadedFile = null;
     var uploadIconSvg = '<svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:46px;height:46px;display:block;margin:0 auto;"><rect x="3" y="3" width="40" height="40" rx="20" fill="#F2F4F7"></rect><rect x="3" y="3" width="40" height="40" rx="20" stroke="#F9FAFB" stroke-width="6"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M20.9167 16.3334C17.9252 16.3334 15.5 18.7585 15.5 21.7501C15.5 23.2425 16.1025 24.5926 17.0795 25.5732C17.4043 25.8992 17.4034 26.4268 17.0773 26.7517C16.7513 27.0765 16.2237 27.0756 15.8988 26.7495C14.6233 25.4693 13.8334 23.7012 13.8334 21.7501C13.8334 17.8381 17.0047 14.6667 20.9167 14.6667C23.454 14.6667 25.6787 16.0013 26.9288 18.003C29.8376 18.0973 32.1667 20.485 32.1667 23.4167C32.1667 25.0991 31.3987 26.6028 30.1974 27.595C29.8425 27.8881 29.3172 27.838 29.0242 27.4831C28.7311 27.1282 28.7812 26.603 29.1361 26.3099C29.9705 25.6208 30.5 24.581 30.5 23.4167C30.5 21.3457 28.8211 19.6667 26.75 19.6667C26.2803 19.6667 25.8332 19.422 25.5872 19.0046C24.6441 17.4042 22.905 16.3334 20.9167 16.3334ZM22.4108 22.4108C22.7362 22.0854 23.2639 22.0854 23.5893 22.4108L26.9226 25.7442C27.2481 26.0696 27.2481 26.5972 26.9226 26.9227C26.5972 27.2481 26.0696 27.2481 25.7441 26.9227L23.8334 25.0119V30.5001C23.8334 30.9603 23.4603 31.3334 23 31.3334C22.5398 31.3334 22.1667 30.9603 22.1667 30.5001V25.0119L20.256 26.9227C19.9305 27.2481 19.4029 27.2481 19.0775 26.9227C18.752 26.5972 18.752 26.0696 19.0775 25.7442L22.4108 22.4108Z" fill="#2c3345FF"></path></svg>';
     var giftAppeals = [];
     // Recorded as the workbook is read, so the All Done card can say what is about
@@ -1284,6 +1352,27 @@
                 MapperDiag.start();
                 MapperStatus.set('Checking Your Entries');
 
+                // One id on both requests, so the archived upload can be matched to the
+                // analysis it belongs to. The two flows run independently and stamp their
+                // own timestamps, which would otherwise differ by however long the build
+                // took - on a large file, minutes.
+                var submissionId = String(Date.now()) + '-'
+                    + Math.random().toString(36).slice(2, 8);
+                MapperDiag.step('Submission id', submissionId);
+
+                // Fired now, not after the build. The bytes are already on disk, so this
+                // uploads while generateExcelBlob is still computing and packaging - the
+                // slowest part of the submission - rather than adding to it.
+                var originalSent = sendOriginalWorkbook({
+                    submissionId: submissionId,
+                    clientName: clientName,
+                    email: email,
+                    formSource: isSW ? 'SW' : isAlford ? 'Alford' : isHF ? 'HeyFundraiser' : 'Databasey',
+                    analysisType: isStaffing ? 'Interim Staffing'
+                        : isDevelopmentAssessment ? 'Development Assessment'
+                        : isCampaignCounsel ? 'Campaign Counsel' : 'Analytics'
+                });
+
                 setTimeout(function() {
                     MapperDiag.step('Building the data file', 'computing and packaging - the slow step on large files');
                     MapperStatus.set('Uploading Client Data File');
@@ -1340,6 +1429,9 @@
                                 'Industry Type':           selectedIndustryType || '',
                                 form_source:               formSource,
                                 analysis_type:             analysisType,
+                                // Matches the x-submission-id header on the archived
+                                // upload, so the two can be paired later.
+                                submission_id:             submissionId,
                                 file_content:              base64,
                                 logo_content:              logoBase64 || '',
                                 logo_filename:             logoFilename || ''
@@ -1358,8 +1450,19 @@
                                     // confirmation page *inside* the host page - Databasey
                                     // branding embedded in an SW layout. Navigate the top frame.
                                     var goToConfirmation = function() {
-                                        try { window.top.location.href = 'https://getdatabasey.com/submitted'; }
-                                        catch (e) { window.location.href = 'https://getdatabasey.com/submitted'; }
+                                        // Navigating cancels anything still in flight, so give
+                                        // the archive upload a chance to finish first. It has
+                                        // been running since the button was pressed and is
+                                        // normally long done; the cap is there so a stalled
+                                        // archive cannot strand someone on a spinner.
+                                        var go = function() {
+                                            try { window.top.location.href = 'https://getdatabasey.com/submitted'; }
+                                            catch (e) { window.location.href = 'https://getdatabasey.com/submitted'; }
+                                        };
+                                        var done = false;
+                                        var once = function() { if (!done) { done = true; go(); } };
+                                        setTimeout(once, 45000);
+                                        originalSent.then(once, once);
                                     };
                                     var held = MapperDiag.hasWarnings();
                                     MapperDiag.ok('Submitted successfully', held ? 'with notes - see below' : 'redirecting');
@@ -1554,6 +1657,7 @@
     }
 
     function startFileUpload(file) {
+        uploadedFile = file;
         startSlowWatch();
         var detected = detectIndustry();
         if (detected) { if (!isSimpleFlow) setSpotlightConfig(detected); var lbl = industryDisplayLabels[detected]; if (lbl) selectedIndustryType = lbl; }
@@ -3393,7 +3497,13 @@
         // question at all, and it is paid on every submission rather than only the ones
         // that later turn out to need it - a record kept only when trouble is expected is
         // not a record. Set to false to stop sending them.
-        var INCLUDE_ORIGINAL_SHEETS = true;
+        // The two ways of keeping the original are alternatives, not additions, so the
+        // rows are never paid for twice: when the archive flow is configured it has the
+        // whole workbook verbatim and these sheets are redundant weight on the main
+        // submission. Until it is configured they stay, because some record beats none.
+        // So with PA_ORIGINAL_URL empty this behaves exactly as it does today, and
+        // filling it in slims the main POST by ~38% on its own.
+        var INCLUDE_ORIGINAL_SHEETS = !PA_ORIGINAL_URL;
         if (INCLUDE_ORIGINAL_SHEETS) {
             if (workbook.Sheets['Gift Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Gift Data']), 'Gift Data (Original)');
             if (workbook.Sheets['Constituent Data']) XLSX.utils.book_append_sheet(wb, cloneSheetValuesOnly(workbook.Sheets['Constituent Data']), 'Constituent Data (Original)');
